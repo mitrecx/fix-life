@@ -1,11 +1,15 @@
 import { Outlet, NavLink, useNavigate } from "react-router-dom";
-import { LogOut, User } from "lucide-react";
+import { LogOut } from "lucide-react";
 import { message } from "antd";
 import { useAuthStore } from "@/store/authStore";
+import { ProfileModal } from "@/components/ProfileModal";
+import type { User as UserType } from "@/types/auth";
+import { useState } from "react";
 
 export default function Layout() {
-  const { user, clearAuth } = useAuthStore();
+  const { user, clearAuth, setUser } = useAuthStore();
   const navigate = useNavigate();
+  const [showProfileModal, setShowProfileModal] = useState(false);
 
   const navItems = [
     { path: "/yearly-goals", label: "年度目标" },
@@ -18,6 +22,10 @@ export default function Layout() {
     clearAuth();
     message.success("已退出登录");
     navigate("/login");
+  };
+
+  const handleProfileUpdate = (updatedUser: UserType) => {
+    setUser(updatedUser);
   };
 
   return (
@@ -52,10 +60,27 @@ export default function Layout() {
 
               {/* User Menu */}
               <div className="flex items-center gap-3 pl-4 border-l border-gray-200">
-                <div className="flex items-center gap-2 text-sm text-gray-700">
-                  <User size={18} className="text-gray-500" />
+                {/* Avatar/Username - Clickable */}
+                <button
+                  onClick={() => setShowProfileModal(true)}
+                  className="flex items-center gap-2 text-sm text-gray-700 hover:bg-gray-100 px-2 py-1 rounded-lg transition-all"
+                  title="个人中心"
+                >
+                  {user?.avatar_url ? (
+                    <img
+                      src={user.avatar_url}
+                      alt={user.username}
+                      className="w-8 h-8 rounded-full object-cover border-2 border-gray-200"
+                    />
+                  ) : (
+                    <div className="w-8 h-8 rounded-full bg-gradient-to-br from-blue-500 to-purple-600 flex items-center justify-center text-white text-sm font-semibold">
+                      {user?.username.charAt(0).toUpperCase()}
+                    </div>
+                  )}
                   <span className="font-medium">{user?.username}</span>
-                </div>
+                </button>
+
+                {/* Logout Button */}
                 <button
                   onClick={handleLogout}
                   className="p-2 text-gray-500 hover:text-red-500 hover:bg-red-50 rounded-lg transition-all"
@@ -73,6 +98,15 @@ export default function Layout() {
       <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6">
         <Outlet />
       </main>
+
+      {/* Profile Modal */}
+      {showProfileModal && user && (
+        <ProfileModal
+          user={user}
+          onClose={() => setShowProfileModal(false)}
+          onUpdate={handleProfileUpdate}
+        />
+      )}
     </div>
   );
 }

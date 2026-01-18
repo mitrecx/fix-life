@@ -4,6 +4,8 @@ export interface User {
   email: string;
   username: string;
   full_name?: string;
+  avatar_url?: string;
+  bio?: string;
   is_active: boolean;
   created_at: string;
   updated_at?: string;
@@ -59,6 +61,19 @@ export interface ResetPasswordRequest {
 /** Response from reset password API */
 export interface ResetPasswordResponse {
   message: string;
+}
+
+/** Request payload for updating user profile */
+export interface UserProfileUpdate {
+  full_name?: string;
+  avatar_url?: string;
+  bio?: string;
+}
+
+/** Request payload for changing password */
+export interface ChangePasswordRequest {
+  old_password: string;
+  new_password: string;
 }
 
 /** Response from login or register API */

@@ -44,6 +44,8 @@ class UserLogin(BaseModel):
 class UserResponse(UserBase):
     """Schema for user response."""
     id: UUID
+    avatar_url: Optional[str] = None
+    bio: Optional[str] = None
     is_active: bool
     created_at: datetime
     updated_at: Optional[datetime] = None
@@ -135,6 +137,36 @@ class ResetPasswordRequest(BaseModel):
             "example": {
                 "email": "user@example.com",
                 "code": "123456",
+                "new_password": "newpassword123"
+            }
+        }
+
+
+class UserProfileUpdate(BaseModel):
+    """Schema for user profile update."""
+    full_name: Optional[str] = Field(None, max_length=100, description="Full name")
+    avatar_url: Optional[str] = Field(None, max_length=500, description="Avatar URL")
+    bio: Optional[str] = Field(None, max_length=500, description="User bio")
+
+    class Config:
+        json_schema_extra = {
+            "example": {
+                "full_name": "John Doe",
+                "avatar_url": "https://example.com/avatar.jpg",
+                "bio": "Software developer and fitness enthusiast"
+            }
+        }
+
+
+class ChangePasswordRequest(BaseModel):
+    """Schema for change password request."""
+    old_password: str = Field(..., min_length=1, description="Current password")
+    new_password: str = Field(..., min_length=8, max_length=100, description="New password (min 8 characters)")
+
+    class Config:
+        json_schema_extra = {
+            "example": {
+                "old_password": "oldpassword123",
                 "new_password": "newpassword123"
             }
         }
