@@ -1,5 +1,14 @@
 import api from "./api";
-import type { LoginRequest, RegisterRequest, AuthResponse, User } from "@/types/auth";
+import type {
+  LoginRequest,
+  RegisterRequest,
+  AuthResponse,
+  User,
+  SendVerificationCodeRequest,
+  SendVerificationCodeResponse,
+  VerifyCodeRequest,
+  VerifyCodeResponse
+} from "@/types/auth";
 
 export const authService = {
   /**
@@ -13,14 +22,42 @@ export const authService = {
   },
 
   /**
-   * Register a new user
+   * Register a new user with email verification code
    */
-  async register(email: string, username: string, password: string, full_name?: string): Promise<AuthResponse> {
+  async register(
+    email: string,
+    username: string,
+    password: string,
+    verification_code: string,
+    full_name?: string
+  ): Promise<AuthResponse> {
     return await api.post<AuthResponse>("/auth/register", {
       email,
       username,
       password,
+      verification_code,
       full_name,
+    });
+  },
+
+  /**
+   * Send verification code to email
+   */
+  async sendVerificationCode(email: string, purpose: "register" | "reset_password" = "register"): Promise<SendVerificationCodeResponse> {
+    return await api.post<SendVerificationCodeResponse>("/auth/send-verification-code", {
+      email,
+      purpose,
+    });
+  },
+
+  /**
+   * Verify code for email
+   */
+  async verifyCode(email: string, code: string, purpose: "register" | "reset_password" = "register"): Promise<VerifyCodeResponse> {
+    return await api.post<VerifyCodeResponse>("/auth/verify-code", {
+      email,
+      code,
+      purpose,
     });
   },
 

@@ -15,12 +15,38 @@ export interface LoginRequest {
   password: string;
 }
 
-/** Request payload for registration */
+/** Request payload for registration with verification code */
 export interface RegisterRequest {
   email: string;
   username: string;
   password: string;
   full_name?: string;
+  verification_code: string;
+}
+
+/** Request payload for sending verification code */
+export interface SendVerificationCodeRequest {
+  email: string;
+  purpose?: "register" | "reset_password";
+}
+
+/** Response from send verification code API */
+export interface SendVerificationCodeResponse {
+  message: string;
+  code?: string; // For development only
+}
+
+/** Request payload for verifying code */
+export interface VerifyCodeRequest {
+  email: string;
+  code: string;
+  purpose?: "register" | "reset_password";
+}
+
+/** Response from verify code API */
+export interface VerifyCodeResponse {
+  valid: boolean;
+  message: string;
 }
 
 /** Response from login or register API */

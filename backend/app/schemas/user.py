@@ -1,7 +1,7 @@
 """User schemas for authentication and user management."""
 from pydantic import BaseModel, EmailStr, Field
 from datetime import datetime
-from typing import Optional
+from typing import Optional, Literal
 from uuid import UUID
 
 
@@ -74,3 +74,51 @@ class TokenResponse(BaseModel):
                 }
             }
         }
+
+
+class SendVerificationCodeRequest(BaseModel):
+    """Schema for sending verification code request."""
+    email: EmailStr = Field(..., description="Email address to send verification code")
+    purpose: Literal["register", "reset_password"] = Field(default="register", description="Purpose of the verification code")
+
+    class Config:
+        json_schema_extra = {
+            "example": {
+                "email": "user@example.com",
+                "purpose": "register"
+            }
+        }
+
+
+class SendVerificationCodeResponse(BaseModel):
+    """Schema for send verification code response."""
+    message: str
+    # For development, return the code in response (should be removed in production)
+    code: Optional[str] = Field(None, description="Verification code (only for development)")
+
+
+class VerifyCodeRequest(BaseModel):
+    """Schema for verifying code request."""
+    email: EmailStr = Field(..., description="Email address")
+    code: str = Field(..., min_length=6, max_length=6, description="6-digit verification code")
+    purpose: Literal["register", "reset_password"] = Field(default="register", description="Purpose of the verification code")
+
+    class Config:
+        json_schema_extra = {
+            "example": {
+                "email": "user@example.com",
+                "code": "123456",
+                "purpose": "register"
+            }
+        }
+
+
+class VerifyCodeResponse(BaseModel):
+    """Schema for verify code response."""
+    valid: bool
+    message: str
+
+
+class UserRegisterWithCode(UserRegister):
+    """Schema for user registration with verification code."""
+    verification_code: str = Field(..., min_length=6, max_length=6, description="Email verification code")

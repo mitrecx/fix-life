@@ -28,6 +28,19 @@ class Settings(BaseSettings):
     # CORS
     CORS_ORIGINS: List[str] = ["http://localhost:5173", "http://localhost:5174"]
 
+    # Email / SMTP
+    # 163 邮箱配置: smtp.163.com:465 (SSL) 或 smtp.163.com:994 (SSL)
+    SMTP_HOST: str = "smtp.163.com"
+    SMTP_PORT: int = 465  # 163 使用 SSL 端口 465
+    SMTP_USER: str = ""  # 从 .env 文件读取
+    SMTP_PASSWORD: str = ""  # 从 .env 文件读取
+    SMTP_FROM: str = ""  # 从 .env 文件读取
+    SMTP_USE_TLS: bool = False  # STARTTLS (如 Gmail 端口 587)
+    SMTP_USE_SSL: bool = True  # SSL (如 163 端口 465)
+
+    # Verification Code
+    VERIFICATION_CODE_EXPIRE_MINUTES: int = 10  # 10 minutes
+
     class Config:
         env_file = ".env"
         case_sensitive = True

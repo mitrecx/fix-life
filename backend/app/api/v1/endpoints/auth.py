@@ -3,25 +3,84 @@ from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.orm import Session
 
 from app.api.v1.deps import get_db, get_current_user
-from app.schemas.user import UserRegister, UserLogin, TokenResponse
+from app.schemas.user import (
+    UserRegister,
+    UserRegisterWithCode,
+    UserLogin,
+    TokenResponse,
+    SendVerificationCodeRequest,
+    SendVerificationCodeResponse,
+    VerifyCodeRequest,
+    VerifyCodeResponse
+)
 from app.services.auth_service import AuthService
+from app.services.email_service import EmailService
 from app.core.security import create_access_token, get_password_hash, authenticate_user
 
 router = APIRouter()
 
 
-@router.post("/register", response_model=TokenResponse, status_code=status.HTTP_201_CREATED)
-def register(
-    user_in: UserRegister,
+@router.post("/send-verification-code", response_model=SendVerificationCodeResponse)
+def send_verification_code(
+    request: SendVerificationCodeRequest,
     db: Session = Depends(get_db),
 ):
     """
-    Register a new user.
+    Send a verification code to the given email.
 
-    Validates that email and username are unique, creates user with hashed password,
-    and returns JWT token for immediate login.
+    The code is valid for 10 minutes. For development purposes, the code
+    is also returned in the response.
+    """
+    email_service = EmailService(db)
+    success, message, code = email_service.send_verification_email(request.email, request.purpose)
+
+    if not success:
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=message
+        )
+
+    return SendVerificationCodeResponse(message=message, code=code)
+
+
+@router.post("/verify-code", response_model=VerifyCodeResponse)
+def verify_code(
+    request: VerifyCodeRequest,
+    db: Session = Depends(get_db),
+):
+    """
+    Verify a code for the given email and purpose.
+
+    Returns whether the code is valid and marks it as used if valid.
+    """
+    email_service = EmailService(db)
+    valid, message = email_service.verify_code(request.email, request.code, request.purpose)
+
+    return VerifyCodeResponse(valid=valid, message=message)
+
+
+@router.post("/register", response_model=TokenResponse, status_code=status.HTTP_201_CREATED)
+def register(
+    user_in: UserRegisterWithCode,
+    db: Session = Depends(get_db),
+):
+    """
+    Register a new user with email verification.
+
+    Requires a valid email verification code. Validates that email and username
+    are unique, creates user with hashed password, and returns JWT token for
+    immediate login.
     """
     service = AuthService(db)
+    email_service = EmailService(db)
+
+    # Verify the email verification code
+    valid, message = email_service.verify_code(user_in.email, user_in.verification_code, "register")
+    if not valid:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail=message
+        )
 
     # Check if email already exists
     if service.check_email_exists(user_in.email):

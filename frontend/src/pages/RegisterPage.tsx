@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { useNavigate, Link } from "react-router-dom";
-import { Mail, Lock, User, ArrowRight, Check, X } from "lucide-react";
+import { Mail, Lock, User, ArrowRight, Check, X, Shield } from "lucide-react";
 import { message } from "antd";
 import { useAuthStore } from "@/store/authStore";
 import { authService } from "@/services/authService";
@@ -10,6 +10,7 @@ interface FormData {
   username: string;
   password: string;
   confirmPassword: string;
+  verificationCode: string;
 }
 
 export default function RegisterPage() {
@@ -18,8 +19,11 @@ export default function RegisterPage() {
     username: "",
     password: "",
     confirmPassword: "",
+    verificationCode: "",
   });
   const [showPassword, setShowPassword] = useState(false);
+  const [sendingCode, setSendingCode] = useState(false);
+  const [countdown, setCountdown] = useState(0);
 
   const { setAuth, setLoading, setError } = useAuthStore();
   const navigate = useNavigate();
@@ -29,7 +33,40 @@ export default function RegisterPage() {
   const usernameValid = formData.username.length >= 3 && formData.username.length <= 20 && /^[a-zA-Z0-9_-]+$/.test(formData.username);
   const passwordValid = formData.password.length >= 8;
   const passwordsMatch = formData.password === formData.confirmPassword && formData.password !== "";
-  const formValid = emailValid && usernameValid && passwordValid && passwordsMatch;
+  const codeValid = formData.verificationCode.length === 6 && /^\d{6}$/.test(formData.verificationCode);
+  const formValid = emailValid && usernameValid && passwordValid && passwordsMatch && codeValid;
+
+  const handleSendCode = async () => {
+    if (!emailValid) {
+      message.warning("请输入有效的邮箱地址");
+      return;
+    }
+
+    setSendingCode(true);
+    try {
+      const response = await authService.sendVerificationCode(formData.email);
+      message.success(response.message);
+      if (response.code) {
+        console.log("验证码:", response.code);
+      }
+      // Start countdown
+      setCountdown(60);
+      const timer = setInterval(() => {
+        setCountdown((prev) => {
+          if (prev <= 1) {
+            clearInterval(timer);
+            return 0;
+          }
+          return prev - 1;
+        });
+      }, 1000);
+    } catch (error) {
+      const errorMsg = error instanceof Error ? error.message : "发送验证码失败";
+      message.error(errorMsg);
+    } finally {
+      setSendingCode(false);
+    }
+  };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -43,7 +80,12 @@ export default function RegisterPage() {
     setError(null);
 
     try {
-      const response = await authService.register(formData.email, formData.username, formData.password);
+      const response = await authService.register(
+        formData.email,
+        formData.username,
+        formData.password,
+        formData.verificationCode
+      );
       setAuth(response.user, response.access_token);
       message.success("注册成功");
       navigate("/", { replace: true });
@@ -90,16 +132,48 @@ export default function RegisterPage() {
                   type="email"
                   value={formData.email}
                   onChange={(e) => updateField("email", e.target.value)}
-                  className={`w-full pl-11 pr-10 py-3 border rounded-xl focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent transition-all ${
+                  className={`w-full pl-11 pr-28 py-3 border rounded-xl focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent transition-all ${
                     formData.email && (emailValid ? "border-emerald-300" : "border-red-300")
                   }`}
                   placeholder="your@email.com"
                   autoComplete="email"
                   required
                 />
-                {formData.email && (
+                <button
+                  type="button"
+                  onClick={handleSendCode}
+                  disabled={!emailValid || sendingCode || countdown > 0}
+                  className={`absolute right-2 top-1/2 -translate-y-1/2 px-3 py-1.5 text-sm font-medium rounded-lg transition-all ${!emailValid || sendingCode || countdown > 0 ? "bg-gray-100 text-gray-400 cursor-not-allowed" : "bg-indigo-500 text-white hover:bg-indigo-600"}`}
+                >
+                  {sendingCode ? "发送中..." : countdown > 0 ? `${countdown}秒` : "发送验证码"}
+                </button>
+              </div>
+              {formData.email && !emailValid && (
+                <p className="text-red-500 text-xs mt-1">请输入有效的邮箱地址</p>
+              )}
+            </div>
+
+            {/* Verification Code Input */}
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-2">
+                验证码
+              </label>
+              <div className="relative">
+                <Shield className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" size={20} />
+                <input
+                  type="text"
+                  value={formData.verificationCode}
+                  onChange={(e) => updateField("verificationCode", e.target.value.replace(/\D/g, "").slice(0, 6))}
+                  className={`w-full pl-11 pr-10 py-3 border rounded-xl focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent transition-all ${
+                    formData.verificationCode && (codeValid ? "border-emerald-300" : "border-red-300")
+                  }`}
+                  placeholder="6位数字验证码"
+                  maxLength={6}
+                  required
+                />
+                {formData.verificationCode && (
                   <div className="absolute right-3 top-1/2 -translate-y-1/2">
-                    {emailValid ? (
+                    {codeValid ? (
                       <Check className="text-emerald-500" size={20} />
                     ) : (
                       <X className="text-red-500" size={20} />
@@ -107,8 +181,8 @@ export default function RegisterPage() {
                   </div>
                 )}
               </div>
-              {formData.email && !emailValid && (
-                <p className="text-red-500 text-xs mt-1">请输入有效的邮箱地址</p>
+              {formData.verificationCode && !codeValid && (
+                <p className="text-red-500 text-xs mt-1">请输入6位数字验证码</p>
               )}
             </div>
 
