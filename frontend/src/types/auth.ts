@@ -49,6 +49,18 @@ export interface VerifyCodeResponse {
   message: string;
 }
 
+/** Request payload for reset password */
+export interface ResetPasswordRequest {
+  email: string;
+  code: string;
+  new_password: string;
+}
+
+/** Response from reset password API */
+export interface ResetPasswordResponse {
+  message: string;
+}
+
 /** Response from login or register API */
 export interface AuthResponse {
   access_token: string;

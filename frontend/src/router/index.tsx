@@ -3,6 +3,7 @@ import ProtectedRoute from "@/components/ProtectedRoute";
 import Layout from "@/components/Layout";
 import LoginPage from "@/pages/LoginPage";
 import RegisterPage from "@/pages/RegisterPage";
+import ForgotPasswordPage from "@/pages/ForgotPasswordPage";
 import YearlyGoalsPage from "@/pages/YearlyGoalsPage";
 import MonthlyPlansPage from "@/pages/MonthlyPlansPage";
 import DailyPlansPage from "@/pages/DailyPlansPage";
@@ -17,6 +18,10 @@ export const router = createBrowserRouter([
   {
     path: "/register",
     element: <RegisterPage />,
+  },
+  {
+    path: "/forgot-password",
+    element: <ForgotPasswordPage />,
   },
 
   // Protected routes

@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { useNavigate, useLocation, Link } from "react-router-dom";
-import { Mail, Lock, ArrowRight } from "lucide-react";
+import { Mail, Lock, ArrowRight, Eye, EyeOff } from "lucide-react";
 import { message } from "antd";
 import { useAuthStore } from "@/store/authStore";
 import { authService } from "@/services/authService";
@@ -98,10 +98,15 @@ export default function LoginPage() {
                 <button
                   type="button"
                   onClick={() => setShowPassword(!showPassword)}
-                  className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600 transition-colors text-sm"
+                  className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600 transition-colors"
                 >
-                  {showPassword ? "隐藏" : "显示"}
+                  {showPassword ? <EyeOff size={20} /> : <Eye size={20} />}
                 </button>
+              </div>
+              <div className="text-right mt-1">
+                <Link to="/forgot-password" className="text-xs text-indigo-600 hover:text-indigo-700">
+                  忘记密码？
+                </Link>
               </div>
             </div>
 

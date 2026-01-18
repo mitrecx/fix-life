@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { useNavigate, Link } from "react-router-dom";
-import { Mail, Lock, User, ArrowRight, Check, X, Shield } from "lucide-react";
+import { Mail, Lock, User, ArrowRight, Check, X, Shield, Eye, EyeOff } from "lucide-react";
 import { message } from "antd";
 import { useAuthStore } from "@/store/authStore";
 import { authService } from "@/services/authService";
@@ -24,6 +24,8 @@ export default function RegisterPage() {
   const [showPassword, setShowPassword] = useState(false);
   const [sendingCode, setSendingCode] = useState(false);
   const [countdown, setCountdown] = useState(0);
+  const [emailExists, setEmailExists] = useState(false);
+  const [checkingEmail, setCheckingEmail] = useState(false);
 
   const { setAuth, setLoading, setError } = useAuthStore();
   const navigate = useNavigate();
@@ -100,6 +102,28 @@ export default function RegisterPage() {
 
   const updateField = (field: keyof FormData, value: string) => {
     setFormData((prev) => ({ ...prev, [field]: value }));
+    // Reset email exists error when email changes
+    if (field === "email") {
+      setEmailExists(false);
+    }
+  };
+
+  const handleEmailBlur = async () => {
+    if (!emailValid || !formData.email) {
+      setEmailExists(false);
+      return;
+    }
+
+    setCheckingEmail(true);
+    try {
+      const result = await authService.checkEmailExists(formData.email);
+      setEmailExists(result.exists);
+    } catch (error) {
+      console.error("Failed to check email:", error);
+      setEmailExists(false);
+    } finally {
+      setCheckingEmail(false);
+    }
   };
 
   return (
@@ -132,8 +156,9 @@ export default function RegisterPage() {
                   type="email"
                   value={formData.email}
                   onChange={(e) => updateField("email", e.target.value)}
+                  onBlur={handleEmailBlur}
                   className={`w-full pl-11 pr-28 py-3 border rounded-xl focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent transition-all ${
-                    formData.email && (emailValid ? "border-emerald-300" : "border-red-300")
+                    emailExists ? "border-red-300" : formData.email && (emailValid ? "border-emerald-300" : "border-red-300")
                   }`}
                   placeholder="your@email.com"
                   autoComplete="email"
@@ -142,14 +167,17 @@ export default function RegisterPage() {
                 <button
                   type="button"
                   onClick={handleSendCode}
-                  disabled={!emailValid || sendingCode || countdown > 0}
-                  className={`absolute right-2 top-1/2 -translate-y-1/2 px-3 py-1.5 text-sm font-medium rounded-lg transition-all ${!emailValid || sendingCode || countdown > 0 ? "bg-gray-100 text-gray-400 cursor-not-allowed" : "bg-indigo-500 text-white hover:bg-indigo-600"}`}
+                  disabled={!emailValid || sendingCode || countdown > 0 || emailExists}
+                  className={`absolute right-2 top-1/2 -translate-y-1/2 px-3 py-1.5 text-sm font-medium rounded-lg transition-all ${!emailValid || sendingCode || countdown > 0 || emailExists ? "bg-gray-100 text-gray-400 cursor-not-allowed" : "bg-indigo-500 text-white hover:bg-indigo-600"}`}
                 >
                   {sendingCode ? "发送中..." : countdown > 0 ? `${countdown}秒` : "发送验证码"}
                 </button>
               </div>
               {formData.email && !emailValid && (
                 <p className="text-red-500 text-xs mt-1">请输入有效的邮箱地址</p>
+              )}
+              {emailExists && (
+                <p className="text-red-500 text-xs mt-1">该邮箱已经注册过，请直接登录</p>
               )}
             </div>
 
@@ -238,9 +266,9 @@ export default function RegisterPage() {
                 <button
                   type="button"
                   onClick={() => setShowPassword(!showPassword)}
-                  className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600 transition-colors text-sm"
+                  className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600 transition-colors"
                 >
-                  {showPassword ? "隐藏" : "显示"}
+                  {showPassword ? <EyeOff size={20} /> : <Eye size={20} />}
                 </button>
               </div>
               {formData.password && !passwordValid && (

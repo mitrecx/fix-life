@@ -122,3 +122,19 @@ class VerifyCodeResponse(BaseModel):
 class UserRegisterWithCode(UserRegister):
     """Schema for user registration with verification code."""
     verification_code: str = Field(..., min_length=6, max_length=6, description="Email verification code")
+
+
+class ResetPasswordRequest(BaseModel):
+    """Schema for reset password request."""
+    email: EmailStr = Field(..., description="Email address")
+    code: str = Field(..., min_length=6, max_length=6, description="6-digit verification code")
+    new_password: str = Field(..., min_length=8, max_length=100, description="New password (min 8 characters)")
+
+    class Config:
+        json_schema_extra = {
+            "example": {
+                "email": "user@example.com",
+                "code": "123456",
+                "new_password": "newpassword123"
+            }
+        }

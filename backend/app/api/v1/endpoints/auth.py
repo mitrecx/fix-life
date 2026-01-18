@@ -11,7 +11,8 @@ from app.schemas.user import (
     SendVerificationCodeRequest,
     SendVerificationCodeResponse,
     VerifyCodeRequest,
-    VerifyCodeResponse
+    VerifyCodeResponse,
+    ResetPasswordRequest
 )
 from app.services.auth_service import AuthService
 from app.services.email_service import EmailService
@@ -31,6 +32,16 @@ def send_verification_code(
     The code is valid for 10 minutes. For development purposes, the code
     is also returned in the response.
     """
+    service = AuthService(db)
+
+    # For password reset, verify email exists first
+    if request.purpose == "reset_password":
+        if not service.check_email_exists(request.email):
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail="该邮箱未注册"
+            )
+
     email_service = EmailService(db)
     success, message, code = email_service.send_verification_email(request.email, request.purpose)
 
@@ -57,6 +68,21 @@ def verify_code(
     valid, message = email_service.verify_code(request.email, request.code, request.purpose)
 
     return VerifyCodeResponse(valid=valid, message=message)
+
+
+@router.get("/check-email")
+def check_email_exists(
+    email: str,
+    db: Session = Depends(get_db),
+):
+    """
+    Check if an email is already registered.
+
+    Returns whether the email exists in the database.
+    """
+    service = AuthService(db)
+    exists = service.check_email_exists(email)
+    return {"exists": exists}
 
 
 @router.post("/register", response_model=TokenResponse, status_code=status.HTTP_201_CREATED)
@@ -138,6 +164,43 @@ def login(
         token_type="bearer",
         user=user
     )
+
+
+@router.post("/reset-password")
+def reset_password(
+    request: ResetPasswordRequest,
+    db: Session = Depends(get_db),
+):
+    """
+    Reset password with email verification code.
+
+    Verifies the email verification code and updates the user's password.
+    """
+    service = AuthService(db)
+    email_service = EmailService(db)
+
+    # Verify the email verification code
+    valid, message = email_service.verify_code(request.email, request.code, "reset_password")
+    if not valid:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail=message
+        )
+
+    # Check if email exists
+    user = service.get_user_by_email(request.email)
+    if not user:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Email not found"
+        )
+
+    # Update password
+    hashed_password = get_password_hash(request.new_password)
+    user.hashed_password = hashed_password
+    db.commit()
+
+    return {"message": "密码重置成功"}
 
 
 @router.get("/me")

@@ -7,7 +7,8 @@ import type {
   SendVerificationCodeRequest,
   SendVerificationCodeResponse,
   VerifyCodeRequest,
-  VerifyCodeResponse
+  VerifyCodeResponse,
+  ResetPasswordResponse
 } from "@/types/auth";
 
 export const authService = {
@@ -58,6 +59,24 @@ export const authService = {
       email,
       code,
       purpose,
+    });
+  },
+
+  /**
+   * Check if email already exists
+   */
+  async checkEmailExists(email: string): Promise<{ exists: boolean }> {
+    return await api.get<{ exists: boolean }>(`/auth/check-email?email=${encodeURIComponent(email)}`);
+  },
+
+  /**
+   * Reset password with email verification code
+   */
+  async resetPassword(email: string, code: string, new_password: string): Promise<ResetPasswordResponse> {
+    return await api.post<ResetPasswordResponse>("/auth/reset-password", {
+      email,
+      code,
+      new_password,
     });
   },
 
