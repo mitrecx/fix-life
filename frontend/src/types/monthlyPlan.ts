@@ -42,7 +42,6 @@ export interface MonthlyPlan {
   year: number;
   month: number;
   title?: string;
-  focus_areas: string[];
   notes?: string;
   total_tasks: number;
   completed_tasks: number;
@@ -56,14 +55,12 @@ export interface MonthlyPlanCreate {
   year: number;
   month: number;
   title?: string;
-  focus_areas?: string[];
   notes?: string;
   yearly_goal_id?: string;
 }
 
 export interface MonthlyPlanUpdate {
   title?: string;
-  focus_areas?: string[];
   notes?: string;
 }
 

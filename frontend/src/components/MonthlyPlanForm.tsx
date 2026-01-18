@@ -20,7 +20,6 @@ export function MonthlyPlanForm({
   defaultMonth = new Date().getMonth() + 1,
 }: MonthlyPlanFormProps) {
   const [title, setTitle] = useState(initialData.title || "");
-  const [focusAreas, setFocusAreas] = useState(initialData.focus_areas?.join(", ") || "");
   const [notes, setNotes] = useState(initialData.notes || "");
   const [year, setYear] = useState(initialData.year || defaultYear);
   const [month, setMonth] = useState(initialData.month || defaultMonth);
@@ -29,7 +28,6 @@ export function MonthlyPlanForm({
     e.preventDefault();
     const data: MonthlyPlanCreate | MonthlyPlanUpdate = {};
     if (title) data.title = title;
-    if (focusAreas) data.focus_areas = focusAreas.split(",").map((s) => s.trim()).filter(Boolean);
     if (notes) data.notes = notes;
     if ("year" in initialData || !initialData.id) {
       (data as MonthlyPlanCreate).year = year;
@@ -94,19 +92,6 @@ export function MonthlyPlanForm({
               onChange={(e) => setTitle(e.target.value)}
               className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
               placeholder="例如：2024年1月计划"
-            />
-          </div>
-
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">
-              重点关注领域 (用逗号分隔)
-            </label>
-            <input
-              type="text"
-              value={focusAreas}
-              onChange={(e) => setFocusAreas(e.target.value)}
-              className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-              placeholder="例如：健康, 学习, 工作"
             />
           </div>
 

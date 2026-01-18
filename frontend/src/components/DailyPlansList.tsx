@@ -7,6 +7,7 @@ import { DailyPlanForm } from "./DailyPlanForm";
 
 export function DailyPlansList() {
   const [plans, setPlans] = useState<DailyPlan[]>([]);
+  const [allPlans, setAllPlans] = useState<DailyPlan[]>([]);
   const [loading, setLoading] = useState(true);
   const [showForm, setShowForm] = useState(false);
   const [editingPlan, setEditingPlan] = useState<DailyPlan | null>(null);
@@ -25,11 +26,23 @@ export function DailyPlansList() {
     loadPlans();
   }, [startDate, endDate]);
 
+  const loadAllPlans = async () => {
+    try {
+      // 获取所有计划（设置一个很大的日期范围）
+      const data = await dailyPlanService.getAll("2020-01-01", "2030-12-31");
+      setAllPlans(data);
+    } catch (error) {
+      console.error("Failed to load all daily plans:", error);
+    }
+  };
+
   const loadPlans = async () => {
     try {
       setLoading(true);
       const data = await dailyPlanService.getAll(startDate, endDate);
       setPlans(data);
+      // 同时加载所有计划用于日期冲突检查
+      loadAllPlans();
     } catch (error) {
       console.error("Failed to load daily plans:", error);
     } finally {
@@ -141,10 +154,10 @@ export function DailyPlansList() {
 
       {/* Plans List */}
       {!loading && (
-        <div>
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
           {plans.length === 0 ? (
             <div
-              className="text-center py-16 px-8 rounded-2xl border-2 border-dashed border-gray-300"
+              className="col-span-full text-center py-16 px-8 rounded-2xl border-2 border-dashed border-gray-300"
               style={{ background: 'linear-gradient(to bottom right, rgb(249 250 251), rgb(243 244 246))' }}
             >
               <div className="text-6xl mb-4">📝</div>
@@ -173,6 +186,7 @@ export function DailyPlansList() {
           onSubmit={handleCreate}
           onCancel={() => setShowForm(false)}
           submitLabel="创建"
+          existingPlans={allPlans}
         />
       )}
 
@@ -183,6 +197,7 @@ export function DailyPlansList() {
           onCancel={() => setEditingPlan(null)}
           initialData={editingPlan}
           submitLabel="保存"
+          existingPlans={allPlans}
         />
       )}
     </div>

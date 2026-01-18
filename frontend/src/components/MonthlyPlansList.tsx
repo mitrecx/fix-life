@@ -141,10 +141,10 @@ export function MonthlyPlansList() {
 
       {/* Plans List */}
       {!loading && (
-        <div>
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
           {plans.length === 0 ? (
             <div
-              className="text-center py-16 px-8 rounded-2xl border-2 border-dashed border-gray-300"
+              className="col-span-full text-center py-16 px-8 rounded-2xl border-2 border-dashed border-gray-300"
               style={{ background: 'linear-gradient(to bottom right, rgb(249 250 251), rgb(243 244 246))' }}
             >
               <div className="text-6xl mb-4">📅</div>

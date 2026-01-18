@@ -1,43 +1,8 @@
-import { useState } from "react";
-import { ConfigProvider, Tabs } from "antd";
-import zhCN from "antd/locale/zh_CN";
-import YearlyGoalsList from "./components/YearlyGoalsList";
-import { MonthlyPlansList } from "./components/MonthlyPlansList";
-import { DailyPlansList } from "./components/DailyPlansList";
+import { RouterProvider } from "react-router-dom";
+import { router } from "./router";
 
 function App() {
-  const [activeTab, setActiveTab] = useState("yearly");
-
-  const items = [
-    {
-      key: "yearly",
-      label: "年度目标",
-      children: <YearlyGoalsList />,
-    },
-    {
-      key: "monthly",
-      label: "月度计划",
-      children: <MonthlyPlansList />,
-    },
-    {
-      key: "daily",
-      label: "每日计划",
-      children: <DailyPlansList />,
-    },
-  ];
-
-  return (
-    <ConfigProvider locale={zhCN}>
-      <div style={{ minHeight: "100vh", backgroundColor: "#f5f5f5", padding: "16px" }}>
-        <Tabs
-          activeKey={activeTab}
-          onChange={setActiveTab}
-          items={items}
-          size="large"
-        />
-      </div>
-    </ConfigProvider>
-  );
+  return <RouterProvider router={router} />;
 }
 
 export default App;

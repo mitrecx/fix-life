@@ -1,6 +1,8 @@
-import { useState, useEffect } from "react";
+import { useState, useMemo, useEffect } from "react";
 import { X } from "lucide-react";
-import type { DailyPlanCreate, DailyPlanUpdate, BusynessLevel } from "@/types/dailyPlan";
+import { DatePicker } from "antd";
+import dayjs from "dayjs";
+import type { DailyPlanCreate, DailyPlanUpdate, BusynessLevel, DailyPlan } from "@/types/dailyPlan";
 import { BUSYNESS_LEVEL } from "@/types/dailyPlan";
 
 interface DailyPlanFormProps {
@@ -9,19 +11,83 @@ interface DailyPlanFormProps {
   initialData?: DailyPlanCreate | DailyPlanUpdate;
   submitLabel?: string;
   defaultDate?: string;
+  existingPlans?: DailyPlan[];
 }
+
+// 格式化日期为 M月D日
+const formatDateLabel = (dateStr: string) => {
+  const date = new Date(dateStr);
+  return `${date.getMonth() + 1}月${date.getDate()}日`;
+};
+
+// 计算下一个可用的日期
+const calculateNextAvailableDate = (existingPlans: DailyPlan[]): string => {
+  if (existingPlans.length === 0) {
+    return new Date().toISOString().split("T")[0];
+  }
+
+  // 找到最新的计划日期
+  const latestPlan = existingPlans.reduce((latest, plan) => {
+    return plan.plan_date > latest.plan_date ? plan : latest;
+  }, existingPlans[0]);
+
+  // 最新日期的后一天
+  const latestDate = new Date(latestPlan.plan_date);
+  latestDate.setDate(latestDate.getDate() + 1);
+
+  return latestDate.toISOString().split("T")[0];
+};
 
 export function DailyPlanForm({
   onSubmit,
   onCancel,
   initialData = {},
   submitLabel = "创建",
-  defaultDate = new Date().toISOString().split("T")[0],
+  defaultDate,
+  existingPlans = [],
 }: DailyPlanFormProps) {
-  const [planDate, setPlanDate] = useState(initialData.plan_date || defaultDate);
-  const [title, setTitle] = useState(initialData.title || "");
-  const [busynessLevel, setBusynessLevel] = useState<BusynessLevel | undefined>(initialData.busyness_level);
+  const isEditing = "plan_date" in initialData && initialData.plan_date !== undefined;
+
+  // 计算默认日期
+  const calculatedDefaultDate = useMemo(() => {
+    if (isEditing && initialData.plan_date) {
+      return initialData.plan_date;
+    }
+    return defaultDate || calculateNextAvailableDate(existingPlans);
+  }, [isEditing, initialData.plan_date, defaultDate, existingPlans]);
+
+  const [planDate, setPlanDate] = useState(calculatedDefaultDate);
+  const [title, setTitle] = useState(
+    initialData.title || (isEditing ? "" : `计划${formatDateLabel(calculatedDefaultDate)}`)
+  );
+  const [busynessLevel, setBusynessLevel] = useState<BusynessLevel | undefined>(
+    initialData.busyness_level || (isEditing ? undefined : "moderate")
+  );
   const [notes, setNotes] = useState(initialData.notes || "");
+
+  // 获取已占用的日期集合
+  const takenDates = useMemo(() => {
+    const editingPlanId = (initialData as DailyPlan).id;
+    return new Set(
+      existingPlans
+        .filter(plan => plan.id !== editingPlanId)
+        .map(plan => plan.plan_date)
+    );
+  }, [existingPlans, initialData]);
+
+  // 禁用日期的函数
+  const disabledDate = (current: dayjs.Dayjs) => {
+    if (!current) return false;
+    const dateStr = current.format("YYYY-MM-DD");
+    return takenDates.has(dateStr);
+  };
+
+  // 当日期变化时，如果是新建且标题为空或以"计划"开头，自动更新标题
+  useEffect(() => {
+    if (!isEditing && (!title || title.startsWith("计划"))) {
+      setTitle(`计划${formatDateLabel(planDate)}`);
+    }
+  }, [planDate, isEditing, title]);
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
@@ -32,6 +98,12 @@ export function DailyPlanForm({
     if (busynessLevel) data.busyness_level = busynessLevel;
     if (notes) data.notes = notes;
     onSubmit(data);
+  };
+
+  const handleDateChange = (date: dayjs.Dayjs | null) => {
+    if (date) {
+      setPlanDate(date.format("YYYY-MM-DD"));
+    }
   };
 
   return (
@@ -52,12 +124,22 @@ export function DailyPlanForm({
             <label className="block text-sm font-medium text-gray-700 mb-1">
               日期
             </label>
-            <input
-              type="date"
-              value={planDate}
-              onChange={(e) => setPlanDate(e.target.value)}
-              className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+            <DatePicker
+              value={dayjs(planDate)}
+              onChange={handleDateChange}
+              disabled={isEditing}
+              disabledDate={disabledDate}
+              format="YYYY年MM月DD日"
+              placeholder="选择日期"
+              className="w-full"
+              style={{ width: "100%" }}
+              size="large"
             />
+            {takenDates.size > 0 && !isEditing && (
+              <p className="text-xs text-gray-500 mt-1">
+                已有计划的日期已置灰不可选
+              </p>
+            )}
           </div>
 
           <div>
