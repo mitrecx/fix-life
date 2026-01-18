@@ -1,5 +1,6 @@
 import { useState } from "react";
 import { Edit, Trash2, Plus, CheckCircle, Circle, Clock, Calendar, ChevronDown, ChevronUp } from "lucide-react";
+import { Modal, message } from "antd";
 import type { MonthlyPlan, MonthlyTask, TaskStatus } from "@/types/monthlyPlan";
 import { TASK_STATUS, TASK_PRIORITY } from "@/types/monthlyPlan";
 import { monthlyPlanService } from "@/services/monthlyPlanService";
@@ -29,6 +30,7 @@ const getProgressColor = (rate: number) => {
 export function MonthlyPlanCard({ plan, onUpdate, onEdit, onDelete }: MonthlyPlanCardProps) {
   const [showTaskForm, setShowTaskForm] = useState(false);
   const [newTaskTitle, setNewTaskTitle] = useState("");
+  const [newTaskPriority, setNewTaskPriority] = useState<keyof typeof TASK_PRIORITY>("medium");
   const [isTaskSectionCollapsed, setIsTaskSectionCollapsed] = useState(false);
 
   const handleAddTask = async (e: React.FormEvent) => {
@@ -38,10 +40,11 @@ export function MonthlyPlanCard({ plan, onUpdate, onEdit, onDelete }: MonthlyPla
     try {
       await monthlyPlanService.createTask(plan.id, {
         title: newTaskTitle,
-        priority: "medium",
+        priority: newTaskPriority,
         status: "todo",
       });
       setNewTaskTitle("");
+      setNewTaskPriority("medium");
       setShowTaskForm(false);
       onUpdate();
     } catch (error) {
@@ -62,14 +65,23 @@ export function MonthlyPlanCard({ plan, onUpdate, onEdit, onDelete }: MonthlyPla
   };
 
   const handleDeleteTask = async (taskId: string) => {
-    if (!confirm("确定要删除这个任务吗？")) return;
-
-    try {
-      await monthlyPlanService.deleteTask(taskId);
-      onUpdate();
-    } catch (error) {
-      console.error("Failed to delete task:", error);
-    }
+    Modal.confirm({
+      title: "确认删除",
+      content: "确定要删除这个任务吗？",
+      okText: "删除",
+      okType: "danger",
+      cancelText: "取消",
+      onOk: async () => {
+        try {
+          await monthlyPlanService.deleteTask(taskId);
+          message.success("任务已删除");
+          onUpdate();
+        } catch (error) {
+          console.error("Failed to delete task:", error);
+          message.error("删除失败，请稍后重试");
+        }
+      },
+    });
   };
 
   const progressColor = getProgressColor(plan.completion_rate);
@@ -151,23 +163,46 @@ export function MonthlyPlanCard({ plan, onUpdate, onEdit, onDelete }: MonthlyPla
           </div>
 
           {showTaskForm && (
-            <form onSubmit={handleAddTask} className="flex gap-2 mb-2">
-              <input
-                type="text"
-                value={newTaskTitle}
-                onChange={(e) => setNewTaskTitle(e.target.value)}
-                className="flex-1 px-3 py-1.5 text-sm border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent"
-                placeholder="输入新任务名称..."
-                autoFocus
-              />
+            <form onSubmit={handleAddTask} className="mb-2">
+              <div className="flex gap-2 mb-2">
+                <input
+                  type="text"
+                  value={newTaskTitle}
+                  onChange={(e) => setNewTaskTitle(e.target.value)}
+                  className="flex-1 px-3 py-1.5 text-sm border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent"
+                  placeholder="输入新任务名称..."
+                  autoFocus
+                />
+              </div>
+              <div className="flex items-center gap-2 mb-2">
+                <span className="text-xs text-gray-500">优先级:</span>
+                {TASK_PRIORITY.map((p) => (
+                  <button
+                    key={p.value}
+                    type="button"
+                    onClick={() => setNewTaskPriority(p.value)}
+                    className={`px-2.5 py-1 text-xs rounded-lg border-2 transition-all ${
+                      newTaskPriority === p.value
+                        ? "border-current"
+                        : "border-gray-200 hover:border-gray-300"
+                    }`}
+                    style={{
+                      backgroundColor: newTaskPriority === p.value ? `${p.color}15` : "white",
+                      color: newTaskPriority === p.value ? p.color : "gray",
+                    }}
+                  >
+                    {p.label}
+                  </button>
+                ))}
+              </div>
               <button
                 type="submit"
-                className="px-4 py-1.5 text-xs font-medium text-white rounded-lg transition-all"
+                className="w-full px-4 py-1.5 text-xs font-medium text-white rounded-lg transition-all"
                 style={{ background: 'linear-gradient(to right, rgb(99 102 241), rgb(168 85 247))' }}
                 onMouseOver={(e) => e.currentTarget.style.background = 'linear-gradient(to right, rgb(79 70 229), rgb(147 51 234))'}
                 onMouseOut={(e) => e.currentTarget.style.background = 'linear-gradient(to right, rgb(99 102 241), rgb(168 85 247))'}
               >
-                添加
+                添加任务
               </button>
             </form>
           )}

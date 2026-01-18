@@ -1,5 +1,6 @@
 import { useState } from "react";
 import { Edit, Trash2, Plus, CheckCircle, Circle, Clock, Calendar, ChevronDown, ChevronUp } from "lucide-react";
+import { Modal, message } from "antd";
 import type { DailyPlan, DailyTask, DailyTaskStatus } from "@/types/dailyPlan";
 import { DAILY_TASK_STATUS, DAILY_TASK_PRIORITY, BUSYNESS_LEVEL } from "@/types/dailyPlan";
 import { dailyPlanService } from "@/services/dailyPlanService";
@@ -87,14 +88,23 @@ export function DailyPlanCard({ plan, onUpdate, onEdit, onDelete }: DailyPlanCar
   };
 
   const handleDeleteTask = async (taskId: string) => {
-    if (!confirm("确定要删除这个任务吗？")) return;
-
-    try {
-      await dailyPlanService.deleteTask(taskId);
-      onUpdate();
-    } catch (error) {
-      console.error("Failed to delete task:", error);
-    }
+    Modal.confirm({
+      title: "确认删除",
+      content: "确定要删除这个任务吗？",
+      okText: "删除",
+      okType: "danger",
+      cancelText: "取消",
+      onOk: async () => {
+        try {
+          await dailyPlanService.deleteTask(taskId);
+          message.success("任务已删除");
+          onUpdate();
+        } catch (error) {
+          console.error("Failed to delete task:", error);
+          message.error("删除失败，请稍后重试");
+        }
+      },
+    });
   };
 
   return (

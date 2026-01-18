@@ -1,5 +1,6 @@
 import { useState, useEffect } from "react";
 import { Plus, RotateCw } from "lucide-react";
+import { Modal, message } from "antd";
 import type { DailyPlan, DailyPlanCreate, DailyPlanUpdate } from "@/types/dailyPlan";
 import { dailyPlanService } from "@/services/dailyPlanService";
 import { DailyPlanCard } from "./DailyPlanCard";
@@ -57,7 +58,7 @@ export function DailyPlansList() {
       loadPlans();
     } catch (error) {
       const errorMessage = error instanceof Error ? error.message : "创建失败，请稍后重试";
-      alert(errorMessage);
+      message.error(errorMessage);
     }
   };
 
@@ -73,14 +74,23 @@ export function DailyPlansList() {
   };
 
   const handleDelete = async (planId: string) => {
-    if (!confirm("确定要删除这个日计划吗？相关的任务也会被删除。")) return;
-
-    try {
-      await dailyPlanService.delete(planId);
-      loadPlans();
-    } catch (error) {
-      console.error("Failed to delete plan:", error);
-    }
+    Modal.confirm({
+      title: "确认删除",
+      content: "确定要删除这个日计划吗？相关的任务也会被删除。",
+      okText: "删除",
+      okType: "danger",
+      cancelText: "取消",
+      onOk: async () => {
+        try {
+          await dailyPlanService.delete(planId);
+          message.success("日计划已删除");
+          loadPlans();
+        } catch (error) {
+          console.error("Failed to delete plan:", error);
+          message.error("删除失败，请稍后重试");
+        }
+      },
+    });
   };
 
   const formatDateRange = () => {
