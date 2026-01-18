@@ -1,12 +1,8 @@
 import api from "./api";
 import type {
-  LoginRequest,
-  RegisterRequest,
   AuthResponse,
   User,
-  SendVerificationCodeRequest,
   SendVerificationCodeResponse,
-  VerifyCodeRequest,
   VerifyCodeResponse,
   ResetPasswordResponse
 } from "@/types/auth";

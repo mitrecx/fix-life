@@ -1,0 +1,14 @@
+[Unit]
+Description=Fix Life Frontend
+After=network.target backend.service
+
+[Service]
+Type=simple
+User=www-data
+WorkingDirectory=/opt/fix-life/frontend/dist
+ExecStart=/usr/bin/python3 -m http.server 3000
+Restart=always
+RestartSec=10
+
+[Install]
+WantedBy=multi-user.target

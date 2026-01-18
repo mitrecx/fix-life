@@ -30,9 +30,9 @@ export function MonthlyPlansList() {
     }
   };
 
-  const handleCreate = async (data: MonthlyPlanCreate) => {
+  const handleCreate = async (data: MonthlyPlanCreate | MonthlyPlanUpdate) => {
     try {
-      await monthlyPlanService.create(data);
+      await monthlyPlanService.create(data as MonthlyPlanCreate);
       setShowForm(false);
       loadPlans();
     } catch (error) {

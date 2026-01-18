@@ -25,7 +25,7 @@ export default function RegisterPage() {
   const [sendingCode, setSendingCode] = useState(false);
   const [countdown, setCountdown] = useState(0);
   const [emailExists, setEmailExists] = useState(false);
-  const [checkingEmail, setCheckingEmail] = useState(false);
+  const [_checkingEmail, setCheckingEmail] = useState(false);
 
   const { setAuth, setLoading, setError } = useAuthStore();
   const navigate = useNavigate();

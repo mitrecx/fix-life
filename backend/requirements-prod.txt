@@ -1,0 +1,42 @@
+# Fix Life Backend - Production Dependencies
+
+# Core Framework
+fastapi==0.104.1
+uvicorn==0.24.0
+starlette==0.27.0
+pydantic==2.11.7
+pydantic-settings==2.10.1
+pydantic_core==2.33.2
+
+# Database
+sqlalchemy==2.0.23
+asyncpg==0.29.0
+psycopg2-binary==2.9.9
+alembic==1.12.1
+
+# Authentication & Security
+pyjwt==2.8.0
+passlib==1.7.4
+bcrypt==3.2.0
+python-jose==3.3.0
+
+# HTTP & Utilities
+httpx==0.28.1
+httpcore==1.0.9
+requests==2.32.5
+python-multipart==0.0.6
+
+# Email
+email-validator==2.1.0
+
+# Environment
+python-dotenv==1.1.1
+
+# Async Support
+anyio==3.7.1
+watchfiles==1.1.0
+websocket-client==1.8.0
+websockets==15.0.1
+
+# Logging
+loguru==0.7.3

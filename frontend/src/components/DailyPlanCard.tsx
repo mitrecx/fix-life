@@ -1,8 +1,8 @@
 import { useState } from "react";
 import { Edit, Trash2, Plus, CheckCircle, Circle, Clock, Calendar, ChevronDown, ChevronUp } from "lucide-react";
 import { Modal, message } from "antd";
-import type { DailyPlan, DailyTask, DailyTaskStatus } from "@/types/dailyPlan";
-import { DAILY_TASK_STATUS, DAILY_TASK_PRIORITY, BUSYNESS_LEVEL } from "@/types/dailyPlan";
+import type { DailyPlan, DailyTask, DailyTaskStatus, DailyTaskPriority } from "@/types/dailyPlan";
+import { DAILY_TASK_PRIORITY, BUSYNESS_LEVEL } from "@/types/dailyPlan";
 import { dailyPlanService } from "@/services/dailyPlanService";
 
 interface DailyPlanCardProps {
@@ -68,7 +68,7 @@ const formatDate = (dateStr: string) => {
 export function DailyPlanCard({ plan, onUpdate, onEdit, onDelete }: DailyPlanCardProps) {
   const [showTaskForm, setShowTaskForm] = useState(false);
   const [newTaskTitle, setNewTaskTitle] = useState("");
-  const [newTaskPriority, setNewTaskPriority] = useState<keyof typeof DAILY_TASK_PRIORITY>("medium");
+  const [newTaskPriority, setNewTaskPriority] = useState<DailyTaskPriority>("medium");
   const [isTaskSectionCollapsed, setIsTaskSectionCollapsed] = useState(false);
 
   const weekdayConfig = getWeekdayConfig(plan.plan_date);
@@ -267,7 +267,6 @@ export function DailyPlanCard({ plan, onUpdate, onEdit, onDelete }: DailyPlanCar
           <div className="space-y-1.5">
             {plan.daily_tasks.map((task) => {
               const StatusIcon = STATUS_ICONS[task.status];
-              const statusConfig = DAILY_TASK_STATUS.find((s) => s.value === task.status);
               const priorityConfig = DAILY_TASK_PRIORITY.find((p) => p.value === task.priority);
 
               return (

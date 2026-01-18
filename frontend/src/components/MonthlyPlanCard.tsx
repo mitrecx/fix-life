@@ -1,8 +1,8 @@
 import { useState } from "react";
 import { Edit, Trash2, Plus, CheckCircle, Circle, Clock, Calendar, ChevronDown, ChevronUp } from "lucide-react";
 import { Modal, message } from "antd";
-import type { MonthlyPlan, MonthlyTask, TaskStatus } from "@/types/monthlyPlan";
-import { TASK_STATUS, TASK_PRIORITY } from "@/types/monthlyPlan";
+import type { MonthlyPlan, MonthlyTask, TaskStatus, TaskPriority } from "@/types/monthlyPlan";
+import { TASK_PRIORITY } from "@/types/monthlyPlan";
 import { monthlyPlanService } from "@/services/monthlyPlanService";
 
 interface MonthlyPlanCardProps {
@@ -30,7 +30,7 @@ const getProgressColor = (rate: number) => {
 export function MonthlyPlanCard({ plan, onUpdate, onEdit, onDelete }: MonthlyPlanCardProps) {
   const [showTaskForm, setShowTaskForm] = useState(false);
   const [newTaskTitle, setNewTaskTitle] = useState("");
-  const [newTaskPriority, setNewTaskPriority] = useState<keyof typeof TASK_PRIORITY>("medium");
+  const [newTaskPriority, setNewTaskPriority] = useState<TaskPriority>("medium");
   const [isTaskSectionCollapsed, setIsTaskSectionCollapsed] = useState(false);
 
   const handleAddTask = async (e: React.FormEvent) => {
@@ -210,7 +210,6 @@ export function MonthlyPlanCard({ plan, onUpdate, onEdit, onDelete }: MonthlyPla
           <div className="space-y-1.5">
             {plan.monthly_tasks.map((task) => {
               const StatusIcon = STATUS_ICONS[task.status];
-              const statusConfig = TASK_STATUS.find((s) => s.value === task.status);
               const priorityConfig = TASK_PRIORITY.find((p) => p.value === task.priority);
 
               return (

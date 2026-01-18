@@ -168,9 +168,9 @@ export function DailyPlansList() {
     }
   };
 
-  const handleCreate = async (data: DailyPlanCreate) => {
+  const handleCreate = async (data: DailyPlanCreate | DailyPlanUpdate) => {
     try {
-      await dailyPlanService.create(data);
+      await dailyPlanService.create(data as DailyPlanCreate);
       setShowForm(false);
       loadPlans();
     } catch (error) {

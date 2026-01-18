@@ -29,12 +29,6 @@ const CATEGORY_COLORS = {
   other: "#6b7280",
 };
 
-const PRIORITY_COLORS = {
-  low: "#22c55e",
-  medium: "#f59e0b",
-  high: "#ef4444",
-};
-
 // Category labels in Chinese
 const CATEGORY_LABELS: Record<string, string> = {
   health: "健康",

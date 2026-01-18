@@ -21,18 +21,18 @@ export function MonthlyPlanForm({
 }: MonthlyPlanFormProps) {
   const [title, setTitle] = useState(initialData.title || "");
   const [notes, setNotes] = useState(initialData.notes || "");
-  const [year, setYear] = useState(initialData.year || defaultYear);
-  const [month, setMonth] = useState(initialData.month || defaultMonth);
+  const [year, setYear] = useState("year" in initialData ? initialData.year : defaultYear);
+  const [month, setMonth] = useState("month" in initialData ? initialData.month : defaultMonth);
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    const data: MonthlyPlanCreate | MonthlyPlanUpdate = {};
+    // For new plan creation, always include year and month (required fields)
+    const isCreating = !("year" in initialData);
+    const data: MonthlyPlanCreate | MonthlyPlanUpdate = isCreating
+      ? { year, month }
+      : {};
     if (title) data.title = title;
     if (notes) data.notes = notes;
-    if ("year" in initialData || !initialData.id) {
-      (data as MonthlyPlanCreate).year = year;
-      (data as MonthlyPlanCreate).month = month;
-    }
     onSubmit(data);
   };
 

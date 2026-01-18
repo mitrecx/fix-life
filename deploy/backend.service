@@ -1,0 +1,16 @@
+[Unit]
+Description=Fix Life Backend API
+After=network.target postgresql.service
+
+[Service]
+Type=simple
+User=www-data
+WorkingDirectory=/opt/fix-life/backend
+Environment="PATH=/opt/fix-life/backend/.venv/bin"
+EnvironmentFile=/opt/fix-life/backend/.env
+ExecStart=/opt/fix-life/backend/.venv/bin/uvicorn app.main:app --host 0.0.0.0 --port 8000 --workers 4
+Restart=always
+RestartSec=10
+
+[Install]
+WantedBy=multi-user.target

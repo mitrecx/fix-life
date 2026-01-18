@@ -50,11 +50,11 @@ export function DailyPlanForm({
 
   // 计算默认日期
   const calculatedDefaultDate = useMemo(() => {
-    if (isEditing && initialData.plan_date) {
+    if (isEditing && "plan_date" in initialData && initialData.plan_date) {
       return initialData.plan_date;
     }
     return defaultDate || calculateNextAvailableDate(existingPlans);
-  }, [isEditing, initialData.plan_date, defaultDate, existingPlans]);
+  }, [isEditing, initialData, defaultDate, existingPlans]);
 
   const [planDate, setPlanDate] = useState(calculatedDefaultDate);
   const [title, setTitle] = useState(
@@ -67,10 +67,10 @@ export function DailyPlanForm({
 
   // 获取已占用的日期集合
   const takenDates = useMemo(() => {
-    const editingPlanId = (initialData as DailyPlan).id;
+    const editingPlanId = "id" in initialData ? initialData.id : undefined;
     return new Set(
       existingPlans
-        .filter(plan => plan.id !== editingPlanId)
+        .filter(plan => editingPlanId === undefined || plan.id !== editingPlanId)
         .map(plan => plan.plan_date)
     );
   }, [existingPlans, initialData]);
