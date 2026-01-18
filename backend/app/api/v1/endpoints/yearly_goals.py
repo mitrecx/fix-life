@@ -33,7 +33,7 @@ def get_yearly_goals(
     """
     service = YearlyGoalService(db)
     goals = service.get_user_goals(
-        user_id=current_user["id"], year=year, category=category, status=status
+        user_id=str(current_user.id), year=year, category=category, status=status
     )
 
     return YearlyGoalList(goals=goals, total=len(goals))
@@ -52,7 +52,7 @@ def create_yearly_goal(
     If auto_generate_milestones is True (default), monthly milestones will be created automatically.
     """
     service = YearlyGoalService(db)
-    goal = service.create_goal(user_id=current_user["id"], goal_in=goal_in)
+    goal = service.create_goal(user_id=str(current_user.id), goal_in=goal_in)
     return goal
 
 
@@ -71,7 +71,7 @@ def get_yearly_goal(
             status_code=status.HTTP_404_NOT_FOUND, detail="Goal not found"
         )
 
-    if str(goal.user_id) != current_user["id"]:
+    if str(goal.user_id) != str(current_user.id):
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN, detail="Not authorized to access this goal"
         )
@@ -95,7 +95,7 @@ def update_yearly_goal(
             status_code=status.HTTP_404_NOT_FOUND, detail="Goal not found"
         )
 
-    if str(goal.user_id) != current_user["id"]:
+    if str(goal.user_id) != str(current_user.id):
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN, detail="Not authorized to modify this goal"
         )
@@ -125,7 +125,7 @@ def update_goal_progress(
             status_code=status.HTTP_404_NOT_FOUND, detail="Goal not found"
         )
 
-    if str(goal.user_id) != current_user["id"]:
+    if str(goal.user_id) != str(current_user.id):
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN, detail="Not authorized to modify this goal"
         )
@@ -149,7 +149,7 @@ def delete_yearly_goal(
             status_code=status.HTTP_404_NOT_FOUND, detail="Goal not found"
         )
 
-    if str(goal.user_id) != current_user["id"]:
+    if str(goal.user_id) != str(current_user.id):
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN, detail="Not authorized to delete this goal"
         )

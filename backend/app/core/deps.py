@@ -16,13 +16,20 @@ def get_db() -> Generator[Session, None, None]:
         db.close()
 
 
+class MockUser:
+    """Mock user for MVP development."""
+    def __init__(self):
+        self.id = "00000000-0000-0000-0000-000000000001"
+        self.username = "josie"
+
+
 async def get_current_user(
     credentials: HTTPAuthorizationCredentials = Depends(security),
-) -> dict:
+) -> MockUser:
     """
     Get current user from JWT token.
     For MVP, return a mock user. Implement proper JWT validation later.
     """
     # TODO: Implement proper JWT validation
     # For now, return a mock user with a valid UUID
-    return {"id": "00000000-0000-0000-0000-000000000001", "username": "josie"}
+    return MockUser()

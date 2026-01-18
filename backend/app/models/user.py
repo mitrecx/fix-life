@@ -18,9 +18,9 @@ class User(Base):
 
     # Relationships
     yearly_goals = relationship("YearlyGoal", back_populates="user", cascade="all, delete-orphan")
+    monthly_plans = relationship("MonthlyPlan", back_populates="user", cascade="all, delete-orphan")
+    daily_plans = relationship("DailyPlan", back_populates="user", cascade="all, delete-orphan")
     # TODO: Add these relationships when models are implemented
-    # monthly_plans = relationship("MonthlyPlan", back_populates="user", cascade="all, delete-orphan")
-    # daily_plans = relationship("DailyPlan", back_populates="user", cascade="all, delete-orphan")
     # habits = relationship("Habit", back_populates="user", cascade="all, delete-orphan")
 
     def __repr__(self):

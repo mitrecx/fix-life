@@ -46,8 +46,7 @@ class YearlyGoal(Base):
     # Relationships
     user = relationship("User", back_populates="yearly_goals")
     monthly_milestones = relationship("MonthlyMilestone", back_populates="yearly_goal", cascade="all, delete-orphan")
-    # TODO: Add monthly_plans relationship when MonthlyPlan model is implemented
-    # monthly_plans = relationship("MonthlyPlan", back_populates="yearly_goal", cascade="all, delete-orphan")
+    monthly_plans = relationship("MonthlyPlan", back_populates="yearly_goal", cascade="all, delete-orphan")
 
     @property
     def completion_rate(self) -> float:
