@@ -5,6 +5,7 @@ export default function Layout() {
     { path: "/yearly-goals", label: "年度目标" },
     { path: "/monthly-plans", label: "月度计划" },
     { path: "/daily-plans", label: "每日计划" },
+    { path: "/analytics", label: "数据统计" },
   ];
 
   return (

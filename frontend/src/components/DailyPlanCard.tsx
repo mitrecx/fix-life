@@ -19,6 +19,24 @@ const STATUS_ICONS = {
   cancelled: Circle,
 };
 
+// 星期配置 - 每天（周一到周日）使用不同颜色
+const WEEKDAY_CONFIG = [
+  { day: 1, label: "周一", color: "from-blue-50 to-blue-100", borderColor: "border-blue-200", textColor: "text-blue-700", tagBg: "bg-blue-100" },
+  { day: 2, label: "周二", color: "from-purple-50 to-purple-100", borderColor: "border-purple-200", textColor: "text-purple-700", tagBg: "bg-purple-100" },
+  { day: 3, label: "周三", color: "from-pink-50 to-pink-100", borderColor: "border-pink-200", textColor: "text-pink-700", tagBg: "bg-pink-100" },
+  { day: 4, label: "周四", color: "from-orange-50 to-orange-100", borderColor: "border-orange-200", textColor: "text-orange-700", tagBg: "bg-orange-100" },
+  { day: 5, label: "周五", color: "from-emerald-50 to-emerald-100", borderColor: "border-emerald-200", textColor: "text-emerald-700", tagBg: "bg-emerald-100" },
+  { day: 6, label: "周六", color: "from-cyan-50 to-cyan-100", borderColor: "border-cyan-200", textColor: "text-cyan-700", tagBg: "bg-cyan-100" },
+  { day: 0, label: "周日", color: "from-rose-50 to-rose-100", borderColor: "border-rose-200", textColor: "text-rose-700", tagBg: "bg-rose-100" },
+];
+
+// 获取星期几配置
+const getWeekdayConfig = (dateStr: string) => {
+  const date = new Date(dateStr);
+  const day = date.getDay();
+  return WEEKDAY_CONFIG.find((w) => w.day === day) || WEEKDAY_CONFIG[6]; // 默认周日
+};
+
 // 动态进度条颜色
 const getProgressColor = (rate: number) => {
   if (rate === 100) return "linear-gradient(to right, rgb(52 211 153), rgb(34 197 94))";
@@ -53,6 +71,7 @@ export function DailyPlanCard({ plan, onUpdate, onEdit, onDelete }: DailyPlanCar
   const [newTaskPriority, setNewTaskPriority] = useState<keyof typeof DAILY_TASK_PRIORITY>("medium");
   const [isTaskSectionCollapsed, setIsTaskSectionCollapsed] = useState(false);
 
+  const weekdayConfig = getWeekdayConfig(plan.plan_date);
   const busynessConfig = getBusynessConfig(plan.busyness_level);
   const progressColor = getProgressColor(plan.completion_rate);
 
@@ -108,16 +127,16 @@ export function DailyPlanCard({ plan, onUpdate, onEdit, onDelete }: DailyPlanCar
   };
 
   return (
-    <div className="bg-white rounded-xl shadow-md border border-gray-100 overflow-hidden mb-3 hover:shadow-lg transition-all duration-300">
+    <div className={`rounded-xl shadow-md border overflow-hidden mb-3 hover:shadow-lg transition-all duration-300 bg-gradient-to-br ${weekdayConfig.color} ${weekdayConfig.borderColor}`}>
       {/* Card Header */}
-      <div className="px-4 py-3" style={{ background: 'linear-gradient(to right, rgb(248 250 252), rgb(249 250 251))' }}>
+      <div className="px-4 py-3 bg-white/50 backdrop-blur-sm">
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-2 flex-1 min-w-0">
             <Calendar className="text-indigo-500 flex-shrink-0" size={16} />
             <h3 className="text-base font-semibold text-gray-800 truncate">
               {plan.title || "日计划"}
             </h3>
-            <span className="px-2 py-0.5 text-xs font-medium rounded-lg bg-emerald-100 text-emerald-700 border border-emerald-200 flex-shrink-0">
+            <span className={`px-2 py-0.5 text-xs font-medium rounded-lg border flex-shrink-0 ${weekdayConfig.textColor} ${weekdayConfig.tagBg} ${weekdayConfig.borderColor}`}>
               {(() => {
                 const relativeDate = formatDate(plan.plan_date);
                 const isRelative = relativeDate === "今天" || relativeDate === "昨天" || relativeDate === "明天";
@@ -125,6 +144,9 @@ export function DailyPlanCard({ plan, onUpdate, onEdit, onDelete }: DailyPlanCar
                   ? `${relativeDate} ${new Date(plan.plan_date).getMonth() + 1}月${new Date(plan.plan_date).getDate()}日`
                   : relativeDate;
               })()}
+            </span>
+            <span className={`px-2 py-0.5 text-xs font-bold rounded-lg flex-shrink-0 ${weekdayConfig.textColor} ${weekdayConfig.tagBg} ${weekdayConfig.borderColor}`}>
+              {weekdayConfig.label}
             </span>
             {busynessConfig && (
               <span className="text-base flex-shrink-0" title={busynessConfig.label}>
