@@ -1,14 +1,32 @@
 import { createBrowserRouter } from "react-router-dom";
+import ProtectedRoute from "@/components/ProtectedRoute";
 import Layout from "@/components/Layout";
+import LoginPage from "@/pages/LoginPage";
+import RegisterPage from "@/pages/RegisterPage";
 import YearlyGoalsPage from "@/pages/YearlyGoalsPage";
 import MonthlyPlansPage from "@/pages/MonthlyPlansPage";
 import DailyPlansPage from "@/pages/DailyPlansPage";
 import AnalyticsPage from "@/pages/AnalyticsPage";
 
 export const router = createBrowserRouter([
+  // Public routes
+  {
+    path: "/login",
+    element: <LoginPage />,
+  },
+  {
+    path: "/register",
+    element: <RegisterPage />,
+  },
+
+  // Protected routes
   {
     path: "/",
-    element: <Layout />,
+    element: (
+      <ProtectedRoute>
+        <Layout />
+      </ProtectedRoute>
+    ),
     children: [
       {
         index: true,
