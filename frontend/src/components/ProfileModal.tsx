@@ -224,7 +224,7 @@ export function ProfileModal({ user, onClose, onUpdate }: ProfileModalProps) {
                     className="hidden"
                   />
                 </div>
-                <p className="text-sm text-gray-500 mt-2">点击相机图标更换头像</p>
+                <p className="text-sm text-gray-500 mt-2">点击相机换头像(要求小于2MB)</p>
               </div>
 
               {/* User Info Display */}

@@ -1,5 +1,6 @@
 """User profile endpoints."""
 from fastapi import APIRouter, Depends, HTTPException, status, UploadFile, File
+from fastapi.responses import Response
 from sqlalchemy.orm import Session
 from typing import Optional
 import os
@@ -13,10 +14,6 @@ from app.core.security import verify_password, get_password_hash
 from app.core.config import settings
 
 router = APIRouter()
-
-# Avatar upload directory
-AVATAR_UPLOAD_DIR = Path("uploads/avatars")
-AVATAR_UPLOAD_DIR.mkdir(parents=True, exist_ok=True)
 
 # Avatar URL base path (configure this in production)
 AVATAR_URL_BASE = "/api/v1/users/avatar"
@@ -103,8 +100,8 @@ async def upload_avatar(
     Upload avatar image for current user.
 
     Accepts image files (jpg, jpeg, png, gif, webp).
-    Returns the URL to access the uploaded avatar.
-    Maximum file size: 5MB
+    Stores image data in database.
+    Maximum file size: 2MB
     """
     # Validate file type
     allowed_types = {"image/jpeg", "image/jpg", "image/png", "image/gif", "image/webp"}
@@ -114,53 +111,58 @@ async def upload_avatar(
             detail="不支持的文件类型，请上传 JPG, PNG, GIF 或 WEBP 格式的图片"
         )
 
-    # Validate file size (5MB)
-    MAX_FILE_SIZE = 5 * 1024 * 1024
+    # Validate file size (2MB)
+    MAX_FILE_SIZE = 2 * 1024 * 1024
     content = await file.read()
     if len(content) > MAX_FILE_SIZE:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
-            detail="文件大小不能超过 5MB"
+            detail="文件大小不能超过 2MB"
         )
 
-    # Generate unique filename
-    file_extension = Path(file.filename).suffix or ".jpg"
-    unique_filename = f"{current_user.id}_{uuid.uuid4().hex}{file_extension}"
-    file_path = AVATAR_UPLOAD_DIR / unique_filename
-
-    # Save file
-    with open(file_path, "wb") as f:
-        f.write(content)
-
-    # Update user avatar_url
-    avatar_url = f"{AVATAR_URL_BASE}/{unique_filename}"
-    current_user.avatar_url = avatar_url
+    # Store avatar data in database
+    current_user.avatar_data = content
+    current_user.avatar_mime_type = file.content_type
+    current_user.avatar_url = f"{AVATAR_URL_BASE}/{current_user.id}"
     db.commit()
 
     return {
         "message": "头像上传成功",
-        "avatar_url": avatar_url
+        "avatar_url": current_user.avatar_url
     }
 
 
-@router.get("/avatar/{filename}")
-async def get_avatar(filename: str):
+@router.get("/avatar/{user_id}")
+async def get_avatar(
+    user_id: str,
+    db: Session = Depends(get_db),
+):
     """
-    Serve uploaded avatar image.
+    Serve avatar image from database.
 
-    This endpoint returns the actual image file for the given filename.
+    This endpoint returns the actual image data for the given user_id.
+    Uses caching for better performance.
     """
-    file_path = AVATAR_UPLOAD_DIR / filename
+    # Query user from database
+    user = db.query(User).filter(User.id == user_id).first()
 
-    if not file_path.exists():
+    if user is None:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
-            detail="头像文件不存在"
+            detail="用户不存在"
         )
 
-    from fastapi.responses import FileResponse
-    return FileResponse(
-        path=file_path,
-        media_type="image/jpeg",
+    if user.avatar_data is None:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="头像不存在"
+        )
+
+    # Determine media type (default to jpeg if not set)
+    media_type = user.avatar_mime_type or "image/jpeg"
+
+    return Response(
+        content=user.avatar_data,
+        media_type=media_type,
         headers={"Cache-Control": "public, max-age=31536000"}
     )
