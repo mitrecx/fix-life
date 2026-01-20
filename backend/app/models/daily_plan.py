@@ -8,6 +8,12 @@ import uuid
 from app.db.base import Base
 
 
+class SummaryType(str, enum.Enum):
+    DAILY = "daily"  # 日常总结
+    SMALL = "small"  # 小总结
+    LARGE = "large"  # 大总结
+
+
 class DailyTaskPriority(str, enum.Enum):
     LOW = "low"
     MEDIUM = "medium"
@@ -85,3 +91,22 @@ class DailyTask(Base):
 
     def __repr__(self):
         return f"<DailyTask {self.title} - {self.status}>"
+
+
+class DailySummary(Base):
+    __tablename__ = "daily_summaries"
+
+    id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    daily_plan_id = Column(UUID(as_uuid=True), ForeignKey("daily_plans.id", ondelete="CASCADE"), nullable=False)
+    user_id = Column(UUID(as_uuid=True), ForeignKey("users.id", ondelete="CASCADE"), nullable=False)
+    summary_type = Column(Enum(SummaryType, values_callable=lambda x: [e.value for e in x]), nullable=False)
+    content = Column(Text, nullable=False)
+    created_at = Column(DateTime, default=datetime.utcnow)
+    updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
+
+    # Relationships
+    daily_plan = relationship("DailyPlan")
+    user = relationship("User")
+
+    def __repr__(self):
+        return f"<DailySummary {self.daily_plan_id}: {self.summary_type}>"

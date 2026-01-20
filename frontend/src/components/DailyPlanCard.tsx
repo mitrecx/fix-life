@@ -1,9 +1,10 @@
 import { useState } from "react";
-import { Edit, Trash2, Plus, CheckCircle, Circle, Clock, ChevronDown, ChevronUp } from "lucide-react";
+import { Edit, Trash2, Plus, CheckCircle, Circle, Clock, ChevronDown, ChevronUp, BookOpen } from "lucide-react";
 import { Modal, message } from "antd";
 import type { DailyPlan, DailyTask, DailyTaskStatus, DailyTaskPriority } from "@/types/dailyPlan";
 import { DAILY_TASK_PRIORITY, BUSYNESS_LEVEL } from "@/types/dailyPlan";
 import { dailyPlanService } from "@/services/dailyPlanService";
+import { DailySummaryModal } from "@/components/DailySummaryModal";
 
 interface DailyPlanCardProps {
   plan: DailyPlan;
@@ -70,6 +71,7 @@ export function DailyPlanCard({ plan, onUpdate, onEdit, onDelete }: DailyPlanCar
   const [newTaskTitle, setNewTaskTitle] = useState("");
   const [newTaskPriority, setNewTaskPriority] = useState<DailyTaskPriority>("medium");
   const [isTaskSectionCollapsed, setIsTaskSectionCollapsed] = useState(false);
+  const [showSummaryModal, setShowSummaryModal] = useState(false);
 
   const weekdayConfig = getWeekdayConfig(plan.plan_date);
   const busynessConfig = getBusynessConfig(plan.busyness_level);
@@ -166,6 +168,13 @@ export function DailyPlanCard({ plan, onUpdate, onEdit, onDelete }: DailyPlanCar
               title="编辑"
             >
               <Edit size={16} />
+            </button>
+            <button
+              onClick={() => setShowSummaryModal(true)}
+              className="p-1.5 text-gray-400 hover:text-purple-600 hover:bg-purple-50 rounded-lg transition-all"
+              title="总结"
+            >
+              <BookOpen size={16} />
             </button>
             <button
               onClick={onDelete}
@@ -324,6 +333,22 @@ export function DailyPlanCard({ plan, onUpdate, onEdit, onDelete }: DailyPlanCar
             )}
           </div>
         </div>
+      )}
+
+      {/* Summary Modal */}
+      {showSummaryModal && (
+        <DailySummaryModal
+          planId={plan.id}
+          planDate={(() => {
+            const relativeDate = formatDate(plan.plan_date);
+            const isRelative = relativeDate === "今天" || relativeDate === "昨天" || relativeDate === "明天";
+            return isRelative
+              ? `${relativeDate} ${new Date(plan.plan_date).getMonth() + 1}月${new Date(plan.plan_date).getDate()}日`
+              : relativeDate;
+          })()}
+          onClose={() => setShowSummaryModal(false)}
+          onUpdate={onUpdate}
+        />
       )}
     </div>
   );

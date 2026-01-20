@@ -1,7 +1,15 @@
 from app.models.user import User
 from app.models.yearly_goal import YearlyGoal, MonthlyMilestone, GoalStatus, GoalCategory
 from app.models.monthly_plan import MonthlyPlan, MonthlyTask, TaskPriority, TaskStatus
-from app.models.daily_plan import DailyPlan, DailyTask, DailyTaskPriority, DailyTaskStatus, BusynessLevel
+from app.models.daily_plan import (
+    DailyPlan,
+    DailyTask,
+    DailyTaskPriority,
+    DailyTaskStatus,
+    BusynessLevel,
+    DailySummary,
+    SummaryType,
+)
 
 __all__ = [
     "User",
@@ -18,4 +26,6 @@ __all__ = [
     "DailyTaskPriority",
     "DailyTaskStatus",
     "BusynessLevel",
+    "DailySummary",
+    "SummaryType",
 ]
