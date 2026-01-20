@@ -31,11 +31,11 @@ export default function Layout() {
   return (
     <div className="min-h-screen bg-gray-50">
       {/* Header */}
-      <header className="bg-white shadow-sm border-b border-gray-200">
+      <header className="sticky top-0 z-50 bg-white shadow-sm border-b border-gray-200">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="flex items-center justify-between h-16">
             <h1 className="text-2xl font-bold bg-gradient-to-r from-indigo-600 via-purple-600 to-pink-600 bg-clip-text text-transparent">
-              Fix Life
+              FixLife
             </h1>
 
             <div className="flex items-center gap-4">
@@ -77,7 +77,7 @@ export default function Layout() {
                       {user?.username.charAt(0).toUpperCase()}
                     </div>
                   )}
-                  <span className="font-medium">{user?.username}</span>
+                  <span className="font-medium">{user?.full_name || user?.username}</span>
                 </button>
 
                 {/* Logout Button */}

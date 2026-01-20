@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { X } from "lucide-react";
 import type { MonthlyPlanCreate, MonthlyPlanUpdate } from "@/types/monthlyPlan";
 
@@ -23,6 +23,29 @@ export function MonthlyPlanForm({
   const [notes, setNotes] = useState(initialData.notes || "");
   const [year, setYear] = useState("year" in initialData ? initialData.year : defaultYear);
   const [month, setMonth] = useState("month" in initialData ? initialData.month : defaultMonth);
+
+  // Prevent body scroll when modal is open
+  useEffect(() => {
+    document.body.style.overflow = "hidden";
+    // Cleanup on unmount
+    return () => {
+      document.body.style.overflow = "";
+    };
+  }, []);
+
+  // Handle ESC key to close modal
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === "Escape") {
+        onCancel();
+      }
+    };
+
+    window.addEventListener("keydown", handleKeyDown);
+    return () => {
+      window.removeEventListener("keydown", handleKeyDown);
+    };
+  }, [onCancel]);
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();

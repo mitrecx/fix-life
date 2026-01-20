@@ -1,4 +1,4 @@
-import { useState, useRef } from "react";
+import { useState, useRef, useEffect } from "react";
 import { X, User as UserIcon, Mail, Calendar, Camera, Lock, Save, Eye, EyeOff } from "lucide-react";
 import type { User } from "@/types/auth";
 import api from "@/services/api";
@@ -16,7 +16,6 @@ export function ProfileModal({ user, onClose, onUpdate }: ProfileModalProps) {
 
   // Profile form state
   const [fullName, setFullName] = useState(user.full_name || "");
-  const [bio, setBio] = useState(user.bio || "");
   const [avatarUrl, setAvatarUrl] = useState(user.avatar_url || "");
 
   // Password form state
@@ -31,6 +30,29 @@ export function ProfileModal({ user, onClose, onUpdate }: ProfileModalProps) {
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [uploadingAvatar, setUploadingAvatar] = useState(false);
 
+  // Prevent body scroll when modal is open
+  useEffect(() => {
+    document.body.style.overflow = "hidden";
+    // Cleanup on unmount
+    return () => {
+      document.body.style.overflow = "";
+    };
+  }, []);
+
+  // Handle ESC key to close modal
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === "Escape") {
+        onClose();
+      }
+    };
+
+    window.addEventListener("keydown", handleKeyDown);
+    return () => {
+      window.removeEventListener("keydown", handleKeyDown);
+    };
+  }, [onClose]);
+
   const showMessage = (type: "success" | "error", text: string) => {
     setMessage({ type, text });
     setTimeout(() => setMessage(null), 3000);
@@ -43,12 +65,12 @@ export function ProfileModal({ user, onClose, onUpdate }: ProfileModalProps) {
     try {
       const response = await api.put<User>("/users/me", {
         full_name: fullName || undefined,
-        bio: bio || undefined,
         avatar_url: avatarUrl || undefined,
       });
 
       onUpdate(response);
       showMessage("success", "个人信息更新成功");
+      onClose();
     } catch (error) {
       showMessage("error", error instanceof Error ? error.message : "更新失败");
     } finally {
@@ -80,6 +102,7 @@ export function ProfileModal({ user, onClose, onUpdate }: ProfileModalProps) {
       setOldPassword("");
       setNewPassword("");
       setConfirmPassword("");
+      onClose();
     } catch (error) {
       showMessage("error", error instanceof Error ? error.message : "密码修改失败");
     } finally {
@@ -237,19 +260,6 @@ export function ProfileModal({ user, onClose, onUpdate }: ProfileModalProps) {
                     onChange={(e) => setFullName(e.target.value)}
                     className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
                     placeholder="输入你的昵称"
-                  />
-                </div>
-
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">
-                    个人简介
-                  </label>
-                  <textarea
-                    value={bio}
-                    onChange={(e) => setBio(e.target.value)}
-                    rows={3}
-                    className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-                    placeholder="介绍一下自己..."
                   />
                 </div>
               </div>
