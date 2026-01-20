@@ -290,9 +290,9 @@ export function DailyPlanCard({ plan, onUpdate, onEdit, onDelete }: DailyPlanCar
                     <StatusIcon size={16} strokeWidth={2.5} />
                   </button>
                   <span
-                    className={`flex-1 text-xs ${
+                    className={`flex-1 text-sm ${
                       task.status === "done"
-                        ? "line-through text-gray-400"
+                        ? "text-gray-400"
                         : "text-gray-700"
                     }`}
                   >
