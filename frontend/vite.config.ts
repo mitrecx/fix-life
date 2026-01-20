@@ -16,6 +16,8 @@ export default defineConfig({
       '/api': {
         target: 'http://localhost:8000',
         changeOrigin: true,
+        // 重写路径，移除末尾斜杠导致的重定向问题
+        rewrite: (path) => path,
       },
     },
   },

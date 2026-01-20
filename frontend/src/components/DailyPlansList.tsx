@@ -154,11 +154,45 @@ export function DailyPlansList() {
     }
   };
 
+  // 排序计划：今天 > 未来（递增） > 过去（递增）
+  const sortPlans = (plans: DailyPlan[]): DailyPlan[] => {
+    const today = new Date();
+    today.setHours(0, 0, 0, 0); // 重置时间为当天0点
+
+    return [...plans].sort((a, b) => {
+      const planDateA = new Date(a.plan_date);
+      planDateA.setHours(0, 0, 0, 0);
+      const planDateB = new Date(b.plan_date);
+      planDateB.setHours(0, 0, 0, 0);
+
+      const isTodayA = planDateA.getTime() === today.getTime();
+      const isTodayB = planDateB.getTime() === today.getTime();
+      const isFutureA = planDateA > today;
+      const isFutureB = planDateB > today;
+      const isPastA = planDateA < today;
+      const isPastB = planDateB < today;
+
+      // 今天的计划最优先
+      if (isTodayA && !isTodayB) return -1;
+      if (!isTodayA && isTodayB) return 1;
+
+      // 如果两个都是今天，保持原顺序
+      if (isTodayA && isTodayB) return 0;
+
+      // 未来的计划排在过去的计划前面
+      if (isFutureA && isPastB) return -1;
+      if (isPastA && isFutureB) return 1;
+
+      // 同类型（都是未来或都是过去），按日期递增排
+      return planDateA.getTime() - planDateB.getTime();
+    });
+  };
+
   const loadPlans = async () => {
     try {
       setLoading(true);
       const data = await dailyPlanService.getAll(startDate, endDate);
-      setPlans(data);
+      setPlans(sortPlans(data));
       // 同时加载所有计划用于日期冲突检查
       loadAllPlans();
     } catch (error) {

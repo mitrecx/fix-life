@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { Edit, Trash2, Plus, CheckCircle, Circle, Clock, Calendar, ChevronDown, ChevronUp } from "lucide-react";
+import { Edit, Trash2, Plus, CheckCircle, Circle, Clock, ChevronDown, ChevronUp } from "lucide-react";
 import { Modal, message } from "antd";
 import type { DailyPlan, DailyTask, DailyTaskStatus, DailyTaskPriority } from "@/types/dailyPlan";
 import { DAILY_TASK_PRIORITY, BUSYNESS_LEVEL } from "@/types/dailyPlan";
@@ -127,15 +127,11 @@ export function DailyPlanCard({ plan, onUpdate, onEdit, onDelete }: DailyPlanCar
   };
 
   return (
-    <div className={`rounded-xl shadow-md border overflow-hidden mb-3 hover:shadow-lg transition-all duration-300 bg-gradient-to-br ${weekdayConfig.color} ${weekdayConfig.borderColor}`}>
+    <div className={`rounded-xl shadow-md border-2 overflow-hidden mb-3 hover:shadow-lg transition-all duration-300 bg-gradient-to-br ${weekdayConfig.color} ${weekdayConfig.borderColor}`}>
       {/* Card Header */}
       <div className="px-4 py-3 bg-white/50 backdrop-blur-sm">
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-2 flex-1 min-w-0">
-            <Calendar className="text-indigo-500 flex-shrink-0" size={16} />
-            <h3 className="text-base font-semibold text-gray-800 truncate">
-              {plan.title || "日计划"}
-            </h3>
             <span className={`px-2 py-0.5 text-xs font-medium rounded-lg border flex-shrink-0 ${weekdayConfig.textColor} ${weekdayConfig.tagBg} ${weekdayConfig.borderColor}`}>
               {(() => {
                 const relativeDate = formatDate(plan.plan_date);

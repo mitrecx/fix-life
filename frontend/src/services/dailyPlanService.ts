@@ -33,7 +33,7 @@ class DailyPlanService {
   }
 
   async create(data: DailyPlanCreate): Promise<DailyPlan> {
-    return await api.post<DailyPlan>(this.baseUrl, data);
+    return await api.post<DailyPlan>(`${this.baseUrl}/`, data);
   }
 
   async update(id: string, data: DailyPlanUpdate): Promise<DailyPlan> {
