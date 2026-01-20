@@ -191,10 +191,10 @@ export function ProfileModal({ user, onClose, onUpdate }: ProfileModalProps) {
         </div>
 
         {/* Content */}
-        <div className="p-6 overflow-y-auto max-h-[60vh]">
+        <div className="p-6 overflow-y-auto" style={{ height: "320px" }}>
           {/* Profile Tab */}
           {activeTab === "profile" && (
-            <div className="space-y-6">
+            <div className="space-y-6 h-full">
               {/* Avatar */}
               <div className="flex flex-col items-center">
                 <div className="relative group">
@@ -268,7 +268,7 @@ export function ProfileModal({ user, onClose, onUpdate }: ProfileModalProps) {
 
           {/* Password Tab */}
           {activeTab === "password" && (
-            <div className="space-y-4">
+            <div className="space-y-4 h-full">
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-1">
                   当前密码
