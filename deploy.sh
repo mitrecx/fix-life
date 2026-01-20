@@ -54,6 +54,7 @@ case $COMMAND in
     # Deploy backend to server
     echo "Uploading backend to ${SERVER}..."
     rsync -avz --delete \
+      --exclude 'venv' \
       --exclude '.venv' \
       --exclude '__pycache__' \
       --exclude '*.pyc' \
@@ -122,6 +123,7 @@ ENDSSH
   "backend")
     echo "Deploying backend only..."
     rsync -avz --delete \
+      --exclude 'venv' \
       --exclude '.venv' \
       --exclude '__pycache__' \
       --exclude '*.pyc' \
