@@ -1,6 +1,6 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useMemo } from "react";
 import { X } from "lucide-react";
-import type { MonthlyPlanCreate, MonthlyPlanUpdate } from "@/types/monthlyPlan";
+import type { MonthlyPlanCreate, MonthlyPlanUpdate, MonthlyPlan } from "@/types/monthlyPlan";
 
 interface MonthlyPlanFormProps {
   onSubmit: (data: MonthlyPlanCreate | MonthlyPlanUpdate) => void;
@@ -8,7 +8,7 @@ interface MonthlyPlanFormProps {
   initialData?: MonthlyPlanCreate | MonthlyPlanUpdate;
   submitLabel?: string;
   defaultYear?: number;
-  defaultMonth?: number;
+  existingPlans?: MonthlyPlan[];
 }
 
 export function MonthlyPlanForm({
@@ -17,12 +17,41 @@ export function MonthlyPlanForm({
   initialData = {},
   submitLabel = "创建",
   defaultYear = new Date().getFullYear(),
-  defaultMonth = new Date().getMonth() + 1,
+  existingPlans = [],
 }: MonthlyPlanFormProps) {
   const [title, setTitle] = useState(initialData.title || "");
   const [notes, setNotes] = useState(initialData.notes || "");
   const [year, setYear] = useState("year" in initialData ? initialData.year : defaultYear);
-  const [month, setMonth] = useState("month" in initialData ? initialData.month : defaultMonth);
+  const [month, setMonth] = useState(() => {
+    // For editing, use the existing month
+    if ("month" in initialData) {
+      return initialData.month;
+    }
+    // For creating, calculate default month based on existing plans
+    const currentYearPlans = existingPlans.filter(p => p.year === defaultYear);
+    if (currentYearPlans.length > 0) {
+      const maxMonth = Math.max(...currentYearPlans.map(p => p.month));
+      const nextMonth = maxMonth + 1;
+      return nextMonth > 12 ? 1 : nextMonth;
+    }
+    return new Date().getMonth() + 1;
+  });
+
+  // Get occupied months for the selected year
+  const occupiedMonths = useMemo(() => {
+    return existingPlans
+      .filter(p => p.year === year)
+      .map(p => p.month);
+  }, [existingPlans, year]);
+
+  // Check if a month is disabled
+  const isMonthDisabled = (m: number) => {
+    // When editing, don't disable the current plan's month
+    if ("month" in initialData && initialData.month === m) {
+      return false;
+    }
+    return occupiedMonths.includes(m);
+  };
 
   // Prevent body scroll when modal is open
   useEffect(() => {
@@ -94,14 +123,17 @@ export function MonthlyPlanForm({
               <select
                 value={month}
                 onChange={(e) => setMonth(Number(e.target.value))}
-                className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 disabled:bg-gray-100 disabled:text-gray-400"
               >
                 {Array.from({ length: 12 }, (_, i) => i + 1).map((m) => (
-                  <option key={m} value={m}>
+                  <option key={m} value={m} disabled={isMonthDisabled(m)}>
                     {m}月
                   </option>
                 ))}
               </select>
+              {occupiedMonths.length >= 12 && (
+                <p className="text-xs text-gray-500 mt-1">本年所有月份都已创建计划</p>
+              )}
             </div>
           </div>
 

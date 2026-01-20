@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { Edit, Trash2, Plus, CheckCircle, Circle, Clock, Calendar, ChevronDown, ChevronUp } from "lucide-react";
+import { Edit, Trash2, Plus, CheckCircle, Circle, Clock, ChevronDown, ChevronUp } from "lucide-react";
 import { Modal, message } from "antd";
 import type { MonthlyPlan, MonthlyTask, TaskStatus, TaskPriority } from "@/types/monthlyPlan";
 import { TASK_PRIORITY } from "@/types/monthlyPlan";
@@ -19,6 +19,25 @@ const STATUS_ICONS = {
   cancelled: Circle,
 };
 
+// Month labels
+const MONTH_LABELS = ["一月", "二月", "三月", "四月", "五月", "六月", "七月", "八月", "九月", "十月", "十一月", "十二月"];
+
+// Month colors - distinct gradient for each month
+const MONTH_COLORS = [
+  { bg: "from-blue-50 to-blue-100", border: "border-blue-200", text: "text-blue-700", tagBg: "bg-blue-100" },
+  { bg: "from-purple-50 to-purple-100", border: "border-purple-200", text: "text-purple-700", tagBg: "bg-purple-100" },
+  { bg: "from-pink-50 to-pink-100", border: "border-pink-200", text: "text-pink-700", tagBg: "bg-pink-100" },
+  { bg: "from-orange-50 to-orange-100", border: "border-orange-200", text: "text-orange-700", tagBg: "bg-orange-100" },
+  { bg: "from-emerald-50 to-emerald-100", border: "border-emerald-200", text: "text-emerald-700", tagBg: "bg-emerald-100" },
+  { bg: "from-cyan-50 to-cyan-100", border: "border-cyan-200", text: "text-cyan-700", tagBg: "bg-cyan-100" },
+  { bg: "from-rose-50 to-rose-100", border: "border-rose-200", text: "text-rose-700", tagBg: "bg-rose-100" },
+  { bg: "from-violet-50 to-violet-100", border: "border-violet-200", text: "text-violet-700", tagBg: "bg-violet-100" },
+  { bg: "from-amber-50 to-amber-100", border: "border-amber-200", text: "text-amber-700", tagBg: "bg-amber-100" },
+  { bg: "from-lime-50 to-lime-100", border: "border-lime-200", text: "text-lime-700", tagBg: "bg-lime-100" },
+  { bg: "from-teal-50 to-teal-100", border: "border-teal-200", text: "text-teal-700", tagBg: "bg-teal-100" },
+  { bg: "from-red-50 to-red-100", border: "border-red-200", text: "text-red-700", tagBg: "bg-red-100" },
+];
+
 // 动态进度条颜色
 const getProgressColor = (rate: number) => {
   if (rate === 100) return "linear-gradient(to right, rgb(52 211 153), rgb(34 197 94))";
@@ -27,11 +46,20 @@ const getProgressColor = (rate: number) => {
   return "linear-gradient(to right, rgb(156 163 175), rgb(100 116 139))";
 };
 
+// Get month configuration
+const getMonthConfig = (month: number) => {
+  return MONTH_COLORS[month - 1] || MONTH_COLORS[0];
+};
+
 export function MonthlyPlanCard({ plan, onUpdate, onEdit, onDelete }: MonthlyPlanCardProps) {
   const [showTaskForm, setShowTaskForm] = useState(false);
   const [newTaskTitle, setNewTaskTitle] = useState("");
   const [newTaskPriority, setNewTaskPriority] = useState<TaskPriority>("medium");
   const [isTaskSectionCollapsed, setIsTaskSectionCollapsed] = useState(false);
+
+  const monthConfig = getMonthConfig(plan.month);
+  const monthLabel = MONTH_LABELS[plan.month - 1];
+  const progressColor = getProgressColor(plan.completion_rate);
 
   const handleAddTask = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -84,19 +112,14 @@ export function MonthlyPlanCard({ plan, onUpdate, onEdit, onDelete }: MonthlyPla
     });
   };
 
-  const progressColor = getProgressColor(plan.completion_rate);
-
   return (
-    <div className="bg-white rounded-xl shadow-md border border-gray-100 overflow-hidden mb-3 hover:shadow-lg transition-all duration-300">
+    <div className={`rounded-xl shadow-md border-2 overflow-hidden mb-3 hover:shadow-lg transition-all duration-300 ${monthConfig.border}`}>
       {/* Card Header */}
-      <div className="px-4 py-3" style={{ background: 'linear-gradient(to right, rgb(248 250 252), rgb(249 250 251))' }}>
+      <div className={`px-4 py-3 bg-gradient-to-br ${monthConfig.bg}`}>
         <div className="flex items-center justify-between">
-          <div className="flex items-center gap-2 flex-1 min-w-0">
-            <Calendar className="text-indigo-500 flex-shrink-0" size={16} />
-            <h3 className="text-base font-semibold text-gray-800 truncate">
-              {plan.title || `${plan.year}年${plan.month}月计划`}
-            </h3>
-          </div>
+          <span className={`px-2 py-0.5 text-xs font-bold rounded-lg flex-shrink-0 ${monthConfig.text} ${monthConfig.tagBg} ${monthConfig.border}`}>
+            {monthLabel}
+          </span>
           <div className="flex items-center gap-1">
             {plan.total_tasks > 0 && (
               <button
@@ -123,6 +146,10 @@ export function MonthlyPlanCard({ plan, onUpdate, onEdit, onDelete }: MonthlyPla
             </button>
           </div>
         </div>
+        {/* Title */}
+        <h3 className="text-base font-semibold text-gray-800 mt-2 truncate">
+          {plan.title || `${plan.year}年${plan.month}月计划`}
+        </h3>
       </div>
 
       {/* Progress Section - Only show when not collapsed */}

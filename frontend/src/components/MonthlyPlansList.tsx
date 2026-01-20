@@ -1,10 +1,41 @@
 import { useState, useEffect } from "react";
-import { Plus, RotateCw } from "lucide-react";
+import { Plus } from "lucide-react";
 import { Modal, message } from "antd";
 import type { MonthlyPlan, MonthlyPlanCreate, MonthlyPlanUpdate } from "@/types/monthlyPlan";
 import { monthlyPlanService } from "@/services/monthlyPlanService";
 import { MonthlyPlanCard } from "./MonthlyPlanCard";
 import { MonthlyPlanForm } from "./MonthlyPlanForm";
+
+// Custom sorting: current month first, then future months ascending, then past months ascending
+const sortPlans = (plans: MonthlyPlan[]): MonthlyPlan[] => {
+  const now = new Date();
+  const currentYear = now.getFullYear();
+  const currentMonth = now.getMonth() + 1;
+
+  return [...plans].sort((a, b) => {
+    const aIsCurrent = a.year === currentYear && a.month === currentMonth;
+    const bIsCurrent = b.year === currentYear && b.month === currentMonth;
+
+    // Current month always first
+    if (aIsCurrent && !bIsCurrent) return -1;
+    if (!aIsCurrent && bIsCurrent) return 1;
+
+    // Calculate month value for sorting (year * 12 + month)
+    const aMonthValue = a.year * 12 + a.month;
+    const bMonthValue = b.year * 12 + b.month;
+    const currentMonthValue = currentYear * 12 + currentMonth;
+
+    // Both are future months or both are past months - sort ascending
+    const aIsFuture = aMonthValue > currentMonthValue;
+    const bIsFuture = bMonthValue > currentMonthValue;
+
+    if (aIsFuture && bIsFuture) return aMonthValue - bMonthValue;
+    if (!aIsFuture && !bIsFuture) return aMonthValue - bMonthValue;
+
+    // Future before past
+    return aIsFuture ? -1 : 1;
+  });
+};
 
 export function MonthlyPlansList() {
   const [plans, setPlans] = useState<MonthlyPlan[]>([]);
@@ -12,17 +43,16 @@ export function MonthlyPlansList() {
   const [showForm, setShowForm] = useState(false);
   const [editingPlan, setEditingPlan] = useState<MonthlyPlan | null>(null);
   const [year, setYear] = useState(new Date().getFullYear());
-  const [month, setMonth] = useState<number | undefined>(new Date().getMonth() + 1);
 
   useEffect(() => {
     loadPlans();
-  }, [year, month]);
+  }, [year]);
 
   const loadPlans = async () => {
     try {
       setLoading(true);
-      const data = await monthlyPlanService.getAll(year, month);
-      setPlans(data);
+      const data = await monthlyPlanService.getAll(year);
+      setPlans(sortPlans(data));
     } catch (error) {
       console.error("Failed to load monthly plans:", error);
     } finally {
@@ -72,8 +102,6 @@ export function MonthlyPlansList() {
     });
   };
 
-  const currentMonthLabel = month ? `${year}年${month}月` : `${year}年`;
-
   return (
     <div className="space-y-6">
       {/* Header with gradient background */}
@@ -117,28 +145,11 @@ export function MonthlyPlansList() {
           </select>
         </div>
 
-        <div className="flex items-center gap-2">
-          <label className="text-sm font-semibold text-gray-600">月份:</label>
-          <select
-            value={month || ""}
-            onChange={(e) => setMonth(e.target.value ? Number(e.target.value) : undefined)}
-            className="px-3 py-1.5 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent bg-white transition-all"
-          >
-            <option value="">全部</option>
-            {Array.from({ length: 12 }, (_, i) => i + 1).map((m) => (
-              <option key={m} value={m}>
-                {m}月
-              </option>
-            ))}
-          </select>
-        </div>
-
         <button
           onClick={loadPlans}
-          className="ml-auto flex items-center gap-1.5 px-4 py-1.5 text-gray-600 bg-gray-100 rounded-lg hover:bg-gray-200 transition-all"
+          className="px-4 py-1.5 text-gray-600 bg-gray-100 rounded-lg hover:bg-gray-200 transition-all text-sm font-medium"
         >
-          <RotateCw size={16} />
-          <span className="text-sm font-medium">刷新</span>
+          查询
         </button>
       </div>
 
@@ -159,9 +170,7 @@ export function MonthlyPlansList() {
             >
               <div className="text-6xl mb-4">📅</div>
               <p className="text-lg text-gray-600 font-medium">
-                {month
-                  ? `${currentMonthLabel}还没有计划`
-                  : `${year}年还没有计划`}
+                {year}年还没有计划
               </p>
               <p className="text-sm text-gray-400 mt-2">点击"新建计划"开始创建你的第一个月度计划</p>
             </div>
@@ -186,7 +195,7 @@ export function MonthlyPlansList() {
           onCancel={() => setShowForm(false)}
           submitLabel="创建"
           defaultYear={year}
-          defaultMonth={month || new Date().getMonth() + 1}
+          existingPlans={plans}
         />
       )}
 
@@ -197,6 +206,7 @@ export function MonthlyPlansList() {
           onCancel={() => setEditingPlan(null)}
           initialData={editingPlan}
           submitLabel="保存"
+          existingPlans={plans}
         />
       )}
     </div>
