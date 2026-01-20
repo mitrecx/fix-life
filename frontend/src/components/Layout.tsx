@@ -12,9 +12,9 @@ export default function Layout() {
   const [showProfileModal, setShowProfileModal] = useState(false);
 
   const navItems = [
-    { path: "/yearly-goals", label: "年度目标" },
-    { path: "/monthly-plans", label: "月度计划" },
     { path: "/daily-plans", label: "每日计划" },
+    { path: "/monthly-plans", label: "月度计划" },
+    { path: "/yearly-goals", label: "年度目标" },
     { path: "/analytics", label: "数据统计" },
   ];
 

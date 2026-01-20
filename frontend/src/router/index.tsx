@@ -1,4 +1,5 @@
 import { createBrowserRouter } from "react-router-dom";
+import { Navigate } from "react-router-dom";
 import ProtectedRoute from "@/components/ProtectedRoute";
 import Layout from "@/components/Layout";
 import LoginPage from "@/pages/LoginPage";
@@ -35,19 +36,19 @@ export const router = createBrowserRouter([
     children: [
       {
         index: true,
-        element: <YearlyGoalsPage />,
+        element: <Navigate to="/daily-plans" replace />,
       },
       {
-        path: "yearly-goals",
-        element: <YearlyGoalsPage />,
+        path: "daily-plans",
+        element: <DailyPlansPage />,
       },
       {
         path: "monthly-plans",
         element: <MonthlyPlansPage />,
       },
       {
-        path: "daily-plans",
-        element: <DailyPlansPage />,
+        path: "yearly-goals",
+        element: <YearlyGoalsPage />,
       },
       {
         path: "analytics",

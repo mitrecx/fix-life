@@ -1,8 +1,10 @@
 import { useState, useEffect } from "react";
-import { Plus, RotateCw } from "lucide-react";
+import { Plus, Download, X } from "lucide-react";
 import { Modal, message } from "antd";
 import type { DailyPlan, DailyPlanCreate, DailyPlanUpdate } from "@/types/dailyPlan";
+import type { DailySummary } from "@/types/dailySummary";
 import { dailyPlanService } from "@/services/dailyPlanService";
+import { dailySummaryService } from "@/services/dailySummaryService";
 import { DailyPlanCard } from "./DailyPlanCard";
 import { DailyPlanForm } from "./DailyPlanForm";
 
@@ -12,6 +14,9 @@ export function DailyPlansList() {
   const [loading, setLoading] = useState(true);
   const [showForm, setShowForm] = useState(false);
   const [editingPlan, setEditingPlan] = useState<DailyPlan | null>(null);
+  const [showExportModal, setShowExportModal] = useState(false);
+  const [planSummaries, setPlanSummaries] = useState<Record<string, DailySummary>>({});
+
   // 计算当前周的周一和周日
   const getCurrentWeekRange = () => {
     const today = new Date();
@@ -96,13 +101,6 @@ export function DailyPlansList() {
     };
   };
 
-  // 根据年周查询
-  const handleSearchByYearWeek = () => {
-    const { start, end } = getDateRangeByYearWeek(selectedYear, selectedWeek);
-    setStartDate(start);
-    setEndDate(end);
-  };
-
   // 上一周
   const handlePreviousWeek = () => {
     let newWeek = selectedWeek - 1;
@@ -143,6 +141,33 @@ export function DailyPlansList() {
   useEffect(() => {
     loadPlans();
   }, [startDate, endDate]);
+
+  // Prevent body scroll when export modal is open
+  useEffect(() => {
+    if (showExportModal) {
+      document.body.style.overflow = "hidden";
+    } else {
+      document.body.style.overflow = "";
+    }
+    // Cleanup on unmount
+    return () => {
+      document.body.style.overflow = "";
+    };
+  }, [showExportModal]);
+
+  // Handle ESC key to close export modal
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === "Escape" && showExportModal) {
+        setShowExportModal(false);
+      }
+    };
+
+    window.addEventListener("keydown", handleKeyDown);
+    return () => {
+      window.removeEventListener("keydown", handleKeyDown);
+    };
+  }, [showExportModal]);
 
   const loadAllPlans = async () => {
     try {
@@ -251,30 +276,120 @@ export function DailyPlansList() {
     return `${formatDate(start)} - ${formatDate(end)}`;
   };
 
+  // Generate markdown from plans
+  const generateMarkdown = () => {
+    const WEEKDAYS = ["周日", "周一", "周二", "周三", "周四", "周五", "周六"];
+    const SUMMARY_TYPE_LABELS: Record<string, string> = {
+      daily: "日常总结",
+      small: "小总结",
+      large: "大总结",
+    };
+
+    let markdown = `# 每日计划导出\n\n`;
+    markdown += `**日期范围**: ${startDate} ~ ${endDate}\n\n`;
+    markdown += `---\n\n`;
+
+    if (plans.length === 0) {
+      markdown += `暂无计划\n`;
+    } else {
+      // Sort by chronological order (ascending date)
+      const sortedPlans = [...plans].sort((a, b) => {
+        const dateA = new Date(a.plan_date).getTime();
+        const dateB = new Date(b.plan_date).getTime();
+        return dateA - dateB;
+      });
+
+      sortedPlans.forEach((plan) => {
+        const date = new Date(plan.plan_date);
+        const weekday = WEEKDAYS[date.getDay()];
+        const dateStr = `${date.getMonth() + 1}月${date.getDate()}日`;
+
+        markdown += `## ${dateStr} ${weekday}\n\n`;
+
+        // 任务清单
+        if (plan.daily_tasks && plan.daily_tasks.length > 0) {
+          markdown += `### 任务清单\n\n`;
+          plan.daily_tasks.forEach((task) => {
+            const statusIcon = task.status === "done" ? "✅" : "⬜";
+            const priorityLabel = {
+              high: "【高】",
+              medium: "【中】",
+              low: "【低】",
+            }[task.priority] || "";
+            markdown += `${statusIcon} ${priorityLabel} ${task.title}\n`;
+          });
+          markdown += `\n`;
+        } else {
+          markdown += `### 任务清单\n暂无任务\n\n`;
+        }
+
+        // 备注
+        if (plan.notes) {
+          markdown += `### 备注\n${plan.notes}\n\n`;
+        }
+
+        // 日总结 - use loaded summaries
+        const summary = planSummaries[plan.id];
+        if (summary) {
+          const summaryType = SUMMARY_TYPE_LABELS[summary.summary_type] || "总结";
+          markdown += `### ${summaryType}\n${summary.content}\n\n`;
+        }
+
+        markdown += `---\n\n`;
+      });
+    }
+
+    return markdown;
+  };
+
+  // Handle copy to clipboard
+  const handleCopyToClipboard = () => {
+    const markdown = generateMarkdown();
+    navigator.clipboard.writeText(markdown).then(() => {
+      message.success("已复制到剪贴板");
+    }).catch(() => {
+      message.error("复制失败，请稍后重试");
+    });
+  };
+
+  // Handle export as MD file
+  const handleExportAsMD = () => {
+    const markdown = generateMarkdown();
+    const blob = new Blob([markdown], { type: "text/markdown;charset=utf-8" });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement("a");
+    link.href = url;
+    link.download = `每日计划_${startDate}_to_${endDate}.md`;
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+    URL.revokeObjectURL(url);
+    message.success("导出成功");
+  };
+
+  // Load summaries for export
+  const loadSummariesForExport = async () => {
+    const summaries: Record<string, DailySummary> = {};
+    for (const plan of plans) {
+      try {
+        const summary = await dailySummaryService.getByPlanId(plan.id);
+        summaries[plan.id] = summary;
+      } catch (error) {
+        // No summary for this plan, which is fine
+        summaries[plan.id] = null as any;
+      }
+    }
+    setPlanSummaries(summaries);
+  };
+
+  // Open export modal and load summaries
+  const handleOpenExportModal = () => {
+    setShowExportModal(true);
+    loadSummariesForExport();
+  };
+
   return (
     <div className="space-y-6">
-      {/* Header with gradient background */}
-      <div
-        className="rounded-2xl p-6 shadow-lg"
-        style={{
-          background: 'linear-gradient(to right, rgb(34 197 94), rgb(16 185 129), rgb(6 182 212))'
-        }}
-      >
-        <div className="flex items-center justify-between">
-          <div>
-            <h2 className="text-3xl font-bold text-white mb-1">每日计划</h2>
-            <p className="text-white/80 text-sm">规划每一天，让每一天都有意义</p>
-          </div>
-          <button
-            onClick={() => setShowForm(true)}
-            className="flex items-center gap-2 px-5 py-2.5 bg-white text-emerald-600 rounded-xl hover:bg-emerald-50 transition-all shadow-md hover:shadow-lg transform hover:-translate-y-0.5"
-          >
-            <Plus size={20} />
-            <span className="font-medium">新建计划</span>
-          </button>
-        </div>
-      </div>
-
       {/* Filters */}
       <div className="p-4 bg-white/80 backdrop-blur-sm rounded-xl shadow-sm border border-gray-100">
         {/* Year and Week selection */}
@@ -309,12 +424,6 @@ export function DailyPlansList() {
             上一周
           </button>
           <button
-            onClick={handleSearchByYearWeek}
-            className="px-4 py-1.5 text-xs font-medium text-white bg-indigo-500 rounded-lg hover:bg-indigo-600 transition-all"
-          >
-            查询
-          </button>
-          <button
             onClick={handleNextWeek}
             className="px-3 py-1.5 text-xs font-medium text-gray-600 bg-gray-100 rounded-lg hover:bg-gray-200 transition-all"
           >
@@ -323,7 +432,7 @@ export function DailyPlansList() {
         </div>
 
         {/* Date range selection */}
-        <div className="flex items-center gap-4">
+        <div className="flex items-center gap-4 mb-3">
           <div className="flex items-center gap-2">
             <label className="text-sm font-semibold text-gray-600">开始日期:</label>
             <input
@@ -346,10 +455,27 @@ export function DailyPlansList() {
 
           <button
             onClick={loadPlans}
-            className="ml-auto flex items-center gap-1.5 px-4 py-1.5 text-gray-600 bg-gray-100 rounded-lg hover:bg-gray-200 transition-all"
+            className="px-4 py-1.5 text-sm font-medium text-gray-600 bg-gray-100 rounded-lg hover:bg-gray-200 transition-all"
           >
-            <RotateCw size={16} />
-            <span className="text-sm font-medium">刷新</span>
+            查询
+          </button>
+        </div>
+
+        {/* New plan button */}
+        <div className="flex items-center gap-4">
+          <button
+            onClick={() => setShowForm(true)}
+            className="flex items-center gap-2 px-5 py-2.5 text-emerald-700 bg-emerald-50 rounded-xl hover:bg-emerald-100 transition-all"
+          >
+            <Plus size={20} />
+            <span className="font-medium">新建计划</span>
+          </button>
+          <button
+            onClick={handleOpenExportModal}
+            className="flex items-center gap-2 px-5 py-2.5 text-orange-700 bg-orange-50 rounded-xl hover:bg-orange-100 transition-all"
+          >
+            <Download size={20} />
+            <span className="font-medium">导出</span>
           </button>
         </div>
       </div>
@@ -408,6 +534,55 @@ export function DailyPlansList() {
           submitLabel="保存"
           existingPlans={allPlans}
         />
+      )}
+
+      {/* Export Modal */}
+      {showExportModal && (
+        <div className="fixed inset-0 bg-gray-900/60 backdrop-blur-sm flex items-center justify-center z-50">
+          <div className="bg-white rounded-3xl shadow-2xl w-full max-w-3xl max-h-[85vh] overflow-hidden animate-in fade-in zoom-in duration-200 flex flex-col">
+            {/* Header */}
+            <div className="flex items-center justify-between p-6 border-b bg-gradient-to-r from-orange-50 to-amber-50 rounded-t-3xl">
+              <div className="flex items-center gap-3">
+                <div className="p-2 bg-gradient-to-br from-orange-500 to-amber-600 rounded-xl">
+                  <Download className="text-white" size={20} />
+                </div>
+                <div>
+                  <h2 className="text-xl font-semibold text-gray-800">导出每日计划</h2>
+                  <p className="text-sm text-gray-500">{startDate} ~ {endDate}</p>
+                </div>
+              </div>
+              <button
+                onClick={() => setShowExportModal(false)}
+                className="text-gray-400 hover:text-gray-600 transition-colors"
+              >
+                <X size={24} />
+              </button>
+            </div>
+
+            {/* Content */}
+            <div className="flex-1 overflow-y-auto p-6 bg-gray-50">
+              <pre className="bg-white border border-gray-200 rounded-xl p-4 text-sm text-gray-700 whitespace-pre-wrap font-mono overflow-x-auto">
+                {generateMarkdown()}
+              </pre>
+            </div>
+
+            {/* Footer */}
+            <div className="flex justify-end gap-3 p-6 border-t bg-white">
+              <button
+                onClick={handleCopyToClipboard}
+                className="px-5 py-2.5 text-gray-700 bg-white border border-gray-300 rounded-xl hover:bg-gray-50 transition-colors font-medium"
+              >
+                一键复制
+              </button>
+              <button
+                onClick={handleExportAsMD}
+                className="px-5 py-2.5 text-white bg-gradient-to-r from-orange-500 to-amber-600 rounded-xl hover:from-orange-600 hover:to-amber-700 transition-all font-medium shadow-md"
+              >
+                导出为MD文件
+              </button>
+            </div>
+          </div>
+        </div>
       )}
     </div>
   );

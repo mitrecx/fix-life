@@ -89,6 +89,29 @@ export function DailyPlanForm({
     }
   }, [planDate, isEditing, title]);
 
+  // Prevent body scroll when modal is open
+  useEffect(() => {
+    document.body.style.overflow = "hidden";
+    // Cleanup on unmount
+    return () => {
+      document.body.style.overflow = "";
+    };
+  }, []);
+
+  // Handle ESC key to close modal
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === "Escape") {
+        onCancel();
+      }
+    };
+
+    window.addEventListener("keydown", handleKeyDown);
+    return () => {
+      window.removeEventListener("keydown", handleKeyDown);
+    };
+  }, [onCancel]);
+
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     const data: DailyPlanCreate | DailyPlanUpdate = {
