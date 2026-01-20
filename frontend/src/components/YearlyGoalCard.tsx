@@ -36,7 +36,7 @@ const YearlyGoalCard = ({
       hoverable
       style={{ marginBottom: 16 }}
       title={
-        <Space>
+        <Space style={{ maxWidth: "calc(100vw - 200px)" }}>
           <span
             style={{
               display: "inline-block",
@@ -46,7 +46,9 @@ const YearlyGoalCard = ({
               backgroundColor: goal.color,
             }}
           />
-          <span>{goal.title}</span>
+          <span style={{ overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+            {goal.title}
+          </span>
           <Tag color={categoryInfo?.color}>{categoryInfo?.label}</Tag>
         </Space>
       }
@@ -113,7 +115,7 @@ const YearlyGoalCard = ({
 
         {/* Description */}
         {goal.description && (
-          <div style={{ color: "#666" }}>{goal.description}</div>
+          <div style={{ color: "#666", wordBreak: "break-word" }}>{goal.description}</div>
         )}
 
         {/* Footer */}

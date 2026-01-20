@@ -72,6 +72,7 @@ export function DailyPlanCard({ plan, onUpdate, onEdit, onDelete }: DailyPlanCar
   const [newTaskPriority, setNewTaskPriority] = useState<DailyTaskPriority>("medium");
   const [isTaskSectionCollapsed, setIsTaskSectionCollapsed] = useState(false);
   const [showSummaryModal, setShowSummaryModal] = useState(false);
+  const [isSubmittingTask, setIsSubmittingTask] = useState(false);
 
   const weekdayConfig = getWeekdayConfig(plan.plan_date);
   const busynessConfig = getBusynessConfig(plan.busyness_level);
@@ -79,8 +80,9 @@ export function DailyPlanCard({ plan, onUpdate, onEdit, onDelete }: DailyPlanCar
 
   const handleAddTask = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!newTaskTitle.trim()) return;
+    if (!newTaskTitle.trim() || isSubmittingTask) return;
 
+    setIsSubmittingTask(true);
     try {
       await dailyPlanService.createTask(plan.id, {
         title: newTaskTitle,
@@ -93,6 +95,8 @@ export function DailyPlanCard({ plan, onUpdate, onEdit, onDelete }: DailyPlanCar
       onUpdate();
     } catch (error) {
       console.error("Failed to create task:", error);
+    } finally {
+      setIsSubmittingTask(false);
     }
   };
 
@@ -259,12 +263,13 @@ export function DailyPlanCard({ plan, onUpdate, onEdit, onDelete }: DailyPlanCar
               </div>
               <button
                 type="submit"
-                className="w-full px-4 py-1.5 text-xs font-medium text-white rounded-lg transition-all"
+                disabled={isSubmittingTask}
+                className="w-full px-4 py-1.5 text-xs font-medium text-white rounded-lg transition-all disabled:opacity-50 disabled:cursor-not-allowed"
                 style={{ background: 'linear-gradient(to right, rgb(99 102 241), rgb(168 85 247))' }}
-                onMouseOver={(e) => e.currentTarget.style.background = 'linear-gradient(to right, rgb(79 70 229), rgb(147 51 234))'}
+                onMouseOver={(e) => !isSubmittingTask && (e.currentTarget.style.background = 'linear-gradient(to right, rgb(79 70 229), rgb(147 51 234))')}
                 onMouseOut={(e) => e.currentTarget.style.background = 'linear-gradient(to right, rgb(99 102 241), rgb(168 85 247))'}
               >
-                添加任务
+                {isSubmittingTask ? "添加中..." : "完成"}
               </button>
             </form>
           )}
@@ -290,7 +295,7 @@ export function DailyPlanCard({ plan, onUpdate, onEdit, onDelete }: DailyPlanCar
                     <StatusIcon size={16} strokeWidth={2.5} />
                   </button>
                   <span
-                    className={`flex-1 text-sm ${
+                    className={`flex-1 text-sm break-words min-w-0 ${
                       task.status === "done"
                         ? "text-gray-400"
                         : "text-gray-700"

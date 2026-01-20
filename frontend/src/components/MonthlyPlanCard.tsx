@@ -56,6 +56,7 @@ export function MonthlyPlanCard({ plan, onUpdate, onEdit, onDelete }: MonthlyPla
   const [newTaskTitle, setNewTaskTitle] = useState("");
   const [newTaskPriority, setNewTaskPriority] = useState<TaskPriority>("medium");
   const [isTaskSectionCollapsed, setIsTaskSectionCollapsed] = useState(false);
+  const [isSubmittingTask, setIsSubmittingTask] = useState(false);
 
   const monthConfig = getMonthConfig(plan.month);
   const monthLabel = MONTH_LABELS[plan.month - 1];
@@ -63,8 +64,9 @@ export function MonthlyPlanCard({ plan, onUpdate, onEdit, onDelete }: MonthlyPla
 
   const handleAddTask = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!newTaskTitle.trim()) return;
+    if (!newTaskTitle.trim() || isSubmittingTask) return;
 
+    setIsSubmittingTask(true);
     try {
       await monthlyPlanService.createTask(plan.id, {
         title: newTaskTitle,
@@ -77,6 +79,8 @@ export function MonthlyPlanCard({ plan, onUpdate, onEdit, onDelete }: MonthlyPla
       onUpdate();
     } catch (error) {
       console.error("Failed to create task:", error);
+    } finally {
+      setIsSubmittingTask(false);
     }
   };
 
@@ -224,12 +228,13 @@ export function MonthlyPlanCard({ plan, onUpdate, onEdit, onDelete }: MonthlyPla
               </div>
               <button
                 type="submit"
-                className="w-full px-4 py-1.5 text-xs font-medium text-white rounded-lg transition-all"
+                disabled={isSubmittingTask}
+                className="w-full px-4 py-1.5 text-xs font-medium text-white rounded-lg transition-all disabled:opacity-50 disabled:cursor-not-allowed"
                 style={{ background: 'linear-gradient(to right, rgb(99 102 241), rgb(168 85 247))' }}
-                onMouseOver={(e) => e.currentTarget.style.background = 'linear-gradient(to right, rgb(79 70 229), rgb(147 51 234))'}
+                onMouseOver={(e) => !isSubmittingTask && (e.currentTarget.style.background = 'linear-gradient(to right, rgb(79 70 229), rgb(147 51 234))')}
                 onMouseOut={(e) => e.currentTarget.style.background = 'linear-gradient(to right, rgb(99 102 241), rgb(168 85 247))'}
               >
-                添加任务
+                {isSubmittingTask ? "添加中..." : "完成"}
               </button>
             </form>
           )}
@@ -255,7 +260,7 @@ export function MonthlyPlanCard({ plan, onUpdate, onEdit, onDelete }: MonthlyPla
                     <StatusIcon size={16} strokeWidth={2.5} />
                   </button>
                   <span
-                    className={`flex-1 text-xs ${
+                    className={`flex-1 text-xs break-words min-w-0 ${
                       task.status === "done"
                         ? "line-through text-gray-400"
                         : "text-gray-700"
