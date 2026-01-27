@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import { Plus, Download, X } from "lucide-react";
+import { Plus, Download, X, Copy } from "lucide-react";
 import { Modal, message } from "antd";
 import type { DailyPlan, DailyPlanCreate, DailyPlanUpdate } from "@/types/dailyPlan";
 import type { DailySummary } from "@/types/dailySummary";
@@ -7,6 +7,7 @@ import { dailyPlanService } from "@/services/dailyPlanService";
 import { dailySummaryService } from "@/services/dailySummaryService";
 import { DailyPlanCard } from "./DailyPlanCard";
 import { DailyPlanForm } from "./DailyPlanForm";
+import { BatchCreateTasksModal } from "./BatchCreateTasksModal";
 
 export function DailyPlansList() {
   const [plans, setPlans] = useState<DailyPlan[]>([]);
@@ -15,6 +16,7 @@ export function DailyPlansList() {
   const [showForm, setShowForm] = useState(false);
   const [editingPlan, setEditingPlan] = useState<DailyPlan | null>(null);
   const [showExportModal, setShowExportModal] = useState(false);
+  const [showBatchCreateModal, setShowBatchCreateModal] = useState(false);
   const [planSummaries, setPlanSummaries] = useState<Record<string, DailySummary>>({});
 
   // 计算当前周的周一和周日
@@ -477,6 +479,13 @@ export function DailyPlansList() {
             <Download size={20} />
             <span className="font-medium">导出</span>
           </button>
+          <button
+            onClick={() => setShowBatchCreateModal(true)}
+            className="flex items-center gap-2 px-5 py-2.5 text-blue-700 bg-blue-50 rounded-xl hover:bg-blue-100 transition-all"
+          >
+            <Copy size={20} />
+            <span className="font-medium">批量创建</span>
+          </button>
         </div>
       </div>
 
@@ -583,6 +592,14 @@ export function DailyPlansList() {
             </div>
           </div>
         </div>
+      )}
+
+      {/* Batch Create Tasks Modal */}
+      {showBatchCreateModal && (
+        <BatchCreateTasksModal
+          onClose={() => setShowBatchCreateModal(false)}
+          onSuccess={loadPlans}
+        />
       )}
     </div>
   );
