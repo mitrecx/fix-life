@@ -51,6 +51,20 @@ const getBusynessConfig = (busyness?: string) => {
   return BUSYNESS_LEVEL.find((b) => b.value === busyness);
 };
 
+// 排序任务：按优先级（高→中→低），然后按创建时间（早→晚）
+const sortTasks = (tasks: DailyTask[]) => {
+  const priorityOrder = { high: 3, medium: 2, low: 1 };
+
+  return [...tasks].sort((a, b) => {
+    // 先按优先级排序
+    const priorityDiff = priorityOrder[b.priority] - priorityOrder[a.priority];
+    if (priorityDiff !== 0) return priorityDiff;
+
+    // 优先级相同时，按创建时间排序（早的在前）
+    return new Date(a.created_at).getTime() - new Date(b.created_at).getTime();
+  });
+};
+
 // 格式化日期
 const formatDate = (dateStr: string) => {
   const date = new Date(dateStr);
@@ -275,7 +289,7 @@ export function DailyPlanCard({ plan, onUpdate, onEdit, onDelete }: DailyPlanCar
           )}
 
           <div className="space-y-1.5">
-            {plan.daily_tasks.map((task) => {
+            {sortTasks(plan.daily_tasks).map((task) => {
               const StatusIcon = STATUS_ICONS[task.status];
               const priorityConfig = DAILY_TASK_PRIORITY.find((p) => p.value === task.priority);
 

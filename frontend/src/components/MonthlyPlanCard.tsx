@@ -46,6 +46,20 @@ const getProgressColor = (rate: number) => {
   return "linear-gradient(to right, rgb(156 163 175), rgb(100 116 139))";
 };
 
+// 排序任务：按优先级（高→中→低），然后按创建时间（早→晚）
+const sortTasks = (tasks: MonthlyTask[]) => {
+  const priorityOrder = { high: 3, medium: 2, low: 1 };
+
+  return [...tasks].sort((a, b) => {
+    // 先按优先级排序
+    const priorityDiff = priorityOrder[b.priority] - priorityOrder[a.priority];
+    if (priorityDiff !== 0) return priorityDiff;
+
+    // 优先级相同时，按创建时间排序（早的在前）
+    return new Date(a.created_at).getTime() - new Date(b.created_at).getTime();
+  });
+};
+
 // Get month configuration
 const getMonthConfig = (month: number) => {
   return MONTH_COLORS[month - 1] || MONTH_COLORS[0];
@@ -240,7 +254,7 @@ export function MonthlyPlanCard({ plan, onUpdate, onEdit, onDelete }: MonthlyPla
           )}
 
           <div className="space-y-1.5">
-            {plan.monthly_tasks.map((task) => {
+            {sortTasks(plan.monthly_tasks).map((task) => {
               const StatusIcon = STATUS_ICONS[task.status];
               const priorityConfig = TASK_PRIORITY.find((p) => p.value === task.priority);
 
