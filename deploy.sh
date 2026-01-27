@@ -69,26 +69,20 @@ case $COMMAND in
       "${FRONTEND_LOCAL}/dist/" "${SERVER}:${FRONTEND_DEPLOY_PATH}/"
 
     # Setup backend
-    echo "Setting up backend..."
-    ssh $SERVER << ENDSSH
+    echo "Setting up backend environment..."
+    ssh $SERVER "bash -lc '
       cd ${BACKEND_DEPLOY_PATH}
-
-      # Create virtual environment if not exists
-      if [ ! -d "venv" ]; then
-        echo "Creating virtual environment..."
+      # Check if venv exists and is valid
+      if [ ! -f \"venv/bin/activate\" ]; then
+        echo \"Creating or recreating virtual environment...\"
+        rm -rf venv
         python3 -m venv venv
       fi
-
-      # Activate venv and install dependencies
-      echo "Installing dependencies..."
       source venv/bin/activate
-      pip install --upgrade pip
-      pip install -r requirements.txt
-
-      # Run migrations
-      echo "Running database migrations..."
+      pip install -q --upgrade pip
+      pip install -q -r requirements.txt
       alembic upgrade head
-ENDSSH
+    '"
 
     # Restart backend service
     echo "Restarting backend service..."
@@ -132,12 +126,20 @@ ENDSSH
       --exclude '*.log' \
       "${BACKEND_LOCAL}/" "${SERVER}:${BACKEND_DEPLOY_PATH}/"
 
-    ssh $SERVER << ENDSSH
+    echo "Setting up backend environment..."
+    ssh $SERVER "bash -lc '
       cd ${BACKEND_DEPLOY_PATH}
+      # Check if venv exists and is valid
+      if [ ! -f \"venv/bin/activate\" ]; then
+        echo \"Creating or recreating virtual environment...\"
+        rm -rf venv
+        python3 -m venv venv
+      fi
       source venv/bin/activate
-      pip install -r requirements.txt
+      pip install -q --upgrade pip
+      pip install -q -r requirements.txt
       alembic upgrade head
-ENDSSH
+    '"
 
     ssh $SERVER "sudo systemctl restart ${BACKEND_SERVICE_NAME}"
     echo "Backend deployment complete!"

@@ -1,10 +1,11 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Edit, Trash2, Plus, CheckCircle, Circle, Clock, ChevronDown, ChevronUp, BookOpen } from "lucide-react";
 import { Modal, message } from "antd";
 import type { DailyPlan, DailyTask, DailyTaskStatus, DailyTaskPriority } from "@/types/dailyPlan";
 import { DAILY_TASK_PRIORITY, BUSYNESS_LEVEL } from "@/types/dailyPlan";
 import { dailyPlanService } from "@/services/dailyPlanService";
 import { DailySummaryModal } from "@/components/DailySummaryModal";
+import { systemSettingsService } from "@/services/systemSettingsService";
 
 interface DailyPlanCardProps {
   plan: DailyPlan;
@@ -87,6 +88,17 @@ export function DailyPlanCard({ plan, onUpdate, onEdit, onDelete }: DailyPlanCar
   const [isTaskSectionCollapsed, setIsTaskSectionCollapsed] = useState(false);
   const [showSummaryModal, setShowSummaryModal] = useState(false);
   const [isSubmittingTask, setIsSubmittingTask] = useState(false);
+  const [showDailySummary, setShowDailySummary] = useState(false);
+  const [expandedSummary, setExpandedSummary] = useState(false);
+
+  useEffect(() => {
+    // Load system settings to check if we should show daily summary
+    const loadSettings = async () => {
+      const settings = await systemSettingsService.getSettings();
+      setShowDailySummary(settings.show_daily_summary);
+    };
+    loadSettings();
+  }, []);
 
   const weekdayConfig = getWeekdayConfig(plan.plan_date);
   const busynessConfig = getBusynessConfig(plan.busyness_level);
@@ -351,6 +363,41 @@ export function DailyPlanCard({ plan, onUpdate, onEdit, onDelete }: DailyPlanCar
               </div>
             )}
           </div>
+
+          {/* Daily Summary Section - Show based on system settings */}
+          {showDailySummary && plan.daily_summary && (
+            <div className="mt-3 p-3 bg-gradient-to-r from-amber-50 to-orange-50 rounded-xl border border-amber-200">
+              <div className="flex items-start gap-2">
+                <div className="flex-shrink-0 mt-0.5">
+                  <div className="w-6 h-6 rounded-full bg-amber-100 flex items-center justify-center">
+                    <BookOpen size={14} className="text-amber-600" />
+                  </div>
+                </div>
+                <div className="flex-1 min-w-0">
+                  <h5 className="text-xs font-semibold text-amber-800 mb-1">每日总结</h5>
+                  <p className={`text-sm text-amber-900 whitespace-pre-wrap ${expandedSummary ? '' : 'line-clamp-6'}`}>
+                    {plan.daily_summary.content}
+                  </p>
+                  {!expandedSummary && plan.daily_summary.content && plan.daily_summary.content.length > 150 && (
+                    <button
+                      onClick={() => setExpandedSummary(true)}
+                      className="mt-1.5 text-xs font-medium text-amber-700 hover:text-amber-800 transition-colors"
+                    >
+                      显示更多 ▼
+                    </button>
+                  )}
+                  {expandedSummary && (
+                    <button
+                      onClick={() => setExpandedSummary(false)}
+                      className="mt-1.5 text-xs font-medium text-amber-700 hover:text-amber-800 transition-colors"
+                    >
+                      收起 ▲
+                    </button>
+                  )}
+                </div>
+              </div>
+            </div>
+          )}
         </div>
       )}
 

@@ -49,6 +49,17 @@ export interface DailyPlan {
   completed_tasks: number;
   completion_rate: number;
   daily_tasks: DailyTask[];
+  daily_summary?: DailySummaryInPlan;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface DailySummaryInPlan {
+  id: string;
+  daily_plan_id: string;
+  user_id: string;
+  summary_type: "daily" | "small" | "large";
+  content: string;
   created_at: string;
   updated_at: string;
 }

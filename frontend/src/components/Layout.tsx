@@ -1,8 +1,9 @@
 import { Outlet, NavLink, useNavigate } from "react-router-dom";
-import { LogOut } from "lucide-react";
+import { LogOut, Settings } from "lucide-react";
 import { message } from "antd";
 import { useAuthStore } from "@/store/authStore";
 import { ProfileModal } from "@/components/ProfileModal";
+import { SystemSettingsModal } from "@/components/SystemSettingsModal";
 import type { User as UserType } from "@/types/auth";
 import { useState } from "react";
 
@@ -10,6 +11,7 @@ export default function Layout() {
   const { user, clearAuth, setUser } = useAuthStore();
   const navigate = useNavigate();
   const [showProfileModal, setShowProfileModal] = useState(false);
+  const [showSystemSettingsModal, setShowSystemSettingsModal] = useState(false);
 
   const navItems = [
     { path: "/daily-plans", label: "每日计划" },
@@ -60,6 +62,15 @@ export default function Layout() {
 
               {/* User Menu */}
               <div className="flex items-center gap-3 pl-4 border-l border-gray-200">
+                {/* System Settings Button */}
+                <button
+                  onClick={() => setShowSystemSettingsModal(true)}
+                  className="p-2 text-gray-500 hover:text-indigo-500 hover:bg-indigo-50 rounded-lg transition-all"
+                  title="系统设置"
+                >
+                  <Settings size={18} />
+                </button>
+
                 {/* Avatar/Username - Clickable */}
                 <button
                   onClick={() => setShowProfileModal(true)}
@@ -105,6 +116,17 @@ export default function Layout() {
           user={user}
           onClose={() => setShowProfileModal(false)}
           onUpdate={handleProfileUpdate}
+        />
+      )}
+
+      {/* System Settings Modal */}
+      {showSystemSettingsModal && (
+        <SystemSettingsModal
+          onClose={() => {
+            setShowSystemSettingsModal(false);
+            // Refresh the page to apply settings
+            window.location.reload();
+          }}
         />
       )}
     </div>

@@ -52,6 +52,7 @@ class DailyPlan(Base):
     user = relationship("User", back_populates="daily_plans")
     monthly_plan = relationship("MonthlyPlan", back_populates="daily_plans")
     daily_tasks = relationship("DailyTask", back_populates="daily_plan", cascade="all, delete-orphan")
+    daily_summary = relationship("DailySummary", uselist=False, cascade="all, delete-orphan")
 
     @property
     def total_tasks(self) -> int:

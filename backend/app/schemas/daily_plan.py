@@ -4,6 +4,7 @@ from typing import Optional, List
 from uuid import UUID
 
 from app.models.daily_plan import DailyTaskPriority, DailyTaskStatus, BusynessLevel
+from app.schemas.daily_summary import DailySummaryResponse
 
 
 class DailyTaskBase(BaseModel):
@@ -77,6 +78,7 @@ class DailyPlanResponse(DailyPlanBase):
     completed_tasks: int
     completion_rate: float
     daily_tasks: List[DailyTaskResponse] = []
+    daily_summary: Optional[DailySummaryResponse] = None
     created_at: datetime
     updated_at: datetime
 

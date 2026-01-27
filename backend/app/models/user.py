@@ -25,6 +25,7 @@ class User(Base):
     updated_at = Column(DateTime(timezone=True), server_default=func.now(), onupdate=func.now())
 
     # Relationships
+    system_settings = relationship("SystemSettings", back_populates="user", uselist=False, cascade="all, delete-orphan")
     yearly_goals = relationship("YearlyGoal", back_populates="user", cascade="all, delete-orphan")
     monthly_plans = relationship("MonthlyPlan", back_populates="user", cascade="all, delete-orphan")
     daily_plans = relationship("DailyPlan", back_populates="user", cascade="all, delete-orphan")
