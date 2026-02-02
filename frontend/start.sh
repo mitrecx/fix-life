@@ -18,6 +18,16 @@ echo -e "${BLUE}  Fix Life Frontend 启动脚本${NC}"
 echo -e "${BLUE}========================================${NC}"
 echo ""
 
+# 检查并杀死已有的前端进程（Vite通常运行在5173端口）
+VITE_PID=$(lsof -ti:5173 2>/dev/null)
+if [ ! -z "$VITE_PID" ]; then
+    echo -e "${YELLOW}⚠️  检测到端口 5173 已被占用 (PID: $VITE_PID)${NC}"
+    echo -e "${YELLOW}正在停止已有进程...${NC}"
+    kill -9 $VITE_PID 2>/dev/null
+    sleep 1
+    echo -e "${GREEN}✓ 已停止旧进程${NC}"
+fi
+
 # 检查 Node.js
 if ! command -v node &> /dev/null; then
     echo -e "${RED}❌ 未找到 Node.js${NC}"

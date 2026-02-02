@@ -19,6 +19,16 @@ echo -e "${BLUE}  Fix Life Backend 启动脚本${NC}"
 echo -e "${BLUE}========================================${NC}"
 echo ""
 
+# 检查并杀死已有的后端进程（Uvicorn通常运行在8000端口）
+BACKEND_PID=$(lsof -ti:8000 2>/dev/null)
+if [ ! -z "$BACKEND_PID" ]; then
+    echo -e "${YELLOW}⚠️  检测到端口 8000 已被占用 (PID: $BACKEND_PID)${NC}"
+    echo -e "${YELLOW}正在停止已有进程...${NC}"
+    kill -9 $BACKEND_PID 2>/dev/null
+    sleep 1
+    echo -e "${GREEN}✓ 已停止旧进程${NC}"
+fi
+
 # 检查 uv 是否安装
 if ! command -v uv &> /dev/null; then
     echo -e "${RED}❌ 未找到 uv${NC}"
