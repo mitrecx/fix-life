@@ -106,28 +106,28 @@ export function MonthlyPlansList() {
     <div className="space-y-6">
       {/* Header with gradient background */}
       <div
-        className="rounded-2xl p-6 shadow-lg"
+        className="rounded-xl sm:rounded-2xl p-4 sm:p-6 shadow-lg"
         style={{
           background: 'linear-gradient(to right, rgb(99 102 241), rgb(168 85 247), rgb(236 72 153))'
         }}
       >
-        <div className="flex items-center justify-between">
+        <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3">
           <div>
-            <h2 className="text-3xl font-bold text-white mb-1">月度计划</h2>
-            <p className="text-white/80 text-sm">追踪每月目标，一步步实现你的年度计划</p>
+            <h2 className="text-2xl sm:text-3xl font-bold text-white mb-1">月度计划</h2>
+            <p className="text-white/80 text-xs sm:text-sm">追踪每月目标，一步步实现你的年度计划</p>
           </div>
           <button
             onClick={() => setShowForm(true)}
-            className="flex items-center gap-2 px-5 py-2.5 bg-white text-indigo-600 rounded-xl hover:bg-indigo-50 transition-all shadow-md hover:shadow-lg transform hover:-translate-y-0.5"
+            className="flex items-center gap-2 px-4 sm:px-5 py-2 sm:py-2.5 bg-white text-indigo-600 rounded-lg sm:rounded-xl hover:bg-indigo-50 transition-all shadow-md hover:shadow-lg transform hover:-translate-y-0.5 text-sm"
           >
-            <Plus size={20} />
+            <Plus size={18} />
             <span className="font-medium">新建计划</span>
           </button>
         </div>
       </div>
 
       {/* Filters */}
-      <div className="flex items-center gap-4 p-4 bg-white/80 backdrop-blur-sm rounded-xl shadow-sm border border-gray-100">
+      <div className="flex flex-wrap items-center gap-3 sm:gap-4 p-3 sm:p-4 bg-white/80 backdrop-blur-sm rounded-xl shadow-sm border border-gray-100">
         <div className="flex items-center gap-2">
           <label className="text-sm font-semibold text-gray-600">年份:</label>
           <select

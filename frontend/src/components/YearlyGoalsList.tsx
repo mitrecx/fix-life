@@ -111,23 +111,16 @@ const YearlyGoalsList = () => {
   }
 
   return (
-    <div style={{ padding: 24 }}>
+    <div className="p-3 sm:p-4 md:p-6">
       {/* Header */}
-      <div
-        style={{
-          display: "flex",
-          justifyContent: "space-between",
-          alignItems: "center",
-          marginBottom: 24,
-        }}
-      >
-        <h2 style={{ margin: 0 }}>年度目标</h2>
-        <Space>
+      <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3 mb-4 sm:mb-6">
+        <h2 className="text-xl sm:text-2xl font-semibold m-0">年度目标</h2>
+        <Space wrap>
           <Select
             value={selectedYear}
             onChange={setSelectedYear}
             options={yearOptions}
-            style={{ width: 120 }}
+            style={{ width: 100 }}
           />
           <Select
             value={selectedCategory}
@@ -135,7 +128,7 @@ const YearlyGoalsList = () => {
             options={[{ label: "全部类别", value: undefined }, ...GOAL_CATEGORIES]}
             placeholder="选择类别"
             allowClear
-            style={{ width: 120 }}
+            style={{ width: 110 }}
           />
           <Button icon={<ReloadOutlined />} onClick={handleRefresh} loading={loading}>
             刷新
@@ -148,16 +141,16 @@ const YearlyGoalsList = () => {
 
       {/* Goals List */}
       {loading && goals.length === 0 ? (
-        <div style={{ textAlign: "center", padding: 48 }}>
+        <div className="text-center py-12 sm:py-16">
           <Spin size="large" />
         </div>
       ) : goals.length === 0 ? (
         <Empty
           description="还没有年度目标，点击右上角创建一个吧！"
-          style={{ marginTop: 48 }}
+          className="mt-8 sm:mt-12"
         />
       ) : (
-        <div>
+        <div className="space-y-3 sm:space-y-4">
           {goals.map((goal) => (
             <YearlyGoalCard
               key={goal.id}

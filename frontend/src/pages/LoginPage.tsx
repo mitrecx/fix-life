@@ -42,24 +42,24 @@ export default function LoginPage() {
   };
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-indigo-50 via-purple-50 to-pink-50 flex items-center justify-center p-4">
+    <div className="min-h-screen bg-gradient-to-br from-indigo-50 via-purple-50 to-pink-50 flex items-center justify-center p-3 sm:p-4">
       <div className="w-full max-w-md">
         {/* Logo/Brand */}
-        <div className="text-center mb-8">
-          <h1 className="text-4xl font-bold bg-gradient-to-r from-indigo-600 via-purple-600 to-pink-600 bg-clip-text text-transparent mb-2">
+        <div className="text-center mb-6 sm:mb-8">
+          <h1 className="text-3xl sm:text-4xl font-bold bg-gradient-to-r from-indigo-600 via-purple-600 to-pink-600 bg-clip-text text-transparent mb-2">
             Fix Life
           </h1>
-          <p className="text-gray-600">管理你的目标，规划你的人生</p>
+          <p className="text-gray-600 text-sm sm:text-base">管理你的目标，规划你的人生</p>
         </div>
 
         {/* Login Card */}
-        <div className="bg-white rounded-2xl shadow-xl border border-gray-100 overflow-hidden">
-          <div className="px-8 py-6 bg-gradient-to-r from-indigo-500 to-purple-500">
-            <h2 className="text-2xl font-semibold text-white">欢迎回来</h2>
-            <p className="text-indigo-100 text-sm mt-1">登录到你的账户</p>
+        <div className="bg-white rounded-xl sm:rounded-2xl shadow-xl border border-gray-100 overflow-hidden">
+          <div className="px-6 py-4 sm:px-8 sm:py-6 bg-gradient-to-r from-indigo-500 to-purple-500">
+            <h2 className="text-xl sm:text-2xl font-semibold text-white">欢迎回来</h2>
+            <p className="text-indigo-100 text-xs sm:text-sm mt-1">登录到你的账户</p>
           </div>
 
-          <form onSubmit={handleSubmit} className="p-8 space-y-5">
+          <form onSubmit={handleSubmit} className="p-5 sm:p-8 space-y-4 sm:space-y-5">
             {/* Email/Username Input */}
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-2">
@@ -126,9 +126,9 @@ export default function LoginPage() {
           </form>
 
           {/* Register Link */}
-          <div className="px-8 pb-6 text-center">
-            <span className="text-gray-600 text-sm">还没有账户？</span>
-            <Link to="/register" className="text-sm text-indigo-600 hover:text-indigo-700 font-semibold ml-1">
+          <div className="px-5 sm:px-8 pb-4 sm:pb-6 text-center">
+            <span className="text-gray-600 text-xs sm:text-sm">还没有账户？</span>
+            <Link to="/register" className="text-xs sm:text-sm text-indigo-600 hover:text-indigo-700 font-semibold ml-1">
               立即注册
             </Link>
           </div>

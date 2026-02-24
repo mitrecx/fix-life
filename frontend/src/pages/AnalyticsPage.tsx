@@ -108,20 +108,20 @@ export default function AnalyticsPage() {
     <div className="space-y-6">
       {/* Header */}
       <div
-        className="rounded-2xl p-6 shadow-lg"
+        className="rounded-xl sm:rounded-2xl p-4 sm:p-6 shadow-lg"
         style={{
           background: 'linear-gradient(to right, rgb(99 102 241), rgb(168 85 247), rgb(236 72 153))'
         }}
       >
-        <div className="flex items-center justify-between">
+        <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3">
           <div>
-            <h1 className="text-3xl font-bold text-white mb-1">数据统计与分析</h1>
-            <p className="text-white/80 text-sm">了解你的进度，追踪你的成长</p>
+            <h1 className="text-2xl sm:text-3xl font-bold text-white mb-1">数据统计与分析</h1>
+            <p className="text-white/80 text-xs sm:text-sm">了解你的进度，追踪你的成长</p>
           </div>
           <select
             value={selectedYear}
             onChange={(e) => setSelectedYear(Number(e.target.value))}
-            className="px-4 py-2 rounded-lg border-0 bg-white/20 text-white font-medium focus:outline-none focus:ring-2 focus:ring-white/50"
+            className="px-3 sm:px-4 py-2 rounded-lg border-0 bg-white/20 text-white font-medium focus:outline-none focus:ring-2 focus:ring-white/50 text-sm"
           >
             {Array.from({ length: 5 }, (_, i) => new Date().getFullYear() - 2 + i).map((y) => (
               <option key={y} value={y} className="text-gray-800">

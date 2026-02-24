@@ -33,4 +33,4 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
   - 检查 .env 文件是否存在
 
 ### 注意
-前后端项目启动很快, 一般在 5 秒之内, 请你不要长时间的等待
+前后端项目启动都很快, 一般在 5 秒之内, 请你不要长时间的等待

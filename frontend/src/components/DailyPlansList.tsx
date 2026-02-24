@@ -393,9 +393,9 @@ export function DailyPlansList() {
   return (
     <div className="space-y-6">
       {/* Filters */}
-      <div className="p-4 bg-white/80 backdrop-blur-sm rounded-xl shadow-sm border border-gray-100">
+      <div className="p-3 sm:p-4 bg-white/80 backdrop-blur-sm rounded-xl shadow-sm border border-gray-100">
         {/* Year and Week selection */}
-        <div className="flex items-center gap-4 mb-3">
+        <div className="flex flex-wrap items-center gap-2 sm:gap-4 mb-3">
           <label className="text-sm font-semibold text-gray-600">按周查询:</label>
           <select
             value={selectedYear}
@@ -434,7 +434,7 @@ export function DailyPlansList() {
         </div>
 
         {/* Date range selection */}
-        <div className="flex items-center gap-4 mb-3">
+        <div className="flex flex-wrap items-center gap-2 sm:gap-4 mb-3">
           <div className="flex items-center gap-2">
             <label className="text-sm font-semibold text-gray-600">开始日期:</label>
             <input
@@ -464,7 +464,7 @@ export function DailyPlansList() {
         </div>
 
         {/* New plan button */}
-        <div className="flex items-center gap-4">
+        <div className="flex flex-wrap items-center gap-2 sm:gap-4">
           <button
             onClick={() => setShowForm(true)}
             className="flex items-center gap-2 px-5 py-2.5 text-emerald-700 bg-emerald-50 rounded-xl hover:bg-emerald-100 transition-all"
@@ -547,45 +547,45 @@ export function DailyPlansList() {
 
       {/* Export Modal */}
       {showExportModal && (
-        <div className="fixed inset-0 bg-gray-900/60 backdrop-blur-sm flex items-center justify-center z-50">
-          <div className="bg-white rounded-3xl shadow-2xl w-full max-w-3xl max-h-[85vh] overflow-hidden animate-in fade-in zoom-in duration-200 flex flex-col">
+        <div className="fixed inset-0 bg-gray-900/60 backdrop-blur-sm flex items-center justify-center z-50 p-2 sm:p-4">
+          <div className="bg-white rounded-2xl sm:rounded-3xl shadow-2xl w-full max-w-full sm:max-w-3xl max-h-[90vh] sm:max-h-[85vh] overflow-hidden animate-in fade-in zoom-in duration-200 flex flex-col">
             {/* Header */}
-            <div className="flex items-center justify-between p-6 border-b bg-gradient-to-r from-orange-50 to-amber-50 rounded-t-3xl">
-              <div className="flex items-center gap-3">
-                <div className="p-2 bg-gradient-to-br from-orange-500 to-amber-600 rounded-xl">
-                  <Download className="text-white" size={20} />
+            <div className="flex items-center justify-between p-3 sm:p-6 border-b bg-gradient-to-r from-orange-50 to-amber-50 rounded-t-2xl sm:rounded-t-3xl">
+              <div className="flex items-center gap-2 sm:gap-3">
+                <div className="p-1.5 sm:p-2 bg-gradient-to-br from-orange-500 to-amber-600 rounded-lg sm:rounded-xl">
+                  <Download className="text-white" size={16} />
                 </div>
                 <div>
-                  <h2 className="text-xl font-semibold text-gray-800">导出每日计划</h2>
-                  <p className="text-sm text-gray-500">{startDate} ~ {endDate}</p>
+                  <h2 className="text-base sm:text-xl font-semibold text-gray-800">导出每日计划</h2>
+                  <p className="text-xs sm:text-sm text-gray-500">{startDate} ~ {endDate}</p>
                 </div>
               </div>
               <button
                 onClick={() => setShowExportModal(false)}
-                className="text-gray-400 hover:text-gray-600 transition-colors"
+                className="text-gray-400 hover:text-gray-600 transition-colors p-1"
               >
-                <X size={24} />
+                <X size={20} />
               </button>
             </div>
 
             {/* Content */}
-            <div className="flex-1 overflow-y-auto p-6 bg-gray-50">
-              <pre className="bg-white border border-gray-200 rounded-xl p-4 text-sm text-gray-700 whitespace-pre-wrap font-mono overflow-x-auto">
+            <div className="flex-1 overflow-y-auto p-3 sm:p-6 bg-gray-50">
+              <pre className="bg-white border border-gray-200 rounded-lg sm:rounded-xl p-2 sm:p-4 text-xs sm:text-sm text-gray-700 whitespace-pre-wrap font-mono overflow-x-auto">
                 {generateMarkdown()}
               </pre>
             </div>
 
             {/* Footer */}
-            <div className="flex justify-end gap-3 p-6 border-t bg-white">
+            <div className="flex justify-end gap-2 sm:gap-3 p-3 sm:p-6 border-t bg-white">
               <button
                 onClick={handleCopyToClipboard}
-                className="px-5 py-2.5 text-gray-700 bg-white border border-gray-300 rounded-xl hover:bg-gray-50 transition-colors font-medium"
+                className="px-3 sm:px-5 py-2 sm:py-2.5 text-gray-700 bg-white border border-gray-300 rounded-lg sm:rounded-xl hover:bg-gray-50 transition-colors font-medium text-xs sm:text-sm"
               >
                 一键复制
               </button>
               <button
                 onClick={handleExportAsMD}
-                className="px-5 py-2.5 text-white bg-gradient-to-r from-orange-500 to-amber-600 rounded-xl hover:from-orange-600 hover:to-amber-700 transition-all font-medium shadow-md"
+                className="px-3 sm:px-5 py-2 sm:py-2.5 text-white bg-gradient-to-r from-orange-500 to-amber-600 rounded-lg sm:rounded-xl hover:from-orange-600 hover:to-amber-700 transition-all font-medium shadow-md text-xs sm:text-sm"
               >
                 导出为MD文件
               </button>
