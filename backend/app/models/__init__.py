@@ -9,6 +9,7 @@ from app.models.daily_plan import (
     DailySummary,
     SummaryType,
 )
+from app.models.weekly_summary import WeeklySummary
 
 __all__ = [
     "User",
@@ -26,4 +27,5 @@ __all__ = [
     "DailyTaskStatus",
     "DailySummary",
     "SummaryType",
+    "WeeklySummary",
 ]

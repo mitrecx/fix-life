@@ -9,6 +9,8 @@ import YearlyGoalsPage from "@/pages/YearlyGoalsPage";
 import MonthlyPlansPage from "@/pages/MonthlyPlansPage";
 import DailyPlansPage from "@/pages/DailyPlansPage";
 import AnalyticsPage from "@/pages/AnalyticsPage";
+import WeeklySummariesPage from "@/pages/WeeklySummariesPage";
+import WeeklySummaryDetailPage from "@/pages/WeeklySummaryDetailPage";
 
 export const router = createBrowserRouter([
   // Public routes
@@ -49,6 +51,14 @@ export const router = createBrowserRouter([
       {
         path: "yearly-goals",
         element: <YearlyGoalsPage />,
+      },
+      {
+        path: "weekly-summaries",
+        element: <WeeklySummariesPage />,
+      },
+      {
+        path: "weekly-summaries/:summaryId",
+        element: <WeeklySummaryDetailPage />,
       },
       {
         path: "analytics",

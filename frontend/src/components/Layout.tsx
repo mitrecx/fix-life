@@ -17,6 +17,7 @@ export default function Layout() {
     { path: "/daily-plans", label: "每日计划", shortLabel: "日" },
     { path: "/monthly-plans", label: "月度计划", shortLabel: "月" },
     { path: "/yearly-goals", label: "年度目标", shortLabel: "年" },
+    { path: "/weekly-summaries", label: "周总结", shortLabel: "周" },
     { path: "/analytics", label: "数据统计", shortLabel: "统" },
   ];
 
