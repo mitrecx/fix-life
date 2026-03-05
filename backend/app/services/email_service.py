@@ -104,6 +104,20 @@ class EmailService:
 
         return True, "验证成功"
 
+    def send_email(self, to_email: str, subject: str, body: str) -> tuple[bool, Optional[str]]:
+        """
+        Send email via SMTP.
+
+        Args:
+            to_email: Recipient email address
+            subject: Email subject
+            body: Email body (HTML)
+
+        Returns:
+            Tuple of (success: bool, error_message: str|None)
+        """
+        return self._send_email(to_email, subject, body)
+
     def _send_email(self, to_email: str, subject: str, body: str) -> tuple[bool, Optional[str]]:
         """
         Send email via SMTP.

@@ -45,6 +45,20 @@ class WeeklySummaryService {
   async delete(summaryId: string): Promise<void> {
     await api.delete(`${this.baseUrl}/${summaryId}`);
   }
+
+  async sendNotification(
+    summaryId: string,
+    sendEmail: boolean,
+    sendFeishu: boolean
+  ): Promise<any> {
+    const params = new URLSearchParams();
+    if (sendEmail) params.append("send_email", "true");
+    if (sendFeishu) params.append("send_feishu", "true");
+
+    return await api.post(
+      `${this.baseUrl}/${summaryId}/send?${params.toString()}`
+    );
+  }
 }
 
 export const weeklySummaryService = new WeeklySummaryService();

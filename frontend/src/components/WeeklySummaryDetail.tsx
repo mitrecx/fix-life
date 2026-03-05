@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useMemo, useCallback } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import {
   Calendar,
@@ -8,9 +8,15 @@ import {
   Edit,
   Save,
   ArrowLeft,
+  Send,
+  Mail,
+  MessageSquare,
 } from "lucide-react";
-import { Button, Spin, message } from "antd";
+import { Button, Spin, message, Dropdown } from "antd";
+import type { MenuProps } from "antd";
 import { weeklySummaryService } from "@/services/weeklySummaryService";
+import { systemSettingsService } from "@/services/systemSettingsService";
+import type { SystemSettings } from "@/types/systemSettings";
 import type { WeeklySummary, DailySummaryData } from "@/types/weeklySummary";
 
 export function WeeklySummaryDetail() {
@@ -21,10 +27,42 @@ export function WeeklySummaryDetail() {
   const [editing, setEditing] = useState(false);
   const [summaryText, setSummaryText] = useState("");
   const [saving, setSaving] = useState(false);
+  const [settings, setSettings] = useState<SystemSettings | null>(null);
+  const [sending, setSending] = useState(false);
 
   useEffect(() => {
     loadSummary();
+    loadSettings();
   }, [summaryId]);
+
+  // 当窗口重新获得焦点时，刷新设置（用户可能从系统设置页面返回）
+  useEffect(() => {
+    const handleFocus = () => {
+      loadSettings();
+    };
+
+    window.addEventListener('focus', handleFocus);
+    return () => {
+      window.removeEventListener('focus', handleFocus);
+    };
+  }, []);
+
+  const loadSettings = async () => {
+    try {
+      // Don't clear cache every time - use cache if available
+      // This prevents losing settings when API times out
+      const data = await systemSettingsService.getSettings();
+      console.log("[DEBUG] SystemSettings loaded:", JSON.stringify(data, null, 2));
+      console.log("[DEBUG] feishu_enabled:", data.weekly_summary_feishu_enabled);
+      console.log("[DEBUG] feishu_app_id:", data.feishu_app_id);
+      console.log("[DEBUG] feishu_chat_id:", data.feishu_chat_id);
+      setSettings(data);
+    } catch (error) {
+      console.error("Failed to load settings:", error);
+      // Don't update settings on error - keep existing values
+      // This prevents reverting to default settings when API times out
+    }
+  };
 
   const loadSummary = async () => {
     if (!summaryId) return;
@@ -56,6 +94,103 @@ export function WeeklySummaryDetail() {
       setSaving(false);
     }
   };
+
+  const handleSendNotification = useCallback(async (sendEmail: boolean, sendFeishu: boolean) => {
+    if (!summary) return;
+    setSending(true);
+    try {
+      const result = await weeklySummaryService.sendNotification(
+        summary.id,
+        sendEmail,
+        sendFeishu
+      );
+
+      const successMessages: string[] = [];
+      const errorMessages: string[] = [];
+
+      if (sendEmail) {
+        if (result.email_sent) {
+          successMessages.push(`邮件已发送到 ${result.email_recipient}`);
+        } else {
+          errorMessages.push(`邮件发送失败: ${result.email_error || "未知错误"}`);
+        }
+      }
+
+      if (sendFeishu) {
+        if (result.feishu_sent) {
+          successMessages.push("飞书消息已发送");
+        } else {
+          errorMessages.push(`飞书发送失败: ${result.feishu_error || "未知错误"}`);
+        }
+      }
+
+      if (successMessages.length > 0) {
+        message.success(successMessages.join("\n"));
+      }
+      if (errorMessages.length > 0) {
+        message.error(errorMessages.join("\n"));
+      }
+    } catch (error: any) {
+      console.error("Failed to send notification:", error);
+      message.error(error.response?.data?.detail || "发送失败");
+    } finally {
+      setSending(false);
+    }
+  }, [summary]);
+
+  const sendMenuItems = useMemo((): MenuProps["items"] => {
+    const items: MenuProps["items"] = [];
+
+    // Check which channels are configured
+    const emailEnabled = settings?.weekly_summary_email_enabled;
+    const feishuEnabled = settings?.weekly_summary_feishu_enabled;
+
+    // Also check if Feishu is fully configured (has app_id, secret, and chat_id)
+    const feishuConfigured = settings?.feishu_app_id && settings?.feishu_app_secret && settings?.feishu_chat_id;
+
+    // Allow sending if channel is enabled OR if it's fully configured
+    const canSendEmail = emailEnabled;
+    const canSendFeishu = feishuEnabled || feishuConfigured;
+
+    if (!canSendEmail && !canSendFeishu) {
+      return [{
+        key: "not-configured",
+        label: "请先在系统设置中配置推送通道",
+        disabled: true,
+      }];
+    }
+
+    if (canSendEmail) {
+      items.push({
+        key: "email",
+        label: "发送到邮箱",
+        icon: <Mail size={16} />,
+        onClick: () => handleSendNotification(true, false),
+      });
+    }
+
+    if (canSendFeishu) {
+      items.push({
+        key: "feishu",
+        label: "发送到飞书",
+        icon: <MessageSquare size={16} />,
+        onClick: () => handleSendNotification(false, true),
+      });
+    }
+
+    if (canSendEmail && canSendFeishu) {
+      items.push({
+        type: "divider",
+      });
+      items.push({
+        key: "both",
+        label: "同时发送到邮箱和飞书",
+        onClick: () => handleSendNotification(true, true),
+      });
+    }
+
+    return items;
+  }, [settings?.weekly_summary_email_enabled, settings?.weekly_summary_feishu_enabled, settings?.feishu_app_id, settings?.feishu_app_secret, settings?.feishu_chat_id, handleSendNotification]);
 
   const formatDate = (dateStr: string) => {
     const date = new Date(dateStr);
@@ -99,6 +234,20 @@ export function WeeklySummaryDetail() {
               {new Date(summary.end_date).toLocaleDateString("zh-CN")}
             </p>
           </div>
+          <Dropdown
+            menu={{ items: sendMenuItems }}
+            trigger={["click"]}
+            disabled={sending}
+          >
+            <Button
+              type="primary"
+              icon={<Send size={18} />}
+              loading={sending}
+              className="shadow-lg"
+            >
+              发送
+            </Button>
+          </Dropdown>
         </div>
       </div>
 
@@ -221,6 +370,35 @@ export function WeeklySummaryDetail() {
                   style={{ width: `${day.completion_rate}%` }}
                 />
               </div>
+
+              {/* Task List */}
+              {day.tasks && day.tasks.length > 0 && (
+                <div className="mt-3 space-y-2">
+                  {day.tasks.map((task, index) => {
+                    const statusEmoji = {
+                      "done": "✅",
+                      "in-progress": "🔄",
+                      "todo": "⬜",
+                      "cancelled": "❌"
+                    }[task.status] || "⬜";
+
+                    const statusText = {
+                      "done": "已完成",
+                      "in-progress": "进行中",
+                      "todo": "待办",
+                      "cancelled": "已取消"
+                    }[task.status] || task.status;
+
+                    return (
+                      <div key={index} className="flex items-start gap-2 text-sm">
+                        <span className="flex-shrink-0">{statusEmoji}</span>
+                        <span className="flex-1 text-gray-700">{task.title}</span>
+                        <span className="text-xs text-gray-500">{statusText}</span>
+                      </div>
+                    );
+                  })}
+                </div>
+              )}
 
               {/* Daily Summary */}
               {day.daily_summary && (

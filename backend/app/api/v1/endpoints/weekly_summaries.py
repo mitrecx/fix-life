@@ -33,20 +33,20 @@ def get_weekly_summaries(
     - limit: 分页返回条数
     """
     service = WeeklySummaryService(db)
-    summaries = service.get_user_weekly_summaries(
-        user_id=str(current_user.id),
-        year=year,
-        skip=skip,
-        limit=limit
-    )
 
-    # 获取总数
-    total = len(service.get_user_weekly_summaries(
+    # 一次性获取所有符合条件的周总结（用于分页和总数统计）
+    all_summaries = service.get_user_weekly_summaries(
         user_id=str(current_user.id),
         year=year,
         skip=0,
-        limit=1000  # 获取所有
-    ))
+        limit=10000  # 获取足够多的记录用于计算总数
+    )
+
+    # 计算总数
+    total = len(all_summaries)
+
+    # 应用分页
+    summaries = all_summaries[skip:skip + limit]
 
     return WeeklySummaryList(
         summaries=summaries,
@@ -206,3 +206,52 @@ def delete_weekly_summary(
         raise HTTPException(status_code=404, detail="Failed to delete summary")
 
     return {"message": "Weekly summary deleted successfully"}
+
+
+@router.post("/{summary_id}/send")
+def send_weekly_summary_notification(
+    summary_id: str,
+    send_email: bool = Query(False, description="发送邮件通知"),
+    send_feishu: bool = Query(False, description="发送飞书通知"),
+    db: Session = Depends(get_db),
+    current_user = Depends(get_current_user),
+):
+    """
+    手动发送周总结通知
+
+    可以选择发送到邮箱和/或飞书群。
+    系统会检查用户的系统设置，只有在启用了相应通道的情况下才会发送。
+
+    参数:
+    - send_email: 是否发送邮件通知
+    - send_feishu: 是否发送飞书通知
+    """
+    from app.services.notification_service import NotificationService
+
+    # Get summary first to verify ownership
+    service = WeeklySummaryService(db)
+    summary = service.get_weekly_summary_by_id(summary_id)
+
+    if not summary:
+        raise HTTPException(status_code=404, detail="Weekly summary not found")
+
+    # Verify ownership
+    if str(summary.user_id) != str(current_user.id):
+        raise HTTPException(status_code=403, detail="Not authorized to send notifications for this summary")
+
+    # At least one channel should be requested
+    if not send_email and not send_feishu:
+        raise HTTPException(
+            status_code=400,
+            detail="At least one notification channel (email or feishu) must be specified"
+        )
+
+    # Send notifications
+    notification_service = NotificationService(db)
+    result = notification_service.send_weekly_summary(
+        summary_id=summary_id,
+        send_email=send_email,
+        send_feishu=send_feishu
+    )
+
+    return result

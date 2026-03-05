@@ -1,7 +1,7 @@
 import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
-import { Calendar, FileText, RefreshCw } from "lucide-react";
-import { Button, Spin, message } from "antd";
+import { Calendar, FileText, Plus } from "lucide-react";
+import { Button, Spin, message, Modal, InputNumber } from "antd";
 import { weeklySummaryService } from "@/services/weeklySummaryService";
 import type { WeeklySummary } from "@/types/weeklySummary";
 
@@ -11,6 +11,9 @@ export function WeeklySummariesList() {
   const [loading, setLoading] = useState(true);
   const [generating, setGenerating] = useState(false);
   const [selectedYear, setSelectedYear] = useState<number | undefined>(new Date().getFullYear());
+  const [isModalOpen, setIsModalOpen] = useState(false);
+  const [generateYear, setGenerateYear] = useState(new Date().getFullYear());
+  const [generateWeek, setGenerateWeek] = useState<number | null>(null);
 
   useEffect(() => {
     loadSummaries();
@@ -33,24 +36,52 @@ export function WeeklySummariesList() {
     }
   };
 
-  const handleGenerateLastWeek = async () => {
+  const handleOpenGenerateModal = () => {
+    // Get last week as default
+    const today = new Date();
+    const lastMonday = new Date(today);
+    lastMonday.setDate(today.getDate() - today.getDay() - 6);
+    const weekNumber = getISOWeek(lastMonday);
+    setGenerateYear(lastMonday.getFullYear());
+    setGenerateWeek(weekNumber);
+    setIsModalOpen(true);
+  };
+
+  const handleGenerate = async () => {
+    if (generateWeek === null) {
+      message.warning("请选择周数");
+      return;
+    }
+
     setGenerating(true);
+    setIsModalOpen(false);
     try {
-      await weeklySummaryService.generate({});
+      await weeklySummaryService.generate({
+        year: generateYear,
+        week_number: generateWeek,
+        force_regenerate: true,
+      });
       message.success("周总结生成成功");
       loadSummaries();
     } catch (error: any) {
       console.error("Failed to generate weekly summary:", error);
-      if (error.response?.status === 409) {
-        message.warning("上周的总结已存在，如需重新生成请使用强制重新生成");
-      } else if (error.response?.status === 404) {
-        message.warning("上周没有日计划数据");
+      if (error.response?.status === 404) {
+        message.warning("该周没有日计划数据");
       } else {
         message.error("生成周总结失败");
       }
     } finally {
       setGenerating(false);
     }
+  };
+
+  // Helper function to get ISO week number
+  const getISOWeek = (date: Date) => {
+    const d = new Date(Date.UTC(date.getFullYear(), date.getMonth(), date.getDate()));
+    const dayNum = d.getUTCDay() || 7;
+    d.setUTCDate(d.getUTCDate() + 4 - dayNum);
+    const yearStart = new Date(Date.UTC(d.getUTCFullYear(), 0, 1));
+    return Math.ceil((((d.getTime() - yearStart.getTime()) / 86400000) + 1) / 7);
   };
 
   const getWeekLabel = (summary: WeeklySummary) => {
@@ -79,12 +110,12 @@ export function WeeklySummariesList() {
           </div>
           <Button
             type="primary"
-            icon={<RefreshCw size={18} />}
-            onClick={handleGenerateLastWeek}
+            icon={<Plus size={18} />}
+            onClick={handleOpenGenerateModal}
             loading={generating}
             className="shadow-lg"
           >
-            生成上周总结
+            生成周总结
           </Button>
         </div>
       </div>
@@ -120,7 +151,7 @@ export function WeeklySummariesList() {
         <div className="text-center py-12 bg-white rounded-2xl shadow-sm">
           <FileText className="mx-auto text-gray-400" size={48} />
           <h3 className="mt-4 text-lg font-medium text-gray-900">暂无周总结</h3>
-          <p className="mt-2 text-gray-500">点击"生成上周总结"按钮开始使用</p>
+          <p className="mt-2 text-gray-500">点击"生成周总结"按钮开始使用</p>
         </div>
       ) : (
         <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
@@ -188,6 +219,47 @@ export function WeeklySummariesList() {
           ))}
         </div>
       )}
+
+      {/* Generate Weekly Summary Modal */}
+      <Modal
+        title="生成周总结"
+        open={isModalOpen}
+        onOk={handleGenerate}
+        onCancel={() => setIsModalOpen(false)}
+        confirmLoading={generating}
+        okText="生成"
+        cancelText="取消"
+      >
+        <div className="space-y-4 py-4">
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-2">
+              年份
+            </label>
+            <InputNumber
+              value={generateYear}
+              onChange={(value) => setGenerateYear(value || new Date().getFullYear())}
+              min={2020}
+              max={2030}
+              className="w-full"
+            />
+          </div>
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-2">
+              周数 (1-53)
+            </label>
+            <InputNumber
+              value={generateWeek}
+              onChange={(value) => setGenerateWeek(value)}
+              min={1}
+              max={53}
+              className="w-full"
+            />
+          </div>
+          <p className="text-sm text-gray-500">
+            如果该周的总结已存在，将自动覆盖更新。
+          </p>
+        </div>
+      </Modal>
     </div>
   );
 }

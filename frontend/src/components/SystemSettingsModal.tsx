@@ -1,6 +1,6 @@
 import { useState, useEffect } from "react";
-import { Settings, Loader2 } from "lucide-react";
-import { Switch, message } from "antd";
+import { Settings, Loader2, Mail, MessageSquare } from "lucide-react";
+import { Switch, Input, message } from "antd";
 import { systemSettingsService } from "@/services/systemSettingsService";
 import type { SystemSettings } from "@/types/systemSettings";
 
@@ -11,6 +11,12 @@ interface SystemSettingsModalProps {
 export function SystemSettingsModal({ onClose }: SystemSettingsModalProps) {
   const [settings, setSettings] = useState<SystemSettings>({
     show_daily_summary: false,
+    weekly_summary_email_enabled: false,
+    weekly_summary_email: null,
+    weekly_summary_feishu_enabled: false,
+    feishu_app_id: null,
+    feishu_app_secret: null,
+    feishu_chat_id: null,
   });
   const [isLoading, setIsLoading] = useState(true);
   const [isSaving, setIsSaving] = useState(false);
@@ -36,6 +42,8 @@ export function SystemSettingsModal({ onClose }: SystemSettingsModalProps) {
     try {
       setIsSaving(true);
       await systemSettingsService.updateSettings(settings);
+      // 清除缓存，确保其他组件能获取到最新设置
+      systemSettingsService.clearCache();
       message.success("设置已保存");
       onClose();
     } catch (error) {
@@ -95,6 +103,128 @@ export function SystemSettingsModal({ onClose }: SystemSettingsModalProps) {
                   disabled={isSaving}
                   className="ml-4"
                 />
+              </div>
+
+              <div className="border-t border-gray-200 my-6" />
+
+              {/* 周总结推送设置 */}
+              <div>
+                <h3 className="text-base font-semibold text-gray-800 mb-4 flex items-center gap-2">
+                  <MessageSquare size={18} className="text-indigo-600" />
+                  周总结推送设置
+                </h3>
+
+                <div className="space-y-4">
+                  {/* 邮件推送 */}
+                  <div className="p-4 bg-gray-50 rounded-xl border border-gray-200">
+                    <div className="flex items-center justify-between mb-3">
+                      <div className="flex items-center gap-2">
+                        <Mail size={16} className="text-gray-600" />
+                        <h4 className="text-sm font-semibold text-gray-800">邮件推送</h4>
+                      </div>
+                      <Switch
+                        checked={settings.weekly_summary_email_enabled}
+                        onChange={(checked) =>
+                          setSettings({ ...settings, weekly_summary_email_enabled: checked })
+                        }
+                        disabled={isSaving}
+                        size="small"
+                      />
+                    </div>
+                    {settings.weekly_summary_email_enabled && (
+                      <div className="mt-3">
+                        <label className="block text-xs font-medium text-gray-700 mb-1.5">
+                          接收邮箱
+                        </label>
+                        <Input
+                          type="email"
+                          placeholder="留空则使用注册邮箱"
+                          value={settings.weekly_summary_email || ''}
+                          onChange={(e) =>
+                            setSettings({ ...settings, weekly_summary_email: e.target.value || null })
+                          }
+                          disabled={isSaving}
+                          className="text-sm"
+                        />
+                        <p className="text-xs text-gray-500 mt-1.5">
+                          💡 每周一自动发送上周的周总结到指定邮箱
+                        </p>
+                      </div>
+                    )}
+                  </div>
+
+                  {/* 飞书推送 */}
+                  <div className="p-4 bg-gray-50 rounded-xl border border-gray-200">
+                    <div className="flex items-center justify-between mb-3">
+                      <div className="flex items-center gap-2">
+                        <MessageSquare size={16} className="text-blue-600" />
+                        <h4 className="text-sm font-semibold text-gray-800">飞书推送</h4>
+                      </div>
+                      <Switch
+                        checked={settings.weekly_summary_feishu_enabled}
+                        onChange={(checked) =>
+                          setSettings({ ...settings, weekly_summary_feishu_enabled: checked })
+                        }
+                        disabled={isSaving}
+                        size="small"
+                      />
+                    </div>
+                    {settings.weekly_summary_feishu_enabled && (
+                      <div className="mt-3 space-y-3">
+                        <div>
+                          <label className="block text-xs font-medium text-gray-700 mb-1.5">
+                            App ID <span className="text-red-500">*</span>
+                          </label>
+                          <Input
+                            placeholder="例如: cli_xxxxxxxxxxxxx"
+                            value={settings.feishu_app_id || ''}
+                            onChange={(e) =>
+                              setSettings({ ...settings, feishu_app_id: e.target.value || null })
+                            }
+                            disabled={isSaving}
+                            className="text-sm"
+                          />
+                        </div>
+                        <div>
+                          <label className="block text-xs font-medium text-gray-700 mb-1.5">
+                            App Secret <span className="text-red-500">*</span>
+                          </label>
+                          <Input.Password
+                            placeholder="飞书应用密钥"
+                            value={settings.feishu_app_secret || ''}
+                            onChange={(e) =>
+                              setSettings({ ...settings, feishu_app_secret: e.target.value || null })
+                            }
+                            disabled={isSaving}
+                            className="text-sm"
+                          />
+                        </div>
+                        <div>
+                          <label className="block text-xs font-medium text-gray-700 mb-1.5">
+                            群 Chat ID <span className="text-red-500">*</span>
+                          </label>
+                          <Input
+                            placeholder="例如: oc_xxxxxxxxxxxxxxxx"
+                            value={settings.feishu_chat_id || ''}
+                            onChange={(e) =>
+                              setSettings({ ...settings, feishu_chat_id: e.target.value || null })
+                            }
+                            disabled={isSaving}
+                            className="text-sm"
+                          />
+                          <p className="text-xs text-gray-500 mt-1.5">
+                            💡 需要先在飞书开放平台创建应用并将机器人添加到群聊中
+                          </p>
+                        </div>
+                        <div className="p-2.5 bg-blue-50 rounded-lg border border-blue-100">
+                          <p className="text-xs text-blue-700">
+                            📖 配置帮助：请参考飞书开放平台文档，创建企业自建应用并获取相关凭证
+                          </p>
+                        </div>
+                      </div>
+                    )}
+                  </div>
+                </div>
               </div>
 
               {/* 提示信息 */}

@@ -5,7 +5,7 @@ const TOKEN_KEY = "auth_token";
 const rawApi = axios.create({
   // Use relative path for production (same domain), localhost for development
   baseURL: import.meta.env.VITE_API_URL || "/api/v1",
-  timeout: 10000,
+  timeout: 30000,  // 增加到30秒，给数据库查询更多时间
   headers: {
     "Content-Type": "application/json",
   },

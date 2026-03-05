@@ -8,6 +8,8 @@ from app.core.celery import celery_app
 from app.db.session import SessionLocal
 from app.services.weekly_summary_service import WeeklySummaryService
 from app.services.email_service import EmailService
+from app.services.feishu_service import FeishuService
+from app.models.systemSettings import SystemSettings
 
 logger = get_task_logger(__name__)
 
@@ -93,35 +95,84 @@ def generate_user_weekly_summary(user_id: str, year: int, week_number: int) -> D
         if summary:
             logger.info(f"Successfully generated weekly summary for user {user_id}")
 
-            # 发送通知邮件
-            try:
-                email_service = EmailService()
-                user = db.query(User).filter(User.id == user_id).first()
+            # Get user's system settings for notification preferences
+            system_settings = db.query(SystemSettings).filter(
+                SystemSettings.user_id == user_id
+            ).first()
 
-                if user and user.email:
-                    subject = f"您的{year}年第{week_number}周总结已生成"
-                    body = f"""
-                    <h2>周总结已生成</h2>
-                    <p>您好 {user.username}，</p>
-                    <p>您的{year}年第{week_number}周总结已自动生成。</p>
-                    <p><strong>统计概览：</strong></p>
-                    <ul>
-                        <li>时间范围：{summary.start_date} 至 {summary.end_date}</li>
-                        <li>总任务数：{summary.total_tasks}</li>
-                        <li>已完成：{summary.completed_tasks}</li>
-                        <li>完成率：{summary.completion_rate}%</li>
-                    </ul>
-                    <p>请登录系统查看详细报告。</p>
-                    """
+            user = db.query(User).filter(User.id == user_id).first()
 
-                    email_service.send_email(
-                        to_email=user.email,
-                        subject=subject,
-                        body=body
+            # Send email notification if enabled
+            if system_settings and system_settings.weekly_summary_email_enabled and user:
+                try:
+                    email_service = EmailService()
+
+                    # Use custom email if provided, otherwise use user's registration email
+                    recipient_email = (
+                        system_settings.weekly_summary_email
+                        if system_settings.weekly_summary_email
+                        else user.email
                     )
-                    logger.info(f"Email notification sent to user {user_id}")
-            except Exception as e:
-                logger.error(f"Failed to send email notification to user {user_id}: {str(e)}")
+
+                    if recipient_email:
+                        subject = f"您的{year}年第{week_number}周总结已生成"
+                        body = f"""
+                        <h2>周总结已生成</h2>
+                        <p>您好 {user.username}，</p>
+                        <p>您的{year}年第{week_number}周总结已自动生成。</p>
+                        <p><strong>统计概览：</strong></p>
+                        <ul>
+                            <li>时间范围：{summary.start_date} 至 {summary.end_date}</li>
+                            <li>总任务数：{summary.total_tasks}</li>
+                            <li>已完成：{summary.completed_tasks}</li>
+                            <li>完成率：{summary.completion_rate}%</li>
+                        </ul>
+                        <p>请登录系统查看详细报告。</p>
+                        """
+
+                        email_service.send_email(
+                            to_email=recipient_email,
+                            subject=subject,
+                            body=body
+                        )
+                        logger.info(f"Email notification sent to {recipient_email} for user {user_id}")
+                except Exception as e:
+                    logger.error(f"Failed to send email notification to user {user_id}: {str(e)}")
+
+            # Send Feishu notification if enabled
+            if system_settings and system_settings.weekly_summary_feishu_enabled and user:
+                try:
+                    if (system_settings.feishu_app_id and
+                        system_settings.feishu_app_secret and
+                        system_settings.feishu_chat_id):
+
+                        feishu_service = FeishuService(
+                            app_id=system_settings.feishu_app_id,
+                            app_secret=system_settings.feishu_app_secret
+                        )
+
+                        # TODO: Generate proper summary URL based on your frontend URL
+                        summary_url = f"https://your-app.com/weekly-summaries/{summary.id}"
+
+                        success, msg_id, error = feishu_service.send_weekly_summary_card(
+                            chat_id=system_settings.feishu_chat_id,
+                            username=user.username,
+                            year=year,
+                            week_number=week_number,
+                            start_date=str(summary.start_date),
+                            end_date=str(summary.end_date),
+                            total_tasks=summary.total_tasks,
+                            completed_tasks=summary.completed_tasks,
+                            completion_rate=summary.completion_rate,
+                            summary_url=summary_url
+                        )
+
+                        if success:
+                            logger.info(f"Feishu notification sent for user {user_id}, message ID: {msg_id}")
+                        else:
+                            logger.error(f"Failed to send Feishu notification for user {user_id}: {error}")
+                except Exception as e:
+                    logger.error(f"Failed to send Feishu notification to user {user_id}: {str(e)}")
 
             return {
                 "user_id": user_id,

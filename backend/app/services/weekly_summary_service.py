@@ -132,6 +132,15 @@ class WeeklySummaryService:
                     "content": daily_summary.content
                 }
 
+            # Get tasks for this day
+            tasks_data = []
+            for task in plan.daily_tasks:
+                tasks_data.append({
+                    "title": task.title,
+                    "status": task.status.value,
+                    "priority": task.priority.value
+                })
+
             daily_data.append({
                 "date": plan.plan_date.isoformat(),
                 "plan_id": str(plan.id),
@@ -139,7 +148,8 @@ class WeeklySummaryService:
                 "total_tasks": plan.total_tasks,
                 "completed_tasks": plan.completed_tasks,
                 "completion_rate": plan.completion_rate,
-                "daily_summary": summary_data
+                "daily_summary": summary_data,
+                "tasks": tasks_data
             })
 
             total_tasks += plan.total_tasks

@@ -1,3 +1,9 @@
+export interface DailyTaskData {
+  title: string;
+  status: string;
+  priority: string;
+}
+
 export interface DailySummaryData {
   date: string;
   plan_id: string | null;
@@ -9,6 +15,7 @@ export interface DailySummaryData {
     summary_type: string;
     content: string;
   } | null;
+  tasks: DailyTaskData[];
 }
 
 export interface PriorityDistribution {
