@@ -6,7 +6,6 @@ import dayjs from "dayjs";
 import { dailyPlanService } from "@/services/dailyPlanService";
 import type { DailyTaskPriority } from "@/types/dailyPlan";
 import { DAILY_TASK_PRIORITY } from "@/types/dailyPlan";
-import type { BusynessLevel } from "@/types/dailyPlan";
 
 interface BatchCreateTasksModalProps {
   onClose: () => void;
@@ -64,7 +63,6 @@ export function BatchCreateTasksModal({ onClose, onSuccess }: BatchCreateTasksMo
           const newPlan = await dailyPlanService.create({
             plan_date: date,
             notes: "",
-            busyness_level: "moderate" as BusynessLevel,
           });
           planId = newPlan.id;
           createdPlanCount++;

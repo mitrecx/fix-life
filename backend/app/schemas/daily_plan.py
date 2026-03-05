@@ -3,7 +3,7 @@ from datetime import date, datetime
 from typing import Optional, List
 from uuid import UUID
 
-from app.models.daily_plan import DailyTaskPriority, DailyTaskStatus, BusynessLevel
+from app.models.daily_plan import DailyTaskPriority, DailyTaskStatus
 from app.schemas.daily_summary import DailySummaryResponse
 
 
@@ -50,7 +50,6 @@ class DailyTaskResponse(DailyTaskBase):
 class DailyPlanBase(BaseModel):
     plan_date: date = Field(..., description="Date of the plan")
     title: Optional[str] = Field(None, max_length=200, description="Plan title")
-    busyness_level: Optional[BusynessLevel] = Field(None, description="Daily busyness level")
     notes: Optional[str] = Field(None, max_length=2000, description="Additional notes")
 
     class Config:
@@ -63,7 +62,6 @@ class DailyPlanCreate(DailyPlanBase):
 
 class DailyPlanUpdate(BaseModel):
     title: Optional[str] = Field(None, max_length=200)
-    busyness_level: Optional[BusynessLevel] = None
     notes: Optional[str] = Field(None, max_length=2000)
 
     class Config:

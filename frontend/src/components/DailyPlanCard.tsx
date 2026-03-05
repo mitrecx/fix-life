@@ -2,7 +2,7 @@ import { useState, useEffect } from "react";
 import { Edit, Trash2, Plus, CheckCircle, Circle, Clock, ChevronDown, ChevronUp, BookOpen } from "lucide-react";
 import { Modal, message } from "antd";
 import type { DailyPlan, DailyTask, DailyTaskStatus, DailyTaskPriority } from "@/types/dailyPlan";
-import { DAILY_TASK_PRIORITY, BUSYNESS_LEVEL } from "@/types/dailyPlan";
+import { DAILY_TASK_PRIORITY } from "@/types/dailyPlan";
 import { dailyPlanService } from "@/services/dailyPlanService";
 import { DailySummaryModal } from "@/components/DailySummaryModal";
 import { systemSettingsService } from "@/services/systemSettingsService";
@@ -45,11 +45,6 @@ const getProgressColor = (rate: number) => {
   if (rate >= 50) return "linear-gradient(to right, rgb(96 165 250), rgb(99 102 241))";
   if (rate >= 25) return "linear-gradient(to right, rgb(251 191 36), rgb(249 115 22))";
   return "linear-gradient(to right, rgb(156 163 175), rgb(100 116 139))";
-};
-
-// 获取忙碌程度配置
-const getBusynessConfig = (busyness?: string) => {
-  return BUSYNESS_LEVEL.find((b) => b.value === busyness);
 };
 
 // 排序任务：按优先级（高→中→低），然后按创建时间（早→晚）
@@ -101,7 +96,6 @@ export function DailyPlanCard({ plan, onUpdate, onEdit, onDelete }: DailyPlanCar
   }, []);
 
   const weekdayConfig = getWeekdayConfig(plan.plan_date);
-  const busynessConfig = getBusynessConfig(plan.busyness_level);
   const progressColor = getProgressColor(plan.completion_rate);
 
   const handleAddTask = async (e: React.FormEvent) => {
@@ -176,11 +170,6 @@ export function DailyPlanCard({ plan, onUpdate, onEdit, onDelete }: DailyPlanCar
             <span className={`px-2 py-0.5 text-xs font-bold rounded-lg flex-shrink-0 ${weekdayConfig.textColor} ${weekdayConfig.tagBg} ${weekdayConfig.borderColor}`}>
               {weekdayConfig.label}
             </span>
-            {busynessConfig && (
-              <span className="text-base flex-shrink-0" title={busynessConfig.label}>
-                {busynessConfig.icon}
-              </span>
-            )}
           </div>
           <div className="flex items-center gap-1">
             {plan.total_tasks > 0 && (

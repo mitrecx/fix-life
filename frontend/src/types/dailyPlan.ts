@@ -2,8 +2,6 @@ export type DailyTaskPriority = "low" | "medium" | "high";
 
 export type DailyTaskStatus = "todo" | "in-progress" | "done" | "cancelled";
 
-export type BusynessLevel = "very-free" | "free" | "moderate" | "busy" | "very-busy";
-
 export interface DailyTask {
   id: string;
   daily_plan_id: string;
@@ -43,7 +41,6 @@ export interface DailyPlan {
   monthly_plan_id?: string;
   plan_date: string;
   title?: string;
-  busyness_level?: BusynessLevel;
   notes?: string;
   total_tasks: number;
   completed_tasks: number;
@@ -67,14 +64,12 @@ export interface DailySummaryInPlan {
 export interface DailyPlanCreate {
   plan_date: string;
   title?: string;
-  busyness_level?: BusynessLevel;
   notes?: string;
   monthly_plan_id?: string;
 }
 
 export interface DailyPlanUpdate {
   title?: string;
-  busyness_level?: BusynessLevel;
   notes?: string;
 }
 
@@ -89,14 +84,6 @@ export const DAILY_TASK_STATUS: { value: DailyTaskStatus; label: string; color: 
   { value: "in-progress", label: "进行中", color: "#3B82F6" },
   { value: "done", label: "已完成", color: "#10B981" },
   { value: "cancelled", label: "已取消", color: "#EF4444" },
-];
-
-export const BUSYNESS_LEVEL: { value: BusynessLevel; label: string; icon: string; color: string }[] = [
-  { value: "very-free", label: "很空闲", icon: "🌴", color: "#10B981" },
-  { value: "free", label: "较空闲", icon: "😌", color: "#3B82F6" },
-  { value: "moderate", label: "适中", icon: "😐", color: "#F59E0B" },
-  { value: "busy", label: "较忙", icon: "😅", color: "#EF4444" },
-  { value: "very-busy", label: "很忙", icon: "😫", color: "#7C3AED" },
 ];
 
 export const TIME_SLOTS: { value: string; label: string }[] = [

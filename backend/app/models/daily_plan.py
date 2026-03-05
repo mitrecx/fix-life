@@ -27,14 +27,6 @@ class DailyTaskStatus(str, enum.Enum):
     CANCELLED = "cancelled"
 
 
-class BusynessLevel(str, enum.Enum):
-    VERY_FREE = "very-free"
-    FREE = "free"
-    MODERATE = "moderate"
-    BUSY = "busy"
-    VERY_BUSY = "very-busy"
-
-
 class DailyPlan(Base):
     __tablename__ = "daily_plans"
 
@@ -43,7 +35,6 @@ class DailyPlan(Base):
     monthly_plan_id = Column(UUID(as_uuid=True), ForeignKey("monthly_plans.id", ondelete="SET NULL"))
     plan_date = Column(Date, nullable=False)
     title = Column(String(200))
-    busyness_level = Column(Enum(BusynessLevel, values_callable=lambda x: [e.value for e in x]))
     notes = Column(Text)
     created_at = Column(DateTime, default=datetime.utcnow)
     updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)

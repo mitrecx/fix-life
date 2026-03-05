@@ -6,7 +6,6 @@ from app.models.daily_plan import (
     DailyTask,
     DailyTaskPriority,
     DailyTaskStatus,
-    BusynessLevel,
     DailySummary,
     SummaryType,
 )
@@ -25,7 +24,6 @@ __all__ = [
     "DailyTask",
     "DailyTaskPriority",
     "DailyTaskStatus",
-    "BusynessLevel",
     "DailySummary",
     "SummaryType",
 ]

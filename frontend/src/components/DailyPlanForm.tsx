@@ -2,8 +2,7 @@ import { useState, useMemo, useEffect } from "react";
 import { X } from "lucide-react";
 import { DatePicker } from "antd";
 import dayjs from "dayjs";
-import type { DailyPlanCreate, DailyPlanUpdate, BusynessLevel, DailyPlan } from "@/types/dailyPlan";
-import { BUSYNESS_LEVEL } from "@/types/dailyPlan";
+import type { DailyPlanCreate, DailyPlanUpdate, DailyPlan } from "@/types/dailyPlan";
 
 interface DailyPlanFormProps {
   onSubmit: (data: DailyPlanCreate | DailyPlanUpdate) => void;
@@ -60,9 +59,6 @@ export function DailyPlanForm({
   const [title, setTitle] = useState(
     initialData.title || (isEditing ? "" : `计划${formatDateLabel(calculatedDefaultDate)}`)
   );
-  const [busynessLevel, setBusynessLevel] = useState<BusynessLevel | undefined>(
-    initialData.busyness_level || (isEditing ? undefined : "moderate")
-  );
   const [notes, setNotes] = useState(initialData.notes || "");
 
   // 获取已占用的日期集合
@@ -118,7 +114,6 @@ export function DailyPlanForm({
       plan_date: planDate,
     };
     if (title) data.title = title;
-    if (busynessLevel) data.busyness_level = busynessLevel;
     if (notes) data.notes = notes;
     onSubmit(data);
   };
@@ -176,29 +171,6 @@ export function DailyPlanForm({
               className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
               placeholder="例如：今天的学习计划"
             />
-          </div>
-
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">
-              忙碌程度
-            </label>
-            <div className="grid grid-cols-5 gap-2">
-              {BUSYNESS_LEVEL.map((b) => (
-                <button
-                  key={b.value}
-                  type="button"
-                  onClick={() => setBusynessLevel(busynessLevel === b.value ? undefined : b.value)}
-                  className={`flex flex-col items-center justify-center p-2 rounded-lg border-2 transition-all ${
-                    busynessLevel === b.value
-                      ? "border-blue-500 bg-blue-50"
-                      : "border-gray-200 hover:border-gray-300"
-                  }`}
-                >
-                  <span className="text-2xl">{b.icon}</span>
-                  <span className="text-xs mt-1">{b.label}</span>
-                </button>
-              ))}
-            </div>
           </div>
 
           <div>
