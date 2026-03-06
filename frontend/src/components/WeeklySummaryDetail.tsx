@@ -194,11 +194,12 @@ export function WeeklySummaryDetail() {
 
   const formatDate = (dateStr: string) => {
     const date = new Date(dateStr);
-    const month = date.getMonth() + 1;
-    const day = date.getDate();
+    const year = date.getFullYear();
+    const month = String(date.getMonth() + 1).padStart(2, '0');
+    const day = String(date.getDate()).padStart(2, '0');
     const weekdays = ["周日", "周一", "周二", "周三", "周四", "周五", "周六"];
     const weekday = weekdays[date.getDay()];
-    return `${month}月${day}日 ${weekday}`;
+    return `${year}-${month}-${day} ${weekday}`;
   };
 
   if (loading) {
@@ -335,10 +336,7 @@ export function WeeklySummaryDetail() {
           {summary.stats.daily_data.map((day: DailySummaryData) => (
             <div key={day.date} className="border rounded-xl p-4 hover:bg-gray-50 transition-colors">
               <div className="flex items-center justify-between mb-3">
-                <div>
-                  <h3 className="font-semibold text-gray-900">{formatDate(day.date)}</h3>
-                  {day.title && <p className="text-sm text-gray-600">{day.title}</p>}
-                </div>
+                <h3 className="font-semibold text-gray-900">{formatDate(day.date)}</h3>
                 <div className="text-right">
                   <p className="text-sm text-gray-600">
                     {day.completed_tasks}/{day.total_tasks} 任务

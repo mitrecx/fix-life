@@ -227,15 +227,19 @@ class FeishuService:
 
         for day_data in sorted(daily_data, key=lambda x: x["date"]):
             date_str = day_data["date"]
-            title = day_data.get("title", "")
             day_total = day_data.get("total_tasks", 0)
             day_completed = day_data.get("completed_tasks", 0)
             day_rate = day_data.get("completion_rate", 0)
             tasks = day_data.get("tasks", [])
             daily_summary = day_data.get("daily_summary")
 
-            # Format date (remove year for brevity)
+            # Format date to show weekday
+            from datetime import datetime
+            date_obj = datetime.strptime(date_str, "%Y-%m-%d")
+            weekdays = ["周一", "周二", "周三", "周四", "周五", "周六", "周日"]
+            weekday = weekdays[date_obj.weekday()]
             date_short = date_str[5:]  # MM-DD
+            date_display = f"{date_short} {weekday}"
 
             # Build task list
             task_lines = []
@@ -265,7 +269,7 @@ class FeishuService:
                     summary_content = summary_content[:200] + "..."
                 daily_summary_text = f"\n📝 **总结**: {summary_content}"
 
-            day_line = f"**{date_short}** {title}\n任务: {day_completed}/{day_total} ({day_rate}%)\n{tasks_text}{daily_summary_text}"
+            day_line = f"**{date_display}**\n任务: {day_completed}/{day_total} ({day_rate}%)\n{tasks_text}{daily_summary_text}"
             daily_summary_lines.append(day_line)
 
         daily_summary_text = "\n\n".join(daily_summary_lines)

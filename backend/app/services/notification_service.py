@@ -228,16 +228,17 @@ class NotificationService:
 
         for day in sorted(daily_data, key=lambda x: x["date"]):
             date_str = day["date"]
-            title = day.get("title", "无标题")
             day_total = day.get("total_tasks", 0)
             day_completed = day.get("completed_tasks", 0)
             day_rate = day.get("completion_rate", 0)
             tasks = day.get("tasks", [])
             daily_summary = day.get("daily_summary")
 
-            # Format date
+            # Format date with weekday
             date_obj = datetime.strptime(date_str, "%Y-%m-%d")
-            date_formatted = date_obj.strftime("%m月%d日")
+            weekdays = ["周一", "周二", "周三", "周四", "周五", "周六", "周日"]
+            weekday = weekdays[date_obj.weekday()]
+            date_formatted = f"{date_obj.strftime('%Y-%m-%d')} {weekday}"
 
             # Build task list HTML
             tasks_html = ""
@@ -273,10 +274,7 @@ class NotificationService:
             daily_details_html += f'''
             <div style="margin-bottom: 20px; padding: 16px; background: white; border: 1px solid #e5e7eb; border-radius: 8px;">
                 <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px;">
-                    <div>
-                        <div style="font-weight: 600; color: #111827; font-size: 16px;">{date_formatted}</div>
-                        <div style="font-size: 14px; color: #6b7280;">{title}</div>
-                    </div>
+                    <div style="font-weight: 600; color: #111827; font-size: 16px;">{date_formatted}</div>
                     <div style="text-align: right;">
                         <div style="font-size: 13px; color: #6b7280;">任务完成</div>
                         <div style="font-weight: 600; color: #111827;">{day_completed}/{day_total} ({day_rate}%)</div>
