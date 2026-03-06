@@ -4,6 +4,13 @@ from typing import Optional, List, Dict, Any
 from uuid import UUID
 
 
+class DailyTaskData(BaseModel):
+    """每日任务数据结构"""
+    title: str
+    status: str
+    priority: str
+
+
 class DailySummaryData(BaseModel):
     """每日数据结构"""
     date: str
@@ -13,6 +20,7 @@ class DailySummaryData(BaseModel):
     completed_tasks: int
     completion_rate: float
     daily_summary: Optional[Dict[str, Any]] = None
+    tasks: List[DailyTaskData] = Field(default_factory=list)
 
 
 class PriorityDistribution(BaseModel):
