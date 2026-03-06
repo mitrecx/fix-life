@@ -269,7 +269,7 @@ class FeishuService:
                     summary_content = summary_content[:200] + "..."
                 daily_summary_text = f"\n📝 **总结**: {summary_content}"
 
-            day_line = f"**{date_display}**\n任务: {day_completed}/{day_total} ({day_rate}%)\n{tasks_text}{daily_summary_text}"
+            day_line = f"{date_display}\n{tasks_text}{daily_summary_text}"
             daily_summary_lines.append(day_line)
 
         daily_summary_text = "\n\n".join(daily_summary_lines)
@@ -289,7 +289,7 @@ class FeishuService:
                 {
                     "tag": "div",
                     "text": {
-                        "content": f"**时间范围**\n{year}年第{week_number}周 ({start_date} 至 {end_date})",
+                        "content": f"**📅 时间范围**\n\n{year}年第{week_number}周 ({start_date} 至 {end_date})",
                         "tag": "lark_md"
                     }
                 },
@@ -300,23 +300,20 @@ class FeishuService:
                     "tag": "div",
                     "fields": [
                         {
-                            "is_short": True,
                             "text": {
-                                "content": f"**总任务数**\n{total_tasks}",
+                                "content": f"**📋 总任务数**: {total_tasks}",
                                 "tag": "lark_md"
                             }
                         },
                         {
-                            "is_short": True,
                             "text": {
-                                "content": f"**已完成**\n{completed_tasks}",
+                                "content": f"**✅ 已完成**: {completed_tasks}",
                                 "tag": "lark_md"
                             }
                         },
                         {
-                            "is_short": True,
                             "text": {
-                                "content": f"**完成率**\n{completion_rate}%",
+                                "content": f"**📈 完成率**: {completion_rate}%",
                                 "tag": "lark_md"
                             }
                         }
@@ -328,7 +325,7 @@ class FeishuService:
                 {
                     "tag": "div",
                     "text": {
-                        "content": f"**每日详情**\n\n{daily_summary_text}",
+                        "content": f"**📆 每日详情**\n\n{daily_summary_text}",
                         "tag": "lark_md"
                     }
                 }
@@ -336,3 +333,98 @@ class FeishuService:
         }
 
         return self.send_card_message(chat_id, card_content)
+
+    def send_weekly_summary_post(
+        self,
+        chat_id: str,
+        username: str,
+        year: int,
+        week_number: int,
+        start_date: str,
+        end_date: str,
+        total_tasks: int,
+        completed_tasks: int,
+        completion_rate: float,
+        stats: Dict[str, Any]
+    ) -> Tuple[bool, Optional[str], Optional[str]]:
+        """
+        Send a weekly summary as rich text message to a Feishu group chat.
+
+        Args:
+            chat_id: Target group chat ID
+            username: User's name
+            year: Year of the summary
+            week_number: Week number
+            start_date: Start date string
+            end_date: End date string
+            total_tasks: Total number of tasks
+            completed_tasks: Number of completed tasks
+            completion_rate: Completion rate percentage
+            stats: Full statistics including daily_data
+
+        Returns:
+            Tuple of (success: bool, message_id: str|None, error_message: str|None)
+        """
+        # Build content - simplified format
+        lines = [
+            f"📊 {username}的周总结\n\n",
+            f"时间范围：{year}年第{week_number}周 ({start_date} 至 {end_date})\n",
+            f"总任务数：{total_tasks}\n",
+            f"已完成：{completed_tasks}\n",
+            f"完成率：{completion_rate}%\n\n",
+            "━" * 30 + "\n\n"
+        ]
+
+        # Build daily details
+        daily_data = stats.get("daily_data", [])
+
+        for day_data in sorted(daily_data, key=lambda x: x["date"]):
+            date_str = day_data["date"]
+            day_total = day_data.get("total_tasks", 0)
+            day_completed = day_data.get("completed_tasks", 0)
+            day_rate = day_data.get("completion_rate", 0)
+            tasks = day_data.get("tasks", [])
+            daily_summary = day_data.get("daily_summary")
+
+            # Format date
+            from datetime import datetime
+            date_obj = datetime.strptime(date_str, "%Y-%m-%d")
+            weekdays = ["周一", "周二", "周三", "周四", "周五", "周六", "周日"]
+            weekday = weekdays[date_obj.weekday()]
+            date_short = date_str[5:]  # MM-DD
+            date_display = f"{date_short} {weekday}"
+
+            lines.append(f"\n{date_display}\n")
+            lines.append(f"任务：{day_completed}/{day_total} ({day_rate}%)\n")
+
+            # Add tasks
+            for task in tasks:
+                task_title = task.get("title", "")
+                task_status = task.get("status", "todo")
+
+                status_map = {
+                    "done": "✅",
+                    "in-progress": "🔄",
+                    "todo": "⬜",
+                    "cancelled": "❌"
+                }
+                status_emoji = status_map.get(task_status, "⬜")
+
+                lines.append(f"{status_emoji} {task_title}\n")
+
+            # Add daily summary if available
+            if daily_summary and daily_summary.get("content"):
+                summary_content = daily_summary.get("content", "")
+                if len(summary_content) > 200:
+                    summary_content = summary_content[:200] + "..."
+
+                lines.append(f"\n📝 总结：{summary_content}\n")
+
+        # Convert to rich text format
+        content = [[{"tag": "text", "text": line}] for line in lines]
+
+        return self.send_post_message(
+            chat_id=chat_id,
+            title=f"{username}的周总结",
+            content=content
+        )

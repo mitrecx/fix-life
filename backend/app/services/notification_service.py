@@ -187,7 +187,7 @@ class NotificationService:
                 app_secret=settings.feishu_app_secret
             )
 
-            # Send card with full stats
+            # Send interactive card message with full stats
             success, message_id, error = feishu_service.send_weekly_summary_card(
                 chat_id=settings.feishu_chat_id,
                 username=user.username,
@@ -273,12 +273,8 @@ class NotificationService:
 
             daily_details_html += f'''
             <div style="margin-bottom: 20px; padding: 16px; background: white; border: 1px solid #e5e7eb; border-radius: 8px;">
-                <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px;">
+                <div style="margin-bottom: 12px;">
                     <div style="font-weight: 600; color: #111827; font-size: 16px;">{date_formatted}</div>
-                    <div style="text-align: right;">
-                        <div style="font-size: 13px; color: #6b7280;">任务完成</div>
-                        <div style="font-weight: 600; color: #111827;">{day_completed}/{day_total} ({day_rate}%)</div>
-                    </div>
                 </div>
                 {tasks_html}
                 {daily_summary_html}
