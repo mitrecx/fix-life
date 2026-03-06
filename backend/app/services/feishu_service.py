@@ -301,19 +301,19 @@ class FeishuService:
                     "fields": [
                         {
                             "text": {
-                                "content": f"**📋 总任务数**: {total_tasks}",
+                                "content": f"**总任务数**: {total_tasks}",
                                 "tag": "lark_md"
                             }
                         },
                         {
                             "text": {
-                                "content": f"**✅ 已完成**: {completed_tasks}",
+                                "content": f"**已完成**: {completed_tasks}",
                                 "tag": "lark_md"
                             }
                         },
                         {
                             "text": {
-                                "content": f"**📈 完成率**: {completion_rate}%",
+                                "content": f"**完成率**: {completion_rate}%",
                                 "tag": "lark_md"
                             }
                         }
