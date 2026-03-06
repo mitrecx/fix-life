@@ -232,6 +232,7 @@ class FeishuService:
             day_completed = day_data.get("completed_tasks", 0)
             day_rate = day_data.get("completion_rate", 0)
             tasks = day_data.get("tasks", [])
+            daily_summary = day_data.get("daily_summary")
 
             # Format date (remove year for brevity)
             date_short = date_str[5:]  # MM-DD
@@ -255,7 +256,16 @@ class FeishuService:
 
             tasks_text = "\n".join(task_lines) if task_lines else "  无任务"
 
-            day_line = f"**{date_short}** {title}\n任务: {day_completed}/{day_total} ({day_rate}%)\n{tasks_text}"
+            # Build daily summary if available
+            daily_summary_text = ""
+            if daily_summary and daily_summary.get("content"):
+                summary_content = daily_summary.get("content", "")
+                # Truncate if too long (Feishu has limits)
+                if len(summary_content) > 200:
+                    summary_content = summary_content[:200] + "..."
+                daily_summary_text = f"\n📝 **总结**: {summary_content}"
+
+            day_line = f"**{date_short}** {title}\n任务: {day_completed}/{day_total} ({day_rate}%)\n{tasks_text}{daily_summary_text}"
             daily_summary_lines.append(day_line)
 
         daily_summary_text = "\n\n".join(daily_summary_lines)

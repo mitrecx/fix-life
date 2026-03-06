@@ -222,6 +222,70 @@ class NotificationService:
 
     def _get_email_body(self, summary: WeeklySummary, user: User) -> str:
         """Generate HTML email body for weekly summary."""
+        # Build daily details HTML
+        daily_details_html = ""
+        daily_data = summary.stats.get("daily_data", [])
+
+        for day in sorted(daily_data, key=lambda x: x["date"]):
+            date_str = day["date"]
+            title = day.get("title", "无标题")
+            day_total = day.get("total_tasks", 0)
+            day_completed = day.get("completed_tasks", 0)
+            day_rate = day.get("completion_rate", 0)
+            tasks = day.get("tasks", [])
+            daily_summary = day.get("daily_summary")
+
+            # Format date
+            date_obj = datetime.strptime(date_str, "%Y-%m-%d")
+            date_formatted = date_obj.strftime("%m月%d日")
+
+            # Build task list HTML
+            tasks_html = ""
+            if tasks:
+                for task in tasks:
+                    task_title = task.get("title", "")
+                    task_status = task.get("status", "todo")
+
+                    # Status emoji
+                    status_map = {
+                        "done": "✅",
+                        "in-progress": "🔄",
+                        "todo": "⬜",
+                        "cancelled": "❌"
+                    }
+                    status_emoji = status_map.get(task_status, "⬜")
+
+                    tasks_html += f'<div style="padding: 4px 0;">{status_emoji} {task_title}</div>'
+
+            if not tasks_html:
+                tasks_html = '<div style="color: #9ca3af; font-size: 14px;">无任务</div>'
+
+            # Build daily summary HTML if available
+            daily_summary_html = ""
+            if daily_summary and daily_summary.get("content"):
+                summary_content = daily_summary.get("content", "")
+                daily_summary_html = f'''
+                <div style="margin-top: 12px; padding: 12px; background: #eff6ff; border-left: 3px solid #3b82f6; border-radius: 4px;">
+                    <div style="font-size: 13px; color: #6b7280; margin-bottom: 4px;">📝 每日总结</div>
+                    <div style="font-size: 14px; color: #1f2937; line-height: 1.5;">{summary_content}</div>
+                </div>'''
+
+            daily_details_html += f'''
+            <div style="margin-bottom: 20px; padding: 16px; background: white; border: 1px solid #e5e7eb; border-radius: 8px;">
+                <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px;">
+                    <div>
+                        <div style="font-weight: 600; color: #111827; font-size: 16px;">{date_formatted}</div>
+                        <div style="font-size: 14px; color: #6b7280;">{title}</div>
+                    </div>
+                    <div style="text-align: right;">
+                        <div style="font-size: 13px; color: #6b7280;">任务完成</div>
+                        <div style="font-weight: 600; color: #111827;">{day_completed}/{day_total} ({day_rate}%)</div>
+                    </div>
+                </div>
+                {tasks_html}
+                {daily_summary_html}
+            </div>'''
+
         return f"""
         <!DOCTYPE html>
         <html>
@@ -269,11 +333,14 @@ class NotificationService:
                         </div>
                     </div>
 
+                    <h3 style="color: #111827; margin: 30px 0 15px 0;">📅 每日详情</h3>
+                    {daily_details_html}
+
                     <div style="text-align: center;">
                         <a href="http://localhost:5173/weekly-summaries/{summary.id}" class="button">查看详细报告</a>
                     </div>
 
-                    <p>请登录系统查看完整报告和每日详情。</p>
+                    <p>请登录系统查看完整报告和更多功能。</p>
                 </div>
                 <div class="footer">
                     <p>此邮件由系统自动发送，请勿回复。</p>
