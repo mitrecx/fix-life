@@ -40,8 +40,11 @@ redis-cli ping  # 应返回 PONG
 ```bash
 cd backend
 
-# 启动 Worker 和 Beat（自动化）
-./start-celery.sh
+# 启动 Worker 和 Beat
+./celery.sh start
+
+# 查看服务状态
+./celery.sh status
 
 # 或者手动启动（开发调试）
 # 终端 1: 启动 Worker
@@ -55,14 +58,25 @@ uv run celery -A app.core.celery beat --loglevel=info
 
 ```bash
 cd backend
-./stop-celery.sh
+./celery.sh stop
 ```
 
 #### 4. 查看日志
 
 ```bash
 cd backend
-./logs-celery.sh
+./celery.sh logs
+
+# 或直接查看日志文件
+tail -f logs/celery_worker.log
+tail -f logs/celery_beat.log
+```
+
+#### 5. 重启服务
+
+```bash
+cd backend
+./celery.sh restart
 ```
 
 ### 生产环境部署
@@ -93,7 +107,7 @@ ssh josie@jo.mitrecx.top
 cd /opt/fix-life/backend
 
 # 启动 Celery 服务
-./start-celery.sh
+./celery.sh start
 ```
 
 #### 3. 设置 Celery 服务开机自启动
@@ -112,8 +126,8 @@ Type=simple
 User=josie
 Group=josie
 WorkingDirectory=/opt/fix-life/backend
-Environment="PATH=/opt/fix-life/backend/venv/bin"
-ExecStart=/opt/fix-life/backend/venv/bin/celery -A app.core.celery worker --loglevel=info
+Environment="PATH=/opt/fix-life/backend/.venv/bin"
+ExecStart=/opt/fix-life/backend/.venv/bin/celery -A app.core.celery worker --loglevel=info
 Restart=always
 RestartSec=10s
 
@@ -133,8 +147,8 @@ Type=simple
 User=josie
 Group=josie
 WorkingDirectory=/opt/fix-life/backend
-Environment="PATH=/opt/fix-life/backend/venv/bin"
-ExecStart=/opt/fix-life/backend/venv/bin/celery -A app.core.celery beat --loglevel=info
+Environment="PATH=/opt/fix-life/backend/.venv/bin"
+ExecStart=/opt/fix-life/backend/.venv/bin/celery -A app.core.celery beat --loglevel=info
 Restart=always
 RestartSec=10s
 
@@ -227,8 +241,8 @@ tail -f backend/logs/celery_worker.log
 # Beat 日志
 tail -f backend/logs/celery_beat.log
 
-# 或使用辅助脚本
-./logs-celery.sh
+# 或使用管理脚本
+./celery.sh logs
 ```
 
 ### 测试定时任务

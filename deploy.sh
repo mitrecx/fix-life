@@ -72,15 +72,16 @@ case $COMMAND in
     echo "Setting up backend environment..."
     ssh $SERVER "bash -lc '
       cd ${BACKEND_DEPLOY_PATH}
-      # Check if venv exists and is valid
-      if [ ! -f \"venv/bin/activate\" ]; then
-        echo \"Creating or recreating virtual environment...\"
-        rm -rf venv
-        python3 -m venv venv
+      # Check if uv is installed, if not, install it
+      if ! command -v uv &> /dev/null; then
+        echo \"Installing uv...\"
+        curl -LsSf https://astral.sh/uv/install.sh | sh
+        export PATH=\"$HOME/.local/bin:$PATH\"
       fi
-      source venv/bin/activate
-      pip install -q --upgrade pip
-      pip install -q -r requirements.txt
+      # Remove old venv if it exists
+      rm -rf venv
+      # Sync dependencies using uv (creates .venv if needed)
+      uv sync
       alembic upgrade head
     '"
 
@@ -129,15 +130,16 @@ case $COMMAND in
     echo "Setting up backend environment..."
     ssh $SERVER "bash -lc '
       cd ${BACKEND_DEPLOY_PATH}
-      # Check if venv exists and is valid
-      if [ ! -f \"venv/bin/activate\" ]; then
-        echo \"Creating or recreating virtual environment...\"
-        rm -rf venv
-        python3 -m venv venv
+      # Check if uv is installed, if not, install it
+      if ! command -v uv &> /dev/null; then
+        echo \"Installing uv...\"
+        curl -LsSf https://astral.sh/uv/install.sh | sh
+        export PATH=\"$HOME/.local/bin:$PATH\"
       fi
-      source venv/bin/activate
-      pip install -q --upgrade pip
-      pip install -q -r requirements.txt
+      # Remove old venv if it exists
+      rm -rf venv
+      # Sync dependencies using uv (creates .venv if needed)
+      uv sync
       alembic upgrade head
     '"
 
