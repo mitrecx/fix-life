@@ -1,4 +1,5 @@
 """Notification service for sending weekly summary via email and Feishu."""
+from datetime import datetime
 from typing import Dict, Any, Tuple, Optional
 from sqlalchemy.orm import Session
 
@@ -7,6 +8,7 @@ from app.models.weekly_summary import WeeklySummary
 from app.models.systemSettings import SystemSettings
 from app.services.email_service import EmailService
 from app.services.feishu_service import FeishuService
+from app.core.config import settings
 
 
 class NotificationService:
@@ -129,7 +131,7 @@ class NotificationService:
             body = self._get_email_body(summary, user)
 
             # Send email
-            email_service = EmailService()
+            email_service = EmailService(self.db)
             success, error = email_service.send_email(
                 to_email=recipient_email,
                 subject=subject,
@@ -331,7 +333,7 @@ class NotificationService:
                     {daily_details_html}
 
                     <div style="text-align: center;">
-                        <a href="http://localhost:5173/weekly-summaries/{summary.id}" class="button">查看详细报告</a>
+                        <a href="{settings.FRONTEND_URL}/weekly-summaries/{summary.id}" class="button">查看详细报告</a>
                     </div>
 
                     <p>请登录系统查看完整报告和更多功能。</p>

@@ -5,7 +5,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 ## 测试用户
 用户名: test
 密码: test12345
-前后端项目启动后, 你必须打开浏览器, 使用 test 用户在前端登录, 测试一下登录功能是否正常
+前后端项目启动后, 你必须使用 chrome-devtools 工具打开浏览器, 使用 test 用户在前端登录. 但若打开浏览器已经有用户已经登录, 则无需再使用 test 用户登录.
 
 ## 重要：启动前后端必须使用 start.sh
 
