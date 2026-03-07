@@ -11,6 +11,8 @@ import DailyPlansPage from "@/pages/DailyPlansPage";
 import AnalyticsPage from "@/pages/AnalyticsPage";
 import WeeklySummariesPage from "@/pages/WeeklySummariesPage";
 import WeeklySummaryDetailPage from "@/pages/WeeklySummaryDetailPage";
+import SettingsPage from "@/pages/SettingsPage";
+import ProfilePage from "@/pages/ProfilePage";
 
 export const router = createBrowserRouter([
   // Public routes
@@ -63,6 +65,14 @@ export const router = createBrowserRouter([
       {
         path: "analytics",
         element: <AnalyticsPage />,
+      },
+      {
+        path: "settings",
+        element: <SettingsPage />,
+      },
+      {
+        path: "profile",
+        element: <ProfilePage />,
       },
     ],
   },

@@ -2,16 +2,10 @@ import { Outlet, NavLink, useNavigate } from "react-router-dom";
 import { LogOut, Settings } from "lucide-react";
 import { message } from "antd";
 import { useAuthStore } from "@/store/authStore";
-import { ProfileModal } from "@/components/ProfileModal";
-import { SystemSettingsModal } from "@/components/SystemSettingsModal";
-import type { User as UserType } from "@/types/auth";
-import { useState } from "react";
 
 export default function Layout() {
-  const { user, clearAuth, setUser } = useAuthStore();
+  const { user, clearAuth } = useAuthStore();
   const navigate = useNavigate();
-  const [showProfileModal, setShowProfileModal] = useState(false);
-  const [showSystemSettingsModal, setShowSystemSettingsModal] = useState(false);
 
   const navItems = [
     { path: "/daily-plans", label: "每日计划", shortLabel: "日" },
@@ -25,10 +19,6 @@ export default function Layout() {
     clearAuth();
     message.success("已退出登录");
     navigate("/login");
-  };
-
-  const handleProfileUpdate = (updatedUser: UserType) => {
-    setUser(updatedUser);
   };
 
   return (
@@ -65,18 +55,30 @@ export default function Layout() {
             {/* User Menu */}
             <div className="flex items-center gap-1 sm:gap-2 md:gap-3 pl-1 sm:pl-2 border-l border-gray-200">
               {/* System Settings Button */}
-              <button
-                onClick={() => setShowSystemSettingsModal(true)}
-                className="p-1.5 sm:p-2 text-gray-500 hover:text-indigo-500 hover:bg-indigo-50 rounded-lg transition-all"
+              <NavLink
+                to="/settings"
+                className={({ isActive }) =>
+                  `p-1.5 sm:p-2 rounded-lg transition-all ${
+                    isActive
+                      ? "text-indigo-600 bg-indigo-50"
+                      : "text-gray-500 hover:text-indigo-500 hover:bg-indigo-50"
+                  }`
+                }
                 title="系统设置"
               >
                 <Settings size={16} />
-              </button>
+              </NavLink>
 
               {/* Avatar Only - 窄屏只显示头像 */}
-              <button
-                onClick={() => setShowProfileModal(true)}
-                className="flex items-center gap-1 sm:gap-2 text-sm text-gray-700 hover:bg-gray-100 px-1 sm:px-2 py-1 rounded-lg transition-all"
+              <NavLink
+                to="/profile"
+                className={({ isActive }) =>
+                  `flex items-center gap-1 sm:gap-2 text-sm px-1 sm:px-2 py-1 rounded-lg transition-all ${
+                    isActive
+                      ? "bg-indigo-50 text-indigo-600"
+                      : "text-gray-700 hover:bg-gray-100"
+                  }`
+                }
                 title="个人中心"
               >
                 {user?.avatar_url ? (
@@ -93,7 +95,7 @@ export default function Layout() {
                 <span className="hidden sm:inline font-medium text-xs sm:text-sm">
                   {user?.full_name || user?.username}
                 </span>
-              </button>
+              </NavLink>
 
               {/* Logout Button */}
               <button
@@ -112,26 +114,6 @@ export default function Layout() {
       <main className="w-full mx-auto px-2 sm:px-4 md:px-6 py-4 sm:py-6">
         <Outlet />
       </main>
-
-      {/* Profile Modal */}
-      {showProfileModal && user && (
-        <ProfileModal
-          user={user}
-          onClose={() => setShowProfileModal(false)}
-          onUpdate={handleProfileUpdate}
-        />
-      )}
-
-      {/* System Settings Modal */}
-      {showSystemSettingsModal && (
-        <SystemSettingsModal
-          onClose={() => {
-            setShowSystemSettingsModal(false);
-            // Refresh the page to apply settings
-            window.location.reload();
-          }}
-        />
-      )}
     </div>
   );
 }
