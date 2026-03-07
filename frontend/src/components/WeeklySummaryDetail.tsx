@@ -9,11 +9,8 @@ import {
   Save,
   ArrowLeft,
   Send,
-  Mail,
-  MessageSquare,
 } from "lucide-react";
-import { Button, Spin, message, Dropdown } from "antd";
-import type { MenuProps } from "antd";
+import { Button, Spin, message } from "antd";
 import { weeklySummaryService } from "@/services/weeklySummaryService";
 import { systemSettingsService } from "@/services/systemSettingsService";
 import type { SystemSettings } from "@/types/systemSettings";
@@ -95,51 +92,8 @@ export function WeeklySummaryDetail() {
     }
   };
 
-  const handleSendNotification = useCallback(async (sendEmail: boolean, sendFeishu: boolean) => {
+  const handleSendNotification = useCallback(async () => {
     if (!summary) return;
-    setSending(true);
-    try {
-      const result = await weeklySummaryService.sendNotification(
-        summary.id,
-        sendEmail,
-        sendFeishu
-      );
-
-      const successMessages: string[] = [];
-      const errorMessages: string[] = [];
-
-      if (sendEmail) {
-        if (result.email_sent) {
-          successMessages.push(`邮件已发送到 ${result.email_recipient}`);
-        } else {
-          errorMessages.push(`邮件发送失败: ${result.email_error || "未知错误"}`);
-        }
-      }
-
-      if (sendFeishu) {
-        if (result.feishu_sent) {
-          successMessages.push("飞书消息已发送");
-        } else {
-          errorMessages.push(`飞书发送失败: ${result.feishu_error || "未知错误"}`);
-        }
-      }
-
-      if (successMessages.length > 0) {
-        message.success(successMessages.join("\n"));
-      }
-      if (errorMessages.length > 0) {
-        message.error(errorMessages.join("\n"));
-      }
-    } catch (error: any) {
-      console.error("Failed to send notification:", error);
-      message.error(error.response?.data?.detail || "发送失败");
-    } finally {
-      setSending(false);
-    }
-  }, [summary]);
-
-  const sendMenuItems = useMemo((): MenuProps["items"] => {
-    const items: MenuProps["items"] = [];
 
     // Check which channels are configured
     const emailEnabled = settings?.weekly_summary_email_enabled;
@@ -148,49 +102,55 @@ export function WeeklySummaryDetail() {
     // Also check if Feishu is fully configured (has app_id, secret, and chat_id)
     const feishuConfigured = settings?.feishu_app_id && settings?.feishu_app_secret && settings?.feishu_chat_id;
 
-    // Allow sending if channel is enabled OR if it's fully configured
-    const canSendEmail = emailEnabled;
-    const canSendFeishu = feishuEnabled || feishuConfigured;
+    // Determine which channels to send to
+    const sendEmail = !!emailEnabled;
+    const sendFeishu = !!(feishuEnabled || feishuConfigured);
 
-    if (!canSendEmail && !canSendFeishu) {
-      return [{
-        key: "not-configured",
-        label: "请先在系统设置中配置推送通道",
-        disabled: true,
-      }];
+    if (!sendEmail && !sendFeishu) {
+      message.warning("请先在系统设置中配置推送通道");
+      return;
     }
 
-    if (canSendEmail) {
-      items.push({
-        key: "email",
-        label: "发送到邮箱",
-        icon: <Mail size={16} />,
-        onClick: () => handleSendNotification(true, false),
-      });
-    }
+    setSending(true);
+    try {
+      const result = await weeklySummaryService.sendNotification(
+        summary.id,
+        sendEmail,
+        sendFeishu
+      );
 
-    if (canSendFeishu) {
-      items.push({
-        key: "feishu",
-        label: "发送到飞书",
-        icon: <MessageSquare size={16} />,
-        onClick: () => handleSendNotification(false, true),
-      });
-    }
+      // 为每个渠道单独显示发送结果
+      if (sendEmail) {
+        if (result.email_sent) {
+          message.success(`邮件已发送到 ${result.email_recipient}`);
+        } else {
+          message.error(`邮件发送失败: ${result.email_error || "未知错误"}`);
+        }
+      }
 
-    if (canSendEmail && canSendFeishu) {
-      items.push({
-        type: "divider",
-      });
-      items.push({
-        key: "both",
-        label: "同时发送到邮箱和飞书",
-        onClick: () => handleSendNotification(true, true),
-      });
+      if (sendFeishu) {
+        if (result.feishu_sent) {
+          message.success("飞书消息已发送");
+        } else {
+          message.error(`飞书发送失败: ${result.feishu_error || "未知错误"}`);
+        }
+      }
+    } catch (error: any) {
+      console.error("Failed to send notification:", error);
+      message.error(error.response?.data?.detail || "发送失败");
+    } finally {
+      setSending(false);
     }
+  }, [summary, settings]);
 
-    return items;
-  }, [settings?.weekly_summary_email_enabled, settings?.weekly_summary_feishu_enabled, settings?.feishu_app_id, settings?.feishu_app_secret, settings?.feishu_chat_id, handleSendNotification]);
+  // Check if any channels are configured
+  const canSendAnyChannel = useMemo(() => {
+    const emailEnabled = !!settings?.weekly_summary_email_enabled;
+    const feishuEnabled = !!settings?.weekly_summary_feishu_enabled;
+    const feishuConfigured = !!(settings?.feishu_app_id && settings?.feishu_app_secret && settings?.feishu_chat_id);
+
+    return emailEnabled || feishuEnabled || feishuConfigured;
+  }, [settings]);
 
   const formatDate = (dateStr: string) => {
     const date = new Date(dateStr);
@@ -235,20 +195,16 @@ export function WeeklySummaryDetail() {
               {new Date(summary.end_date).toLocaleDateString("zh-CN")}
             </p>
           </div>
-          <Dropdown
-            menu={{ items: sendMenuItems }}
-            trigger={["click"]}
-            disabled={sending}
+          <Button
+            type="primary"
+            icon={<Send size={18} />}
+            loading={sending}
+            onClick={handleSendNotification}
+            disabled={!canSendAnyChannel}
+            className="shadow-lg"
           >
-            <Button
-              type="primary"
-              icon={<Send size={18} />}
-              loading={sending}
-              className="shadow-lg"
-            >
-              发送
-            </Button>
-          </Dropdown>
+            周报推送
+          </Button>
         </div>
       </div>
 
