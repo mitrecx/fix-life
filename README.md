@@ -68,7 +68,7 @@ createdb fix_life_db
 
 ### 2. 后端设置
 
-**一键启动（推荐）**
+**一键启动**
 
 ```bash
 # 进入后端目录
@@ -88,21 +88,6 @@ cp .env.example .env
 4. 运行数据库迁移
 5. 启动开发服务器
 
-**手动启动（可选）**
-
-```bash
-cd backend
-
-# 同步依赖
-uv sync
-
-# 运行数据库迁移
-uv run alembic upgrade head
-
-# 启动服务
-uv run uvicorn app.main:app --reload --host 0.0.0.0 --port 8000
-```
-
 后端将在 `http://localhost:8000` 启动
 
 - API 文档: `http://localhost:8000/docs`
@@ -110,7 +95,7 @@ uv run uvicorn app.main:app --reload --host 0.0.0.0 --port 8000
 
 ### 3. 前端设置
 
-**一键启动（推荐）**
+**一键启动**
 
 ```bash
 # 进入前端目录
@@ -118,23 +103,6 @@ cd frontend
 
 # 一键启动（自动检查 Node.js、安装依赖、启动服务）
 ./start.sh
-```
-
-**手动启动（可选）**
-
-```bash
-# 打开新终端，进入前端目录
-cd frontend
-
-# 安装依赖
-pnpm install
-# 或
-npm install
-
-# 启动开发服务器
-pnpm dev
-# 或
-npm run dev
 ```
 
 前端将在 `http://localhost:5173` 启动
@@ -145,29 +113,6 @@ npm run dev
 
 ```
 DATABASE_URL=postgresql://josie:bills_password_2024@localhost:5432/fix_life_db
-```
-
-## 当前功能
-
-### 年度目标管理
-
-- [x] 创建年度目标
-- [x] 查看目标列表（按年份、类别筛选）
-- [x] 编辑目标
-- [x] 删除目标
-- [x] 更新进度
-- [x] 自动生成月度里程碑
-- [x] 可视化进度展示
-
-### API 端点
-
-```
-GET    /api/v1/yearly-goals              # 获取所有年度目标
-POST   /api/v1/yearly-goals              # 创建新目标
-GET    /api/v1/yearly-goals/{id}         # 获取单个目标
-PUT    /api/v1/yearly-goals/{id}         # 更新目标
-PATCH  /api/v1/yearly-goals/{id}/progress # 更新进度
-DELETE /api/v1/yearly-goals/{id}         # 删除目标
 ```
 
 ## 开发指南
@@ -211,37 +156,3 @@ CORS_ORIGINS=["http://localhost:5173"]
 ```
 VITE_API_URL=http://localhost:8000/api/v1
 ```
-
-## 常见问题
-
-### 数据库连接失败
-
-检查 PostgreSQL 服务是否运行：
-```bash
-# macOS
-brew services list
-
-# 启动服务
-brew services start postgresql
-```
-
-### 后端启动失败
-
-确保已安装 uv 并运行一键启动脚本：
-```bash
-cd backend
-./start.sh
-```
-
-### 前端无法连接后端
-
-确保后端服务在 `http://localhost:8000` 运行，检查 `frontend/.env` 中的 `VITE_API_URL`。
-
-## 后续计划
-
-- [ ] 月度计划功能
-- [ ] 每日任务管理
-- [ ] 习惯追踪
-- [ ] 用户认证 (JWT)
-- [ ] 数据统计仪表盘
-- [ ] 导出功能
