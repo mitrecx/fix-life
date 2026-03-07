@@ -92,11 +92,6 @@ export function BatchCreateTasksModal({ onClose, onSuccess }: BatchCreateTasksMo
     }
   };
 
-  const disabledDate = (current: Dayjs) => {
-    // 禁用今天之前的日期
-    return current && current.isBefore(dayjs(), "day");
-  };
-
   return (
     <div className="fixed inset-0 bg-gray-900/60 backdrop-blur-sm flex items-center justify-center z-50">
       <div className="bg-white rounded-3xl shadow-2xl w-full max-w-2xl max-h-[85vh] overflow-hidden animate-in fade-in zoom-in duration-200 flex flex-col">
@@ -148,7 +143,6 @@ export function BatchCreateTasksModal({ onClose, onSuccess }: BatchCreateTasksMo
               <DatePicker
                 value={startDate}
                 onChange={(date) => date && setStartDate(date)}
-                disabledDate={disabledDate}
                 disabled={isSubmitting}
                 className="w-full"
                 placeholder="选择开始日期"
@@ -162,7 +156,6 @@ export function BatchCreateTasksModal({ onClose, onSuccess }: BatchCreateTasksMo
               <DatePicker
                 value={endDate}
                 onChange={(date) => date && setEndDate(date)}
-                disabledDate={disabledDate}
                 disabled={isSubmitting}
                 className="w-full"
                 placeholder="选择结束日期"
