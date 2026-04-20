@@ -4,6 +4,7 @@ from sqlalchemy.orm import Session
 
 from app.api.v1.deps import get_db, get_current_user
 from app.schemas.user import (
+    UserResponse,
     UserRegister,
     UserRegisterWithCode,
     UserLogin,
@@ -204,13 +205,14 @@ def reset_password(
     return {"message": "密码重置成功"}
 
 
-@router.get("/me")
+@router.get("/me", response_model=UserResponse)
 def get_current_user_info(
-    current_user = Depends(get_current_user),
+    current_user=Depends(get_current_user),
+    db: Session = Depends(get_db),
 ):
     """
     Get current authenticated user information.
 
     Requires valid JWT token in Authorization header.
     """
-    return current_user
+    return build_user_response(db, current_user)

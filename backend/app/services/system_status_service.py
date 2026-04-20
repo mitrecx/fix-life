@@ -48,8 +48,11 @@ class SystemStatusService:
     def _redis_check(self, name: str, url: str) -> StatusCheckItem:
         t0 = time.perf_counter()
         try:
-            client = redis.from_url(url)
-            client.ping()
+            client = redis.from_url(url, socket_connect_timeout=2)
+            try:
+                client.ping()
+            finally:
+                client.close()
             latency_ms = (time.perf_counter() - t0) * 1000
             return StatusCheckItem(name=name, ok=True, latency_ms=round(latency_ms, 3))
         except Exception as e:
