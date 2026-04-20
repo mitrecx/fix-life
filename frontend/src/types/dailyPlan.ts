@@ -35,6 +35,18 @@ export interface DailyTaskUpdate {
   time_slot?: string;
 }
 
+/** Lightweight row from GET /daily-plans/by-date/{date} (no tasks). */
+export interface DailyPlanHead {
+  id: string;
+  user_id: string;
+  monthly_plan_id?: string;
+  plan_date: string;
+  title?: string;
+  notes?: string;
+  created_at: string;
+  updated_at: string;
+}
+
 export interface DailyPlan {
   id: string;
   user_id: string;

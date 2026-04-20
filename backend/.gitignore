@@ -31,9 +31,11 @@ venv/
 ENV/
 env/
 
-# Environment
+# Environment / dotenv (only *example* templates stay tracked)
 .env
-.env.local
+.env.*
+!.env.example
+!.env.*.example
 
 # IDE
 .vscode/

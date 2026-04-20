@@ -1,4 +1,4 @@
-import api from "./api";
+import api, { rawApi } from "./api";
 import type {
   DailyPlan,
   DailyPlanCreate,
@@ -7,6 +7,7 @@ import type {
   DailyTaskCreate,
   DailyTaskUpdate,
   DailyTaskStatus,
+  DailyPlanHead,
 } from "@/types/dailyPlan";
 
 interface DailyPlanListResponse {
@@ -28,12 +29,24 @@ class DailyPlanService {
     return response.plans;
   }
 
+  /** No nested tasks; 404 → null */
+  async getPlanHeadByDate(planDate: string): Promise<DailyPlanHead | null> {
+    const res = await rawApi.get<DailyPlanHead>(`${this.baseUrl}/by-date/${planDate}`, {
+      validateStatus: (s) => s === 200 || s === 404,
+    });
+    if (res.status === 404) return null;
+    return res.data;
+  }
+
   async getById(id: string): Promise<DailyPlan> {
     return await api.get<DailyPlan>(`${this.baseUrl}/${id}`);
   }
 
-  async create(data: DailyPlanCreate): Promise<DailyPlan> {
-    return await api.post<DailyPlan>(`${this.baseUrl}/`, data);
+  async create(data: DailyPlanCreate): Promise<{ plan: DailyPlan; created: boolean }> {
+    const res = await rawApi.post<DailyPlan>(`${this.baseUrl}/`, data, {
+      validateStatus: (s) => s === 200 || s === 201,
+    });
+    return { plan: res.data, created: res.status === 201 };
   }
 
   async update(id: string, data: DailyPlanUpdate): Promise<DailyPlan> {

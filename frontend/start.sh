@@ -18,10 +18,10 @@ echo -e "${BLUE}  Fix Life Frontend 启动脚本${NC}"
 echo -e "${BLUE}========================================${NC}"
 echo ""
 
-# 检查并杀死已有的前端进程（Vite通常运行在5173端口）
-VITE_PID=$(lsof -ti:5173 2>/dev/null)
+# 检查并杀死已有的前端进程（Vite通常运行在5277端口）
+VITE_PID=$(lsof -ti:5277 2>/dev/null)
 if [ ! -z "$VITE_PID" ]; then
-    echo -e "${YELLOW}⚠️  检测到端口 5173 已被占用 (PID: $VITE_PID)${NC}"
+    echo -e "${YELLOW}⚠️  检测到端口 5277 已被占用 (PID: $VITE_PID)${NC}"
     echo -e "${YELLOW}正在停止已有进程...${NC}"
     kill -9 $VITE_PID 2>/dev/null
     sleep 1
@@ -57,7 +57,7 @@ if [ ! -f ".env" ]; then
     echo -e "${YELLOW}⚠️  未找到 .env 文件${NC}"
     echo -e "${YELLOW}正在创建 .env...${NC}"
     cat > .env << EOF
-VITE_API_URL=http://localhost:8000/api/v1
+VITE_API_URL=http://localhost:8020/api/v1
 EOF
     echo -e "${GREEN}✓ .env 文件已创建${NC}"
 else
@@ -78,8 +78,8 @@ echo ""
 echo -e "${BLUE}========================================${NC}"
 echo -e "${BLUE}  启动开发服务器${NC}"
 echo -e "${BLUE}========================================${NC}"
-echo -e "${GREEN}前端地址: http://localhost:5173${NC}"
-echo -e "${GREEN}后端地址: http://localhost:8000/docs${NC}"
+echo -e "${GREEN}前端地址: http://localhost:5277${NC}"
+echo -e "${GREEN}后端地址: http://localhost:8020/docs${NC}"
 echo ""
 
 # 启动开发服务器（pnpm 和 npm 命令不同）

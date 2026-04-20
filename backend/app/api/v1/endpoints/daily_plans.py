@@ -1,8 +1,7 @@
 from typing import List
 from datetime import date
-from fastapi import APIRouter, Body, Depends, HTTPException, Query
+from fastapi import APIRouter, Body, Depends, HTTPException, Query, Response
 from sqlalchemy.orm import Session
-from sqlalchemy.exc import IntegrityError
 
 from app.api.v1.deps import get_db, get_current_user
 from app.models.user import User
@@ -12,6 +11,7 @@ from app.schemas.daily_plan import (
     DailyPlanUpdate,
     DailyPlanResponse,
     DailyPlanList,
+    DailyPlanByDateResponse,
     DailyTaskCreate,
     DailyTaskUpdate,
     DailyTaskResponse,
@@ -38,31 +38,32 @@ def get_daily_plans(
     return DailyPlanList(plans=plans, total=len(plans))
 
 
-@router.post("/", response_model=DailyPlanResponse, status_code=201)
-def create_daily_plan(
-    plan_in: DailyPlanCreate,
+@router.get("/by-date/{plan_date}", response_model=DailyPlanByDateResponse)
+def get_daily_plan_by_date(
+    plan_date: date,
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ):
-    """Create a new daily plan."""
+    """Lightweight lookup: plan for this user on plan_date (no nested tasks)."""
     service = DailyPlanService(db)
-    try:
-        plan = service.create_plan(
-            user_id=str(current_user.id),
-            plan_in=plan_in,
-        )
-        return plan
-    except IntegrityError as e:
-        db.rollback()
-        if "ix_daily_plans_user_date" in str(e):
-            raise HTTPException(
-                status_code=400,
-                detail=f"该日期 ({plan_in.plan_date}) 的计划已存在，请选择其他日期或编辑现有计划。"
-            )
-        raise HTTPException(
-            status_code=400,
-            detail="创建失败，请检查输入数据。"
-        )
+    plan = service.get_plan_head_by_date(str(current_user.id), plan_date)
+    if not plan:
+        raise HTTPException(status_code=404, detail="No daily plan for this date")
+    return plan
+
+
+@router.post("/", response_model=DailyPlanResponse)
+def create_daily_plan(
+    plan_in: DailyPlanCreate,
+    response: Response,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    """Create a new daily plan, or merge into existing plan for the same date."""
+    service = DailyPlanService(db)
+    plan, created = service.create_or_merge_plan(str(current_user.id), plan_in)
+    response.status_code = 201 if created else 200
+    return plan
 
 
 @router.get("/{plan_id}", response_model=DailyPlanResponse)

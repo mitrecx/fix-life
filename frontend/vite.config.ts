@@ -11,10 +11,10 @@ export default defineConfig({
     },
   },
   server: {
-    port: 5173,
+    port: 5277,
     proxy: {
       '/api': {
-        target: 'http://localhost:8000',
+        target: 'http://localhost:8020',
         changeOrigin: true,
         // 重写路径，移除末尾斜杠导致的重定向问题
         rewrite: (path) => path,

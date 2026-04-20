@@ -11,7 +11,6 @@ import { BatchCreateTasksModal } from "./BatchCreateTasksModal";
 
 export function DailyPlansList() {
   const [plans, setPlans] = useState<DailyPlan[]>([]);
-  const [allPlans, setAllPlans] = useState<DailyPlan[]>([]);
   const [loading, setLoading] = useState(true);
   const [showForm, setShowForm] = useState(false);
   const [editingPlan, setEditingPlan] = useState<DailyPlan | null>(null);
@@ -171,16 +170,6 @@ export function DailyPlansList() {
     };
   }, [showExportModal]);
 
-  const loadAllPlans = async () => {
-    try {
-      // 获取所有计划（设置一个很大的日期范围）
-      const data = await dailyPlanService.getAll("2020-01-01", "2030-12-31");
-      setAllPlans(data);
-    } catch (error) {
-      console.error("Failed to load all daily plans:", error);
-    }
-  };
-
   // 排序计划：今天 > 未来（递增） > 过去（递增）
   const sortPlans = (plans: DailyPlan[]): DailyPlan[] => {
     const today = new Date();
@@ -220,8 +209,6 @@ export function DailyPlansList() {
       setLoading(true);
       const data = await dailyPlanService.getAll(startDate, endDate);
       setPlans(sortPlans(data));
-      // 同时加载所有计划用于日期冲突检查
-      loadAllPlans();
     } catch (error) {
       console.error("Failed to load daily plans:", error);
     } finally {
@@ -231,8 +218,13 @@ export function DailyPlansList() {
 
   const handleCreate = async (data: DailyPlanCreate | DailyPlanUpdate) => {
     try {
-      await dailyPlanService.create(data as DailyPlanCreate);
+      const { created } = await dailyPlanService.create(data as DailyPlanCreate);
       setShowForm(false);
+      if (!created) {
+        message.success("该日期已有计划，已合并更新");
+      } else {
+        message.success("日计划已创建");
+      }
       loadPlans();
     } catch (error) {
       const errorMessage = error instanceof Error ? error.message : "创建失败，请稍后重试";
@@ -530,7 +522,7 @@ export function DailyPlansList() {
           onSubmit={handleCreate}
           onCancel={() => setShowForm(false)}
           submitLabel="创建"
-          existingPlans={allPlans}
+          defaultDate={new Date().toISOString().split("T")[0]}
         />
       )}
 
@@ -541,7 +533,6 @@ export function DailyPlansList() {
           onCancel={() => setEditingPlan(null)}
           initialData={editingPlan}
           submitLabel="保存"
-          existingPlans={allPlans}
         />
       )}
 

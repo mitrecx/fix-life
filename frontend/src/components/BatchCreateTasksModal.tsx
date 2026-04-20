@@ -60,7 +60,7 @@ export function BatchCreateTasksModal({ onClose, onSuccess }: BatchCreateTasksMo
           planId = existingPlans.find((plan) => plan.plan_date === date)!.id;
         } else {
           // 日计划不存在，先创建日计划
-          const newPlan = await dailyPlanService.create({
+          const { plan: newPlan } = await dailyPlanService.create({
             plan_date: date,
             notes: "",
           });

@@ -11,6 +11,9 @@ set -e
 SERVER_USER="josie"
 SERVER_HOST="jo.mitrecx.top"
 SERVER="${SERVER_USER}@${SERVER_HOST}"
+# SSH/rsync: avoid interactive host-key prompts; fail fast on bad keys (BatchMode)
+DEPLOY_SSH_OPTS="-o BatchMode=yes -o StrictHostKeyChecking=accept-new -o ConnectTimeout=20"
+export RSYNC_RSH="ssh ${DEPLOY_SSH_OPTS}"
 
 # Deployment paths
 DEPLOY_PATH="/opt/fix-life"
@@ -37,8 +40,8 @@ COMMAND=${1:-"deploy"}
 case $COMMAND in
   "init")
     echo "Initializing server..."
-    ssh $SERVER "sudo mkdir -p $DEPLOY_PATH && sudo chown \$USER:\$USER $DEPLOY_PATH"
-    ssh $SERVER "mkdir -p ${BACKEND_DEPLOY_PATH} ${FRONTEND_DEPLOY_PATH}"
+    ssh ${DEPLOY_SSH_OPTS} $SERVER "sudo mkdir -p $DEPLOY_PATH && sudo chown \$USER:\$USER $DEPLOY_PATH"
+    ssh ${DEPLOY_SSH_OPTS} $SERVER "mkdir -p ${BACKEND_DEPLOY_PATH} ${FRONTEND_DEPLOY_PATH}"
     echo "Server initialized at ${DEPLOY_PATH}"
     ;;
 
@@ -61,6 +64,7 @@ case $COMMAND in
       --exclude '.pytest_cache' \
       --exclude 'logs' \
       --exclude '*.log' \
+      --exclude '.env.local' \
       "${BACKEND_LOCAL}/" "${SERVER}:${BACKEND_DEPLOY_PATH}/"
 
     # Deploy frontend to server
@@ -70,7 +74,7 @@ case $COMMAND in
 
     # Setup backend
     echo "Setting up backend environment..."
-    ssh $SERVER "bash -lc '
+    ssh ${DEPLOY_SSH_OPTS} $SERVER "bash -lc '
       cd ${BACKEND_DEPLOY_PATH}
       # Check if uv is installed, if not, install it
       if ! command -v uv &> /dev/null; then
@@ -87,7 +91,7 @@ case $COMMAND in
 
     # Restart backend service
     echo "Restarting backend service..."
-    ssh $SERVER "sudo systemctl restart ${BACKEND_SERVICE_NAME}"
+    ssh ${DEPLOY_SSH_OPTS} $SERVER "sudo systemctl restart ${BACKEND_SERVICE_NAME}"
 
     echo "Deployment complete!"
     echo "Access your app at: https://fixlife.mitrecx.top"
@@ -95,23 +99,23 @@ case $COMMAND in
 
   "restart")
     echo "Restarting services..."
-    ssh $SERVER "sudo systemctl restart ${BACKEND_SERVICE_NAME}"
+    ssh ${DEPLOY_SSH_OPTS} $SERVER "sudo systemctl restart ${BACKEND_SERVICE_NAME}"
     echo "Backend service restarted"
     ;;
 
   "status")
     echo "Checking service status..."
-    ssh $SERVER "systemctl status ${BACKEND_SERVICE_NAME}"
+    ssh ${DEPLOY_SSH_OPTS} $SERVER "systemctl status ${BACKEND_SERVICE_NAME}"
     ;;
 
   "logs")
     echo "Following backend logs (Ctrl+C to exit)..."
-    ssh $SERVER "journalctl -u ${BACKEND_SERVICE_NAME} -f"
+    ssh ${DEPLOY_SSH_OPTS} $SERVER "journalctl -u ${BACKEND_SERVICE_NAME} -f"
     ;;
 
   "stop")
     echo "Stopping services..."
-    ssh $SERVER "sudo systemctl stop ${BACKEND_SERVICE_NAME}"
+    ssh ${DEPLOY_SSH_OPTS} $SERVER "sudo systemctl stop ${BACKEND_SERVICE_NAME}"
     echo "Backend service stopped"
     ;;
 
@@ -125,10 +129,11 @@ case $COMMAND in
       --exclude '.pytest_cache' \
       --exclude 'logs' \
       --exclude '*.log' \
+      --exclude '.env.local' \
       "${BACKEND_LOCAL}/" "${SERVER}:${BACKEND_DEPLOY_PATH}/"
 
     echo "Setting up backend environment..."
-    ssh $SERVER "bash -lc '
+    ssh ${DEPLOY_SSH_OPTS} $SERVER "bash -lc '
       cd ${BACKEND_DEPLOY_PATH}
       # Check if uv is installed, if not, install it
       if ! command -v uv &> /dev/null; then
@@ -143,7 +148,7 @@ case $COMMAND in
       alembic upgrade head
     '"
 
-    ssh $SERVER "sudo systemctl restart ${BACKEND_SERVICE_NAME}"
+    ssh ${DEPLOY_SSH_OPTS} $SERVER "sudo systemctl restart ${BACKEND_SERVICE_NAME}"
     echo "Backend deployment complete!"
     ;;
 

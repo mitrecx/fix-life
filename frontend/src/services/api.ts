@@ -56,3 +56,5 @@ const api = {
 };
 
 export default api;
+/** Raw axios instance (e.g. read HTTP status or validateStatus). */
+export { rawApi };

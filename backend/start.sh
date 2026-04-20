@@ -19,10 +19,10 @@ echo -e "${BLUE}  Fix Life Backend 启动脚本${NC}"
 echo -e "${BLUE}========================================${NC}"
 echo ""
 
-# 检查并杀死已有的后端进程（Uvicorn通常运行在8000端口）
-BACKEND_PID=$(lsof -ti:8000 2>/dev/null)
+# 检查并杀死已有的后端进程（Uvicorn通常运行在8020端口）
+BACKEND_PID=$(lsof -ti:8020 2>/dev/null)
 if [ ! -z "$BACKEND_PID" ]; then
-    echo -e "${YELLOW}⚠️  检测到端口 8000 已被占用 (PID: $BACKEND_PID)${NC}"
+    echo -e "${YELLOW}⚠️  检测到端口 8020 已被占用 (PID: $BACKEND_PID)${NC}"
     echo -e "${YELLOW}正在停止已有进程...${NC}"
     kill -9 $BACKEND_PID 2>/dev/null
     sleep 1
@@ -51,6 +51,7 @@ if [ ! -f ".env" ]; then
     cp .env.example .env
     echo -e "${GREEN}✓ .env 文件已创建${NC}"
     echo -e "${YELLOW}请根据需要修改 .env 中的配置${NC}"
+    echo -e "${YELLOW}本地覆盖项可写在 .env.local（见 .env.local.example），勿提交该文件${NC}"
 fi
 
 # 同步依赖
@@ -91,9 +92,9 @@ echo ""
 echo -e "${BLUE}========================================${NC}"
 echo -e "${BLUE}  启动开发服务器${NC}"
 echo -e "${BLUE}========================================${NC}"
-echo -e "${GREEN}API 文档: http://localhost:8000/docs${NC}"
-echo -e "${GREEN}ReDoc: http://localhost:8000/redoc${NC}"
+echo -e "${GREEN}API 文档: http://localhost:8020/docs${NC}"
+echo -e "${GREEN}ReDoc: http://localhost:8020/redoc${NC}"
 echo ""
 
 # 启动开发服务器
-uv run uvicorn app.main:app --reload --host 0.0.0.0 --port 8000
+uv run uvicorn app.main:app --reload --host 0.0.0.0 --port 8020

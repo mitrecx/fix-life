@@ -1,7 +1,8 @@
-from typing import List, Optional
+from typing import List, Optional, Tuple
 from datetime import date
-from sqlalchemy.orm import Session
+from sqlalchemy.orm import Session, load_only
 from sqlalchemy import and_
+from sqlalchemy.exc import IntegrityError
 
 from app.models.daily_plan import DailyPlan, DailyTask, DailyTaskPriority, DailyTaskStatus
 from app.schemas.daily_plan import DailyPlanCreate, DailyPlanUpdate, DailyTaskCreate, DailyTaskUpdate
@@ -43,6 +44,75 @@ class DailyPlanService:
             )
             .first()
         )
+
+    def get_plan_head_by_date(self, user_id: str, plan_date: date) -> Optional[DailyPlan]:
+        """Same as get_plan_by_date but avoid loading relationships (no task lazy load)."""
+        return (
+            self.db.query(DailyPlan)
+            .options(
+                load_only(
+                    DailyPlan.id,
+                    DailyPlan.user_id,
+                    DailyPlan.plan_date,
+                    DailyPlan.title,
+                    DailyPlan.notes,
+                    DailyPlan.monthly_plan_id,
+                    DailyPlan.created_at,
+                    DailyPlan.updated_at,
+                )
+            )
+            .filter(
+                and_(
+                    DailyPlan.user_id == user_id,
+                    DailyPlan.plan_date == plan_date,
+                )
+            )
+            .first()
+        )
+
+    def _merge_incoming_into_plan(self, plan: DailyPlan, plan_in: DailyPlanCreate) -> None:
+        """Apply merge rules from spec (title A, notes append, monthly_plan_id if empty)."""
+        data = plan_in.model_dump(exclude_unset=True)
+
+        new_title = data.get("title")
+        if new_title is not None and str(new_title).strip():
+            plan.title = new_title
+
+        new_notes = data.get("notes")
+        if new_notes is not None and str(new_notes).strip():
+            incoming = str(new_notes).strip()
+            if plan.notes and str(plan.notes).strip():
+                plan.notes = str(plan.notes).rstrip() + "\n---\n" + incoming
+            else:
+                plan.notes = incoming
+
+        new_mid = data.get("monthly_plan_id")
+        if plan.monthly_plan_id is None and new_mid is not None:
+            plan.monthly_plan_id = new_mid
+
+    def create_or_merge_plan(self, user_id: str, plan_in: DailyPlanCreate) -> Tuple[DailyPlan, bool]:
+        """
+        Create a new plan or merge into existing same-day plan.
+        Returns (plan, created) where created is True if a new row was inserted.
+        """
+        existing = self.get_plan_by_date(user_id, plan_in.plan_date)
+        if existing:
+            self._merge_incoming_into_plan(existing, plan_in)
+            self.db.commit()
+            self.db.refresh(existing)
+            return existing, False
+        try:
+            plan = self.create_plan(user_id, plan_in)
+            return plan, True
+        except IntegrityError:
+            self.db.rollback()
+            existing = self.get_plan_by_date(user_id, plan_in.plan_date)
+            if existing:
+                self._merge_incoming_into_plan(existing, plan_in)
+                self.db.commit()
+                self.db.refresh(existing)
+                return existing, False
+            raise
 
     def create_plan(self, user_id: str, plan_in: DailyPlanCreate) -> DailyPlan:
         """Create a new daily plan."""

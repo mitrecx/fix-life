@@ -87,3 +87,19 @@ class DailyPlanResponse(DailyPlanBase):
 class DailyPlanList(BaseModel):
     plans: List[DailyPlanResponse]
     total: int
+
+
+class DailyPlanByDateResponse(BaseModel):
+    """Lightweight plan row for by-date lookup (no nested tasks)."""
+
+    id: UUID
+    user_id: UUID
+    plan_date: date
+    title: Optional[str]
+    notes: Optional[str]
+    monthly_plan_id: Optional[UUID]
+    created_at: datetime
+    updated_at: datetime
+
+    class Config:
+        from_attributes = True

@@ -1,4 +1,4 @@
-from pydantic_settings import BaseSettings
+from pydantic_settings import BaseSettings, SettingsConfigDict
 from typing import List
 import json
 
@@ -13,12 +13,18 @@ def parse_cors_origins(v: str | List[str]) -> List[str]:
         except json.JSONDecodeError:
             # If JSON parsing fails, split by comma
             return [origin.strip() for origin in v.split(",")]
-    return ["http://localhost:5173"]
+    return ["http://localhost:5277"]
 
 
 class Settings(BaseSettings):
+    model_config = SettingsConfigDict(
+        env_file=(".env", ".env.local"),
+        env_file_encoding="utf-8",
+        case_sensitive=True,
+    )
+
     # Database
-    DATABASE_URL: str = "postgresql://josie:bills_password_2024@localhost:5432/fix_life_db"
+    DATABASE_URL: str = "postgresql://josie:bills_password_2024@localhost:6432/fix_life_db"
 
     # JWT
     SECRET_KEY: str = "fix-life-secret-key-2024"
@@ -26,7 +32,7 @@ class Settings(BaseSettings):
     ACCESS_TOKEN_EXPIRE_MINUTES: int = 10080  # 7 days
 
     # CORS
-    CORS_ORIGINS: List[str] = ["http://localhost:5173", "http://localhost:5174"]
+    CORS_ORIGINS: List[str] = ["http://localhost:5277", "http://localhost:5174"]
 
     # Email / SMTP
     # 163 邮箱配置: smtp.163.com:465 (SSL) 或 smtp.163.com:994 (SSL)
@@ -52,11 +58,7 @@ class Settings(BaseSettings):
     CELERY_RESULT_BACKEND: str = "redis://localhost:6379/1"
 
     # Frontend
-    FRONTEND_URL: str = "http://localhost:5173"
-
-    class Config:
-        env_file = ".env"
-        case_sensitive = True
+    FRONTEND_URL: str = "http://localhost:5277"
 
     def __init__(self, **kwargs):
         super().__init__(**kwargs)

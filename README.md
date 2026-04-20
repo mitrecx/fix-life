@@ -92,10 +92,10 @@ cp .env.example .env
 4. 运行数据库迁移
 5. 启动开发服务器
 
-后端将在 `http://localhost:8000` 启动
+后端将在 `http://localhost:8020` 启动
 
-- API 文档: `http://localhost:8000/docs`
-- ReDoc 文档: `http://localhost:8000/redoc`
+- API 文档: `http://localhost:8020/docs`
+- ReDoc 文档: `http://localhost:8020/redoc`
 
 ### 3. 前端设置
 
@@ -109,14 +109,14 @@ cd frontend
 ./start.sh
 ```
 
-前端将在 `http://localhost:5173` 启动
+前端将在 `http://localhost:5277` 启动
 
 ## 数据库连接
 
 数据库配置在 `backend/.env` 中：
 
 ```
-DATABASE_URL=postgresql://josie:bills_password_2024@localhost:5432/fix_life_db
+DATABASE_URL=postgresql://josie:bills_password_2024@localhost:6432/fix_life_db
 ```
 
 ## 开发指南
@@ -148,15 +148,15 @@ uv run alembic downgrade -1
 ### 后端 (.env)
 
 ```
-DATABASE_URL=postgresql://user:password@localhost:5432/fix_life_db
+DATABASE_URL=postgresql://user:password@localhost:6432/fix_life_db
 SECRET_KEY=your-secret-key
 ALGORITHM=HS256
 ACCESS_TOKEN_EXPIRE_MINUTES=10080
-CORS_ORIGINS=["http://localhost:5173"]
+CORS_ORIGINS=["http://localhost:5277"]
 ```
 
 ### 前端 (.env)
 
 ```
-VITE_API_URL=http://localhost:8000/api/v1
+VITE_API_URL=http://localhost:8020/api/v1
 ```

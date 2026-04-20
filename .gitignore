@@ -37,9 +37,11 @@ venv/
 ENV/
 env/
 
-# Environment
+# Environment / dotenv (only *example* templates stay tracked)
 .env
-.env.local
+.env.*
+!.env.example
+!.env.*.example
 
 # IDE - Backend
 .vscode/
@@ -72,10 +74,6 @@ jspm_packages/
 dist/
 dist-ssr/
 *.local
-
-# Environment - Frontend
-.env.local
-.env.*.local
 
 # IDE - Frontend
 .vscode/*
@@ -135,6 +133,9 @@ Desktop.ini
 
 # Claude Code
 .claude/
+
+# Cursor 项目技能目录
+.cursor/skills/
 
 # Temporary files
 *.tmp
