@@ -7,6 +7,18 @@ import type { SystemStatusResponse } from "@/types/systemStatus";
 
 const { Title, Text } = Typography;
 
+const CHECK_LABELS: Record<string, string> = {
+  postgres: "PostgreSQL",
+  redis_broker: "Redis（Celery Broker）",
+  redis_result_backend: "Redis（Celery Result）",
+  celery_worker: "Celery Worker",
+  celery_beat: "Celery Beat（定时调度）",
+};
+
+function checkTitle(name: string) {
+  return CHECK_LABELS[name] ?? name.replace(/_/g, " ");
+}
+
 export default function SystemStatusPage() {
   const navigate = useNavigate();
   const [data, setData] = useState<SystemStatusResponse | null>(null);
@@ -42,7 +54,9 @@ export default function SystemStatusPage() {
           <Title level={3} className="!mb-1">
             系统状态
           </Title>
-          <Text type="secondary">应用依赖健康检查（数据库、Redis），仅管理员可见。</Text>
+          <Text type="secondary">
+            应用依赖健康检查（数据库、Redis、Celery Worker / Beat），仅管理员可见。
+          </Text>
         </div>
         <Button icon={<RefreshCw size={16} />} onClick={() => load()} loading={loading}>
           刷新
@@ -67,7 +81,7 @@ export default function SystemStatusPage() {
             {data.checks.map((c) => (
               <Card key={c.name} size="small" className="shadow-sm">
                 <div className="flex items-center justify-between gap-2 flex-wrap">
-                  <span className="font-medium capitalize">{c.name}</span>
+                  <span className="font-medium">{checkTitle(c.name)}</span>
                   <Tag color={c.ok ? "success" : "error"}>{c.ok ? "正常" : "异常"}</Tag>
                 </div>
                 {c.latency_ms != null && (
