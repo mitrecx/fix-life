@@ -18,6 +18,13 @@ export function DailyPlansList() {
   const [showBatchCreateModal, setShowBatchCreateModal] = useState(false);
   const [planSummaries, setPlanSummaries] = useState<Record<string, DailySummary>>({});
 
+  const formatLocalYMD = (date: Date) => {
+    const y = date.getFullYear();
+    const m = String(date.getMonth() + 1).padStart(2, "0");
+    const d = String(date.getDate()).padStart(2, "0");
+    return `${y}-${m}-${d}`;
+  };
+
   // 计算当前周的周一和周日
   const getCurrentWeekRange = () => {
     const today = new Date();
@@ -100,6 +107,29 @@ export function DailyPlansList() {
       start: formatDate(targetMonday),
       end: formatDate(targetSunday)
     };
+  };
+
+  /** 与「按周查询」下拉逻辑一致：根据本周一解析出年份 + 周序号 */
+  const getThisWeekYearWeek = (): { year: number; week: number } => {
+    const { monday } = getCurrentWeekRange();
+    const monStr = formatLocalYMD(monday);
+    const baseY = monday.getFullYear();
+    for (const y of [baseY - 1, baseY, baseY + 1]) {
+      for (let w = 1; w <= 53; w++) {
+        const { start } = getDateRangeByYearWeek(y, w);
+        if (start === monStr) return { year: y, week: w };
+      }
+    }
+    return { year: baseY, week: getCurrentWeekNumber() };
+  };
+
+  const handleThisWeek = () => {
+    const { year, week } = getThisWeekYearWeek();
+    setSelectedYear(year);
+    setSelectedWeek(week);
+    const { start, end } = getDateRangeByYearWeek(year, week);
+    setStartDate(start);
+    setEndDate(end);
   };
 
   // 上一周
@@ -416,6 +446,13 @@ export function DailyPlansList() {
             className="px-3 py-1.5 text-xs font-medium text-gray-600 bg-gray-100 rounded-lg hover:bg-gray-200 transition-all"
           >
             上一周
+          </button>
+          <button
+            type="button"
+            onClick={handleThisWeek}
+            className="px-3 py-1.5 text-xs font-semibold text-white rounded-lg shadow-md bg-gradient-to-r from-indigo-500 via-purple-500 to-pink-500 hover:from-indigo-600 hover:via-purple-600 hover:to-pink-600 hover:shadow-lg transition-all"
+          >
+            本周第{getThisWeekYearWeek().week}周
           </button>
           <button
             onClick={handleNextWeek}
