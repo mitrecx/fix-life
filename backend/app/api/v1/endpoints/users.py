@@ -10,6 +10,7 @@ from pathlib import Path
 from app.api.v1.deps import get_db, get_current_user
 from app.schemas.user import UserResponse, UserProfileUpdate, ChangePasswordRequest
 from app.models.user import User
+from app.services.user_response import build_user_response
 from app.core.security import verify_password, get_password_hash
 from app.core.config import settings
 
@@ -22,6 +23,7 @@ AVATAR_URL_BASE = "/api/v1/users/avatar"
 @router.get("/me", response_model=UserResponse)
 def get_profile(
     current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db),
 ) -> UserResponse:
     """
     Get current user profile information.
@@ -31,7 +33,7 @@ def get_profile(
     - avatar_url, bio
     - is_active, created_at, updated_at
     """
-    return UserResponse.model_validate(current_user)
+    return build_user_response(db, current_user)
 
 
 @router.put("/me", response_model=UserResponse)
@@ -61,7 +63,7 @@ def update_profile(
     db.commit()
     db.refresh(current_user)
 
-    return UserResponse.model_validate(current_user)
+    return build_user_response(db, current_user)
 
 
 @router.post("/me/change-password")

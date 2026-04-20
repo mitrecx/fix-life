@@ -49,6 +49,7 @@ class UserResponse(UserBase):
     is_active: bool
     created_at: datetime
     updated_at: Optional[datetime] = None
+    permissions: list[str] = Field(default_factory=list)
 
     class Config:
         from_attributes = True

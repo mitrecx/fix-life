@@ -16,6 +16,7 @@ from app.schemas.user import (
 )
 from app.services.auth_service import AuthService
 from app.services.email_service import EmailService
+from app.services.user_response import build_user_response
 from app.core.security import create_access_token, get_password_hash, authenticate_user
 
 router = APIRouter()
@@ -132,7 +133,7 @@ def register(
     return TokenResponse(
         access_token=access_token,
         token_type="bearer",
-        user=user
+        user=build_user_response(db, user),
     )
 
 
@@ -162,7 +163,7 @@ def login(
     return TokenResponse(
         access_token=access_token,
         token_type="bearer",
-        user=user
+        user=build_user_response(db, user),
     )
 
 
