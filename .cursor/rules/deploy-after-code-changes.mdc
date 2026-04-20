@@ -1,0 +1,16 @@
+---
+description: Deploy to production server after application code changes
+alwaysApply: true
+---
+
+# Deploy after code changes
+
+When you **finish** edits that affect what runs in production, deploy before wrapping up the task:
+
+1. From the repo root, run: `bash deploy.sh deploy`
+2. Confirm the script exits successfully (build, rsync, `alembic upgrade head`, service restarts).
+3. If deploy fails (SSH, network, remote errors), report the failure and logs; do not claim the server is updated.
+
+**Scope:** backend, frontend, `deploy.sh`, systemd units under `deploy/`, or other runtime-facing assets. **Skip** deploy when the diff is documentation-only, comments-only, or the user explicitly says not to deploy.
+
+**Do not** replace this with manual rsync/SSH steps unless `deploy.sh` is broken; the project standard is `deploy.sh` (see `CLAUDE.md` / team conventions).
