@@ -8,6 +8,7 @@ from app.models.role_permission import RolePermission
 from app.models.user_role import UserRole
 
 SYSTEM_STATUS_READ = "system_status:read"
+USERS_MANAGE = "users:manage"
 
 
 def get_permission_codes_for_user(db: Session, user_id: UUID) -> list[str]:

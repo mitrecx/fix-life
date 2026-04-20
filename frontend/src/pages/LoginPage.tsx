@@ -31,7 +31,11 @@ export default function LoginPage() {
       const response = await authService.login(identifier, password);
       setAuth(response.user, response.access_token);
       message.success("登录成功");
-      navigate(from, { replace: true });
+      if (response.user.must_change_password) {
+        navigate("/force-change-password", { replace: true });
+      } else {
+        navigate(from, { replace: true });
+      }
     } catch (error) {
       const errorMsg = error instanceof Error ? error.message : "登录失败";
       setError(errorMsg);

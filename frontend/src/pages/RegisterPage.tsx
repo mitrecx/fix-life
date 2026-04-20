@@ -90,7 +90,11 @@ export default function RegisterPage() {
       );
       setAuth(response.user, response.access_token);
       message.success("注册成功");
-      navigate("/", { replace: true });
+      if (response.user.must_change_password) {
+        navigate("/force-change-password", { replace: true });
+      } else {
+        navigate("/", { replace: true });
+      }
     } catch (error) {
       const errorMsg = error instanceof Error ? error.message : "注册失败";
       setError(errorMsg);

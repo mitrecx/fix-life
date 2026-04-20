@@ -6,6 +6,7 @@ from app.core.deps import get_current_user, get_db
 from app.models.user import User
 from app.services.rbac_service import (
     SYSTEM_STATUS_READ,
+    USERS_MANAGE,
     get_permission_codes_for_user,
 )
 
@@ -27,12 +28,15 @@ def require_permission(permission_code: str):
 
 # Resolved once so tests can `app.dependency_overrides[require_system_status_permission] = ...`
 require_system_status_permission = require_permission(SYSTEM_STATUS_READ)
+require_users_manage = require_permission(USERS_MANAGE)
 
 __all__ = [
     "SYSTEM_STATUS_READ",
+    "USERS_MANAGE",
     "get_db",
     "get_current_user",
     "get_permission_codes_for_user",
     "require_permission",
     "require_system_status_permission",
+    "require_users_manage",
 ]

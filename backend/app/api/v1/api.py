@@ -1,5 +1,17 @@
 from fastapi import APIRouter
-from app.api.v1.endpoints import yearly_goals, monthly_plans, daily_plans, analytics, auth, users, daily_summaries, system_settings, weekly_summaries, system
+from app.api.v1.endpoints import (
+    yearly_goals,
+    monthly_plans,
+    daily_plans,
+    analytics,
+    auth,
+    users,
+    daily_summaries,
+    system_settings,
+    weekly_summaries,
+    system,
+    admin_users,
+)
 
 api_router = APIRouter()
 
@@ -16,3 +28,4 @@ api_router.include_router(daily_summaries.router, prefix="/daily-summaries", tag
 api_router.include_router(weekly_summaries.router, prefix="/weekly-summaries", tags=["weekly-summaries"])
 api_router.include_router(analytics.router, prefix="/analytics", tags=["analytics"])
 api_router.include_router(system.router, prefix="/system", tags=["system"])
+api_router.include_router(admin_users.router, prefix="/admin", tags=["admin"])

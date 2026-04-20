@@ -21,6 +21,7 @@ class User(Base):
     avatar_mime_type = Column(String(50), nullable=True)  # Store MIME type (image/jpeg, etc.)
     bio = Column(String(500), nullable=True)
     is_active = Column(Boolean, default=True, nullable=False)
+    must_change_password = Column(Boolean, default=False, nullable=False)
     created_at = Column(DateTime(timezone=True), server_default=func.now(), nullable=False)
     updated_at = Column(DateTime(timezone=True), server_default=func.now(), onupdate=func.now())
 

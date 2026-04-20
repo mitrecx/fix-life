@@ -75,18 +75,22 @@ def change_password(
     """
     Change current user password.
 
-    Requires both old password (for verification) and new password.
-    The old password must match the current password.
+    When must_change_password is true (e.g. after admin temp password), old_password may be omitted.
+    Otherwise old_password must match the current password.
     """
-    # Verify old password
-    if not verify_password(password_data.old_password, current_user.hashed_password):
-        raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
-            detail="原密码错误"
-        )
+    if current_user.must_change_password:
+        current_user.hashed_password = get_password_hash(password_data.new_password)
+        current_user.must_change_password = False
+    else:
+        if not password_data.old_password or not verify_password(
+            password_data.old_password, current_user.hashed_password
+        ):
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="原密码错误",
+            )
+        current_user.hashed_password = get_password_hash(password_data.new_password)
 
-    # Update to new password
-    current_user.hashed_password = get_password_hash(password_data.new_password)
     db.commit()
 
     return {"message": "密码修改成功"}

@@ -1,6 +1,8 @@
 import { createBrowserRouter } from "react-router-dom";
 import { Navigate } from "react-router-dom";
 import ProtectedRoute from "@/components/ProtectedRoute";
+import RequireNoPasswordReset from "@/components/RequireNoPasswordReset";
+import RequireUsersManage from "@/components/RequireUsersManage";
 import Layout from "@/components/Layout";
 import LoginPage from "@/pages/LoginPage";
 import RegisterPage from "@/pages/RegisterPage";
@@ -14,6 +16,8 @@ import WeeklySummaryDetailPage from "@/pages/WeeklySummaryDetailPage";
 import SettingsPage from "@/pages/SettingsPage";
 import ProfilePage from "@/pages/ProfilePage";
 import SystemStatusPage from "@/pages/SystemStatusPage";
+import ForceChangePasswordPage from "@/pages/ForceChangePasswordPage";
+import AdminUsersPage from "@/pages/AdminUsersPage";
 
 export const router = createBrowserRouter([
   // Public routes
@@ -30,12 +34,23 @@ export const router = createBrowserRouter([
     element: <ForgotPasswordPage />,
   },
 
+  {
+    path: "/force-change-password",
+    element: (
+      <ProtectedRoute>
+        <ForceChangePasswordPage />
+      </ProtectedRoute>
+    ),
+  },
+
   // Protected routes
   {
     path: "/",
     element: (
       <ProtectedRoute>
-        <Layout />
+        <RequireNoPasswordReset>
+          <Layout />
+        </RequireNoPasswordReset>
       </ProtectedRoute>
     ),
     children: [
@@ -70,6 +85,14 @@ export const router = createBrowserRouter([
       {
         path: "system-status",
         element: <SystemStatusPage />,
+      },
+      {
+        path: "admin/users",
+        element: (
+          <RequireUsersManage>
+            <AdminUsersPage />
+          </RequireUsersManage>
+        ),
       },
       {
         path: "settings",

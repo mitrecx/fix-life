@@ -5,6 +5,7 @@ import { message } from "antd";
 import { useAuthStore } from "@/store/authStore";
 
 const SYSTEM_STATUS_READ = "system_status:read";
+const USERS_MANAGE = "users:manage";
 
 export default function Layout() {
   const { user, clearAuth } = useAuthStore();
@@ -20,6 +21,9 @@ export default function Layout() {
     ];
     if (user?.permissions?.includes(SYSTEM_STATUS_READ)) {
       items.push({ path: "/system-status", label: "系统状态", shortLabel: "况" });
+    }
+    if (user?.permissions?.includes(USERS_MANAGE)) {
+      items.push({ path: "/admin/users", label: "用户管理", shortLabel: "管" });
     }
     return items;
   }, [user]);

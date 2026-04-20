@@ -47,6 +47,7 @@ class UserResponse(UserBase):
     avatar_url: Optional[str] = None
     bio: Optional[str] = None
     is_active: bool
+    must_change_password: bool = False
     created_at: datetime
     updated_at: Optional[datetime] = None
     permissions: list[str] = Field(default_factory=list)
@@ -161,7 +162,13 @@ class UserProfileUpdate(BaseModel):
 
 class ChangePasswordRequest(BaseModel):
     """Schema for change password request."""
-    old_password: str = Field(..., min_length=1, description="Current password")
+
+    old_password: Optional[str] = Field(
+        None,
+        min_length=1,
+        max_length=100,
+        description="Current password (omit when must_change_password is true)",
+    )
     new_password: str = Field(..., min_length=8, max_length=100, description="New password (min 8 characters)")
 
     class Config:

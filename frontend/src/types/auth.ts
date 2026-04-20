@@ -7,6 +7,8 @@ export interface User {
   avatar_url?: string;
   bio?: string;
   is_active: boolean;
+  /** True after admin issues a temp password; user must change password before using the app. */
+  must_change_password?: boolean;
   created_at: string;
   updated_at?: string;
   /** Permission codes from RBAC (e.g. system_status:read) */
@@ -74,7 +76,7 @@ export interface UserProfileUpdate {
 
 /** Request payload for changing password */
 export interface ChangePasswordRequest {
-  old_password: string;
+  old_password?: string;
   new_password: string;
 }
 
