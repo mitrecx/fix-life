@@ -21,6 +21,10 @@ function App() {
     })();
   }, [token, setUser]);
 
+  useEffect(() => {
+    document.getElementById("initial-splash")?.remove();
+  }, []);
+
   return <RouterProvider router={router} />;
 }
 

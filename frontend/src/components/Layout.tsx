@@ -1,8 +1,9 @@
-import { useMemo } from "react";
+import { Suspense, useMemo } from "react";
 import { Outlet, NavLink, useNavigate } from "react-router-dom";
 import { LogOut, Settings } from "lucide-react";
 import { message } from "antd";
 import { useAuthStore } from "@/store/authStore";
+import PageLoader from "@/components/PageLoader";
 
 const SYSTEM_STATUS_READ = "system_status:read";
 const USERS_MANAGE = "users:manage";
@@ -125,7 +126,9 @@ export default function Layout() {
 
       {/* Main Content */}
       <main className="w-full mx-auto px-2 sm:px-4 md:px-6 py-4 sm:py-6">
-        <Outlet />
+        <Suspense fallback={<PageLoader />}>
+          <Outlet />
+        </Suspense>
       </main>
     </div>
   );
