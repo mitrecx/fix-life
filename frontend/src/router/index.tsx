@@ -13,6 +13,7 @@ import WeeklySummariesPage from "@/pages/WeeklySummariesPage";
 import WeeklySummaryDetailPage from "@/pages/WeeklySummaryDetailPage";
 import SettingsPage from "@/pages/SettingsPage";
 import ProfilePage from "@/pages/ProfilePage";
+import SystemStatusPage from "@/pages/SystemStatusPage";
 
 export const router = createBrowserRouter([
   // Public routes
@@ -65,6 +66,10 @@ export const router = createBrowserRouter([
       {
         path: "analytics",
         element: <AnalyticsPage />,
+      },
+      {
+        path: "system-status",
+        element: <SystemStatusPage />,
       },
       {
         path: "settings",

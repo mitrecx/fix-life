@@ -9,6 +9,8 @@ export interface User {
   is_active: boolean;
   created_at: string;
   updated_at?: string;
+  /** Permission codes from RBAC (e.g. system_status:read) */
+  permissions?: string[];
 }
 
 /** Request payload for login */

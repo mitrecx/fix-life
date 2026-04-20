@@ -1,19 +1,28 @@
+import { useMemo } from "react";
 import { Outlet, NavLink, useNavigate } from "react-router-dom";
 import { LogOut, Settings } from "lucide-react";
 import { message } from "antd";
 import { useAuthStore } from "@/store/authStore";
 
+const SYSTEM_STATUS_READ = "system_status:read";
+
 export default function Layout() {
   const { user, clearAuth } = useAuthStore();
   const navigate = useNavigate();
 
-  const navItems = [
-    { path: "/daily-plans", label: "每日计划", shortLabel: "日" },
-    { path: "/monthly-plans", label: "月度计划", shortLabel: "月" },
-    { path: "/yearly-goals", label: "年度目标", shortLabel: "年" },
-    { path: "/weekly-summaries", label: "周总结", shortLabel: "周" },
-    { path: "/analytics", label: "数据统计", shortLabel: "统" },
-  ];
+  const navItems = useMemo(() => {
+    const items = [
+      { path: "/daily-plans", label: "每日计划", shortLabel: "日" },
+      { path: "/monthly-plans", label: "月度计划", shortLabel: "月" },
+      { path: "/yearly-goals", label: "年度目标", shortLabel: "年" },
+      { path: "/weekly-summaries", label: "周总结", shortLabel: "周" },
+      { path: "/analytics", label: "数据统计", shortLabel: "统" },
+    ];
+    if (user?.permissions?.includes(SYSTEM_STATUS_READ)) {
+      items.push({ path: "/system-status", label: "系统状态", shortLabel: "况" });
+    }
+    return items;
+  }, [user]);
 
   const handleLogout = () => {
     clearAuth();
