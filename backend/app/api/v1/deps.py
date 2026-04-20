@@ -9,15 +9,6 @@ from app.services.rbac_service import (
     get_permission_codes_for_user,
 )
 
-__all__ = [
-    "SYSTEM_STATUS_READ",
-    "get_db",
-    "get_current_user",
-    "get_permission_codes_for_user",
-    "require_permission",
-]
-
-
 def require_permission(permission_code: str):
     async def permission_checker(
         current_user: User = Depends(get_current_user),
@@ -32,3 +23,16 @@ def require_permission(permission_code: str):
         return current_user
 
     return permission_checker
+
+
+# Resolved once so tests can `app.dependency_overrides[require_system_status_permission] = ...`
+require_system_status_permission = require_permission(SYSTEM_STATUS_READ)
+
+__all__ = [
+    "SYSTEM_STATUS_READ",
+    "get_db",
+    "get_current_user",
+    "get_permission_codes_for_user",
+    "require_permission",
+    "require_system_status_permission",
+]
