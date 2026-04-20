@@ -31,6 +31,7 @@ class User(Base):
     daily_plans = relationship("DailyPlan", back_populates="user", cascade="all, delete-orphan")
     daily_summaries = relationship("DailySummary", cascade="all, delete-orphan")
     weekly_summaries = relationship("WeeklySummary", back_populates="user", cascade="all, delete-orphan")
+    user_roles = relationship("UserRole", back_populates="user", cascade="all, delete-orphan")
     # TODO: Add these relationships when models are implemented
     # habits = relationship("Habit", back_populates="user", cascade="all, delete-orphan")
 

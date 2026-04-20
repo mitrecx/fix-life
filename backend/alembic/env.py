@@ -9,7 +9,15 @@ sys.path.append(str(Path(__file__).parent.parent))
 
 # Import models and base
 from app.db.base import Base
-from app.models import User, YearlyGoal, MonthlyMilestone  # noqa
+from app.models import (  # noqa
+    User,
+    YearlyGoal,
+    MonthlyMilestone,
+    Role,
+    Permission,
+    UserRole,
+    RolePermission,
+)
 from app.core.config import settings
 
 # this is the Alembic Config object
