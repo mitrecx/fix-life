@@ -7,13 +7,17 @@
 ## 服务说明
 
 ### Celery Worker
+
 负责执行异步任务：
+
 - 为每个用户生成周总结
 - 发送邮件通知
 - 数据聚合和统计
 
 ### Celery Beat
+
 定时任务调度器：
+
 - 每周一早上 5:00 触发周总结生成任务
 - 使用 crontab 调度：`crontab(hour=5, minute=0, day_of_week=1)`
 
@@ -94,103 +98,50 @@ sudo systemctl enable redis
 redis-cli ping
 ```
 
-#### 2. 部署并启动 Celery 服务
+#### 2. 部署并启动 Celery（systemd）
+
+生产环境使用 **`fix-life-celery-worker.service`** 与 **`fix-life-celery-beat.service`**。单元文件在仓库 **`deploy/`** 目录，**`deploy.sh deploy`** 或 **`deploy.sh backend`** 会：
+
+1. 将 `deploy/fix-life-celery-*.service` 同步到服务器并安装到 `/etc/systemd/system/`
+2. **`daemon-reload`**、`enable`、**`restart`**
+3. **首次**从 `./celery.sh` 迁到 systemd 前，若单元尚未加载，会先执行 **`./celery.sh stop`**，避免重复进程
 
 ```bash
-# 本地执行 - 部署后端代码（包含 Celery 配置）
+# 本地：全量或仅后端部署（均会同步并重启 Celery systemd 服务）
+bash deploy.sh deploy
+# 或
 bash deploy.sh backend
-
-# 登录到服务器
-ssh josie@jo.mitrecx.top
-
-# 进入部署目录
-cd /opt/fix-life/backend
-
-# 启动 Celery 服务
-./celery.sh start
 ```
 
-#### 3. 设置 Celery 服务开机自启动
+日志：`journalctl -u fix-life-celery-worker -f`、`journalctl -u fix-life-celery-beat -f`
 
-创建 systemd 服务文件：
+#### 3. 手动安装 / 调整单元（可选）
 
-**Celery Worker 服务** (`/etc/systemd/system/fix-life-celery-worker.service`):
-
-```ini
-[Unit]
-Description=Fix Life Celery Worker
-After=network.target redis.service
-
-[Service]
-Type=simple
-User=josie
-Group=josie
-WorkingDirectory=/opt/fix-life/backend
-Environment="PATH=/opt/fix-life/backend/.venv/bin"
-ExecStart=/opt/fix-life/backend/.venv/bin/celery -A app.core.celery worker --loglevel=info
-Restart=always
-RestartSec=10s
-
-[Install]
-WantedBy=multi-user.target
-```
-
-**Celery Beat 服务** (`/etc/systemd/system/fix-life-celery-beat.service`):
-
-```ini
-[Unit]
-Description=Fix Life Celery Beat
-After=network.target redis.service
-
-[Service]
-Type=simple
-User=josie
-Group=josie
-WorkingDirectory=/opt/fix-life/backend
-Environment="PATH=/opt/fix-life/backend/.venv/bin"
-ExecStart=/opt/fix-life/backend/.venv/bin/celery -A app.core.celery beat --loglevel=info
-Restart=always
-RestartSec=10s
-
-[Install]
-WantedBy=multi-user.target
-```
-
-启用服务：
+若需在不跑完整部署的情况下更新单元文件，可将仓库中的文件拷到服务器后：
 
 ```bash
-# 复制服务文件到服务器
-sudo cp fix-life-celery-*.service /etc/systemd/system/
-
-# 重新加载 systemd
+sudo cp fix-life-celery-worker.service fix-life-celery-beat.service /etc/systemd/system/
 sudo systemctl daemon-reload
-
-# 启用并启动服务
-sudo systemctl enable fix-life-celery-worker
-sudo systemctl enable fix-life-celery-beat
-sudo systemctl start fix-life-celery-worker
-sudo systemctl start fix-life-celery-beat
-
-# 查看状态
-sudo systemctl status fix-life-celery-worker
-sudo systemctl status fix-life-celery-beat
+sudo systemctl enable fix-life-celery-worker fix-life-celery-beat
+sudo systemctl restart fix-life-celery-worker fix-life-celery-beat
+sudo systemctl status fix-life-celery-worker fix-life-celery-beat
 ```
+
+单元正文以仓库 **`deploy/fix-life-celery-worker.service`**、**`deploy/fix-life-celery-beat.service`** 为准。
 
 ## 任务说明
 
 ### 已实现的定时任务
 
 1. **generate-all-weekly-summaries**
-   - **触发时间**: 每周一早上 5:00（北京时间）
-   - **功能**: 扫描所有活跃用户，为每个用户派发周总结生成任务
-
+  - **触发时间**: 每周一早上 5:00（北京时间）
+  - **功能**: 扫描所有活跃用户，为每个用户派发周总结生成任务
 2. **generate-user-weekly-summary**
-   - **类型**: 子任务
-   - **功能**: 为单个用户生成周总结，并发送邮件通知
-
+  - **类型**: 子任务
+  - **功能**: 为单个用户生成周总结，并发送邮件通知
 3. **regenerate-weekly-summary**
-   - **类型**: 手动触发任务
-   - **功能**: 重新生成指定的周总结（补救机制）
+  - **类型**: 手动触发任务
+  - **功能**: 重新生成指定的周总结（补救机制）
 
 ### 手动触发任务
 
@@ -275,6 +226,7 @@ celery_app.conf.beat_schedule = {
 ### 常见问题
 
 #### 1. Worker 无法启动
+
 ```bash
 # 检查 Redis 是否运行
 redis-cli ping
@@ -287,6 +239,7 @@ tail -50 logs/celery_worker.log
 ```
 
 #### 2. Beat 无法启动
+
 ```bash
 # 检查是否有其他 Beat 进程
 ps aux | grep celery
@@ -296,6 +249,7 @@ tail -50 logs/celery_beat.log
 ```
 
 #### 3. 任务不执行
+
 ```bash
 # 检查 Beat 日志，确认调度器正常运行
 grep "Scheduler" logs/celery_beat.log
@@ -307,6 +261,7 @@ grep "generate-weekly-summaries" logs/celery_worker.log
 ```
 
 #### 4. 邮件发送失败
+
 ```bash
 # 检查邮件配置
 grep SMTP backend/app/core/config.py
@@ -346,3 +301,4 @@ SMTP_USE_SSL=True
 3. **监控**：使用 Flower 或其他工具监控任务执行
 4. **备份**：定期备份数据库和重要配置文件
 5. **时区**：确保服务器时区设置正确（Asia/Shanghai）
+

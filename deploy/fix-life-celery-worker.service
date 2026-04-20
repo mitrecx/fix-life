@@ -1,0 +1,17 @@
+[Unit]
+Description=Fix Life Celery Worker
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=simple
+User=josie
+Group=josie
+WorkingDirectory=/opt/fix-life/backend
+Environment="PATH=/opt/fix-life/backend/.venv/bin:/usr/local/bin:/usr/bin:/bin"
+ExecStart=/opt/fix-life/backend/.venv/bin/celery -A app.core.celery worker --loglevel=info
+Restart=always
+RestartSec=10
+
+[Install]
+WantedBy=multi-user.target

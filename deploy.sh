@@ -29,6 +29,36 @@ SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 BACKEND_LOCAL="${SCRIPT_DIR}/backend"
 FRONTEND_LOCAL="${SCRIPT_DIR}/frontend"
 
+# Install/update Celery systemd units from deploy/*.service, enable, and restart.
+# First run: if units were not loaded yet, stops legacy ./celery.sh processes only.
+sync_celery_systemd_units_and_restart() {
+  echo "Syncing Celery systemd units (fix-life-celery-worker / fix-life-celery-beat)..."
+  rsync -avz \
+    "${SCRIPT_DIR}/deploy/fix-life-celery-worker.service" \
+    "${SCRIPT_DIR}/deploy/fix-life-celery-beat.service" \
+    "${SERVER}:/tmp/"
+  ssh ${DEPLOY_SSH_OPTS} $SERVER env BACKEND_DEPLOY_PATH="${BACKEND_DEPLOY_PATH}" bash -s <<'ENDSSH'
+set -e
+W=$(systemctl show -p LoadState --value fix-life-celery-worker.service 2>/dev/null || echo "not-found")
+if [ "$W" != "loaded" ]; then
+  echo "  → Stopping legacy Celery (celery.sh) before systemd takeover..."
+  cd "$BACKEND_DEPLOY_PATH"
+  if [ -x ./celery.sh ]; then
+    ./celery.sh stop || true
+  fi
+fi
+sudo cp /tmp/fix-life-celery-worker.service /tmp/fix-life-celery-beat.service /etc/systemd/system/
+sudo systemctl daemon-reload
+sudo systemctl enable fix-life-celery-worker fix-life-celery-beat
+sudo systemctl restart fix-life-celery-worker fix-life-celery-beat
+ENDSSH
+}
+
+restart_celery_systemd_services() {
+  echo "Restarting Celery (systemd)..."
+  ssh ${DEPLOY_SSH_OPTS} $SERVER "sudo systemctl restart fix-life-celery-worker fix-life-celery-beat"
+}
+
 echo "=========================================="
 echo "Fix Life Deployment Script"
 echo "Server: ${SERVER_HOST}"
@@ -93,6 +123,8 @@ case $COMMAND in
     echo "Restarting backend service..."
     ssh ${DEPLOY_SSH_OPTS} $SERVER "sudo systemctl restart ${BACKEND_SERVICE_NAME}"
 
+    sync_celery_systemd_units_and_restart
+
     echo "Deployment complete!"
     echo "Access your app at: https://fixlife.mitrecx.top"
     ;;
@@ -100,12 +132,13 @@ case $COMMAND in
   "restart")
     echo "Restarting services..."
     ssh ${DEPLOY_SSH_OPTS} $SERVER "sudo systemctl restart ${BACKEND_SERVICE_NAME}"
-    echo "Backend service restarted"
+    restart_celery_systemd_services
+    echo "Backend and Celery (systemd) restarted."
     ;;
 
   "status")
     echo "Checking service status..."
-    ssh ${DEPLOY_SSH_OPTS} $SERVER "systemctl status ${BACKEND_SERVICE_NAME}"
+    ssh ${DEPLOY_SSH_OPTS} $SERVER "systemctl status ${BACKEND_SERVICE_NAME} fix-life-celery-worker fix-life-celery-beat --no-pager"
     ;;
 
   "logs")
@@ -149,6 +182,7 @@ case $COMMAND in
     '"
 
     ssh ${DEPLOY_SSH_OPTS} $SERVER "sudo systemctl restart ${BACKEND_SERVICE_NAME}"
+    sync_celery_systemd_units_and_restart
     echo "Backend deployment complete!"
     ;;
 
