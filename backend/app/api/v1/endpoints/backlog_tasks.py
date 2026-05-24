@@ -1,4 +1,5 @@
 from typing import Optional
+from datetime import date
 
 from fastapi import APIRouter, Depends, HTTPException, Query
 from sqlalchemy.orm import Session
@@ -22,15 +23,28 @@ router = APIRouter()
 def list_backlog_tasks(
     tab: str = Query("active", description="active (pending+scheduled) or done"),
     context: Optional[TaskContext] = Query(None),
+    q: Optional[str] = Query(None, description="Keyword search in title"),
+    time_field: Optional[str] = Query(
+        None, description="created, scheduled, or completed — used with date_from/date_to"
+    ),
+    date_from: Optional[date] = Query(None),
+    date_to: Optional[date] = Query(None),
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ):
+    if time_field is not None and time_field not in ("created", "scheduled", "completed"):
+        raise HTTPException(status_code=422, detail="time_field must be created, scheduled, or completed")
+
     service = BacklogTaskService(db)
     active_only = tab != "done"
     tasks = service.get_user_tasks(
         str(current_user.id),
         active_only=active_only,
         context=context,
+        q=q,
+        time_field=time_field,  # type: ignore[arg-type]
+        date_from=date_from,
+        date_to=date_to,
     )
     return BacklogTaskList(tasks=tasks, total=len(tasks))
 

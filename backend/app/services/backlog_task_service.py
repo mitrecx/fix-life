@@ -1,6 +1,7 @@
 from datetime import datetime, date
-from typing import List, Optional
+from typing import List, Optional, Literal
 
+from sqlalchemy import cast, Date
 from sqlalchemy.orm import Session
 
 from app.models.backlog_task import BacklogTask, BacklogTaskStatus
@@ -9,6 +10,8 @@ from app.models.task_context import TaskContext
 from app.schemas.backlog_task import BacklogTaskCreate, BacklogTaskUpdate, BacklogTaskSchedule
 from app.schemas.daily_plan import DailyPlanCreate, DailyTaskCreate
 from app.services.daily_plan_service import DailyPlanService
+
+BacklogTimeField = Literal["created", "scheduled", "completed"]
 
 
 class BacklogTaskService:
@@ -21,6 +24,10 @@ class BacklogTaskService:
         *,
         active_only: bool = True,
         context: Optional[TaskContext] = None,
+        q: Optional[str] = None,
+        time_field: Optional[BacklogTimeField] = None,
+        date_from: Optional[date] = None,
+        date_to: Optional[date] = None,
     ) -> List[BacklogTask]:
         query = self.db.query(BacklogTask).filter(BacklogTask.user_id == user_id)
 
@@ -33,6 +40,29 @@ class BacklogTaskService:
 
         if context is not None:
             query = query.filter(BacklogTask.context == context)
+
+        if q:
+            query = query.filter(BacklogTask.title.ilike(f"%{q.strip()}%"))
+
+        if time_field and (date_from is not None or date_to is not None):
+            if time_field == "created":
+                column = BacklogTask.created_at
+                if date_from is not None:
+                    query = query.filter(cast(column, Date) >= date_from)
+                if date_to is not None:
+                    query = query.filter(cast(column, Date) <= date_to)
+            elif time_field == "scheduled":
+                query = query.filter(BacklogTask.scheduled_date.isnot(None))
+                if date_from is not None:
+                    query = query.filter(BacklogTask.scheduled_date >= date_from)
+                if date_to is not None:
+                    query = query.filter(BacklogTask.scheduled_date <= date_to)
+            elif time_field == "completed":
+                query = query.filter(BacklogTask.completed_at.isnot(None))
+                if date_from is not None:
+                    query = query.filter(cast(BacklogTask.completed_at, Date) >= date_from)
+                if date_to is not None:
+                    query = query.filter(cast(BacklogTask.completed_at, Date) <= date_to)
 
         if active_only:
             return query.order_by(BacklogTask.created_at.desc()).all()

@@ -177,7 +177,7 @@ export default function Layout() {
       </aside>
 
       <div className={`flex flex-1 flex-col min-w-0 transition-[padding] duration-200 ease-in-out ${mainPadding}`}>
-        <main className="flex-1 overflow-auto px-3 sm:px-5 md:px-8 py-4 sm:py-6">
+        <main className="flex-1 overflow-auto px-3 sm:px-4 py-3 sm:py-4">
           <Suspense fallback={<PageLoader />}>
             <Outlet />
           </Suspense>

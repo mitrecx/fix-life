@@ -7,6 +7,7 @@ import uuid
 
 from app.db.base import Base
 from app.models.task_context import TaskContext
+from app.models.task_priority import TaskPriority
 
 
 class BacklogTaskStatus(str, enum.Enum):
@@ -26,6 +27,11 @@ class BacklogTask(Base):
     context = Column(
         Enum(TaskContext, values_callable=lambda x: [e.value for e in x]),
         default=TaskContext.LEARNING,
+        nullable=False,
+    )
+    priority = Column(
+        Enum(TaskPriority, values_callable=lambda x: [e.value for e in x]),
+        default=TaskPriority.MEDIUM,
         nullable=False,
     )
     status = Column(

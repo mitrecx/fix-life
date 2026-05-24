@@ -5,12 +5,14 @@ from uuid import UUID
 
 from app.models.backlog_task import BacklogTaskStatus
 from app.models.task_context import TaskContext
+from app.models.task_priority import TaskPriority
 
 
 class BacklogTaskBase(BaseModel):
     title: str = Field(..., min_length=1, max_length=200)
     description: Optional[str] = Field(None, max_length=1000)
     context: TaskContext = Field(default=TaskContext.LEARNING)
+    priority: TaskPriority = Field(default=TaskPriority.MEDIUM)
 
     class Config:
         from_attributes = True
@@ -24,6 +26,7 @@ class BacklogTaskUpdate(BaseModel):
     title: Optional[str] = Field(None, min_length=1, max_length=200)
     description: Optional[str] = Field(None, max_length=1000)
     context: Optional[TaskContext] = None
+    priority: Optional[TaskPriority] = None
 
     class Config:
         from_attributes = True
