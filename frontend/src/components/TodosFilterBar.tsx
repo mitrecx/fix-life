@@ -37,7 +37,8 @@ interface TodosFilterBarProps {
   filters: BacklogListFilters;
   matchCount: number;
   onChange: (patch: Partial<BacklogListFilters>) => void;
-  onClear: () => void;
+  onSearch: () => void;
+  onReset: () => void;
   selectionMode?: boolean;
   onToggleSelectionMode?: () => void;
 }
@@ -46,15 +47,12 @@ function FilterGroup({ children }: { children: ReactNode }) {
   return <div className={filterGroupClassName}>{children}</div>;
 }
 
-function hasTimeRange(filters: BacklogListFilters): boolean {
-  return !!(filters.dateFrom || filters.dateTo);
-}
-
 export function TodosFilterBar({
   filters,
   matchCount,
   onChange,
-  onClear,
+  onSearch,
+  onReset,
   selectionMode = false,
   onToggleSelectionMode,
 }: TodosFilterBarProps) {
@@ -62,12 +60,6 @@ export function TodosFilterBar({
   const timeField = filters.timeField ?? "created";
   const context = filters.context ?? "all";
   const priority = filters.priority ?? "all";
-
-  const hasActiveFilters =
-    keyword.trim().length > 0 ||
-    hasTimeRange(filters) ||
-    context !== "all" ||
-    priority !== "all";
 
   return (
     <div className="p-3 sm:p-4 bg-white/80 backdrop-blur-sm rounded-xl shadow-sm border border-gray-100 shrink-0 space-y-3">
@@ -165,7 +157,21 @@ export function TodosFilterBar({
           ))}
         </FilterGroup>
 
-        <div className="inline-flex items-center gap-2 shrink-0 py-1">
+        <div className="inline-flex flex-wrap items-center gap-2 shrink-0 py-1">
+          <button
+            type="button"
+            onClick={onSearch}
+            className="px-4 py-1.5 text-sm font-medium text-white bg-indigo-600 rounded-lg hover:bg-indigo-700 transition-all"
+          >
+            查询
+          </button>
+          <button
+            type="button"
+            onClick={onReset}
+            className="px-4 py-1.5 text-sm font-medium text-gray-600 bg-gray-100 rounded-lg hover:bg-gray-200 transition-all"
+          >
+            重置
+          </button>
           <span className="text-sm text-gray-500">{matchCount} 条匹配</span>
           {onToggleSelectionMode && (
             <button
@@ -178,15 +184,6 @@ export function TodosFilterBar({
               }`}
             >
               {selectionMode ? "多选中" : "多选"}
-            </button>
-          )}
-          {hasActiveFilters && (
-            <button
-              type="button"
-              onClick={onClear}
-              className="px-3 py-1.5 text-xs font-medium text-gray-600 bg-gray-100 rounded-lg hover:bg-gray-200 transition-all"
-            >
-              清除筛选
             </button>
           )}
         </div>

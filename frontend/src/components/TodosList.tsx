@@ -6,12 +6,14 @@ import dayjs from "dayjs";
 import { useSearchParams } from "react-router-dom";
 import { useNavigate } from "react-router-dom";
 import { backlogTaskService } from "@/services/backlogTaskService";
+import { dailyPlanService } from "@/services/dailyPlanService";
 import { TodosFilterBar } from "@/components/TodosFilterBar";
 import { TaskFormPanel } from "@/components/TaskFormPanel";
 import { TaskDetailDrawer } from "@/components/TaskDetailDrawer";
 import type {
   BacklogTask,
   BacklogTaskDetail,
+  BacklogOccurrence,
   BacklogListFilters,
   BacklogContextFilter,
   BacklogPriorityFilter,
@@ -325,7 +327,7 @@ export function TodosList() {
   const [searchParams, setSearchParams] = useSearchParams();
   const filterParamKey = filterSearchParamKey(searchParams);
   const filters = useMemo(() => parseFilters(searchParams), [filterParamKey, searchParams]);
-  const [debouncedQ, setDebouncedQ] = useState(filters.q ?? "");
+  const [draftFilters, setDraftFilters] = useState<BacklogListFilters>(() => parseFilters(searchParams));
   const hasLoadedOnceRef = useRef(false);
 
   const [pendingTasks, setPendingTasks] = useState<BacklogTask[]>([]);
@@ -366,6 +368,7 @@ export function TodosList() {
   const [selectionMode, setSelectionMode] = useState(false);
   const [selectedIds, setSelectedIds] = useState<Set<string>>(() => new Set());
   const [batchDeleting, setBatchDeleting] = useState(false);
+  const [isDeletingOccurrences, setIsDeletingOccurrences] = useState(false);
   const populatedTaskIdRef = useRef<string | null>(null);
 
   const taskId = searchParams.get("task");
@@ -392,14 +395,10 @@ export function TodosList() {
   }, [taskId, allColumnTasks, drawerTaskSnapshot]);
 
   useEffect(() => {
-    const timer = window.setTimeout(() => setDebouncedQ(filters.q ?? ""), 300);
-    return () => window.clearTimeout(timer);
-  }, [filters.q]);
+    setDraftFilters(parseFilters(searchParams));
+  }, [filterParamKey, searchParams]);
 
-  const apiFilters = useMemo(
-    () => ({ ...filters, q: debouncedQ }),
-    [filters, debouncedQ]
-  );
+  const apiFilters = filters;
 
   const columnTasks = useMemo(
     () => ({
@@ -454,15 +453,16 @@ export function TodosList() {
     });
   }, [columnTasks]);
 
-  const updateFilters = useCallback(
-    (patch: Partial<BacklogListFilters>) => {
-      const next = { ...filters, ...patch };
-      setSearchParams(filtersToSearchParams(next, searchParams.get("task")), { replace: true });
-    },
-    [filters, searchParams, setSearchParams]
-  );
+  const updateDraftFilters = useCallback((patch: Partial<BacklogListFilters>) => {
+    setDraftFilters((prev) => ({ ...prev, ...patch }));
+  }, []);
 
-  const clearFilters = useCallback(() => {
+  const applySearch = useCallback(() => {
+    setSearchParams(filtersToSearchParams(draftFilters, searchParams.get("task")), { replace: true });
+  }, [draftFilters, searchParams, setSearchParams]);
+
+  const resetFilters = useCallback(() => {
+    setDraftFilters(DEFAULT_FILTERS);
     setSearchParams(filtersToSearchParams(DEFAULT_FILTERS, searchParams.get("task")), { replace: true });
   }, [searchParams, setSearchParams]);
 
@@ -659,9 +659,11 @@ export function TodosList() {
       const detail = await backlogTaskService.get(id);
       setTaskDetail(detail);
       setDrawerTaskSnapshot((prev) => prev ?? detail);
+      return detail;
     } catch (error) {
       console.error("Failed to load task detail:", error);
       setSearchParams((prev) => filtersToSearchParams(parseFilters(prev)), { replace: true });
+      return null;
     } finally {
       setDetailLoading(false);
     }
@@ -752,6 +754,57 @@ export function TodosList() {
       }
     },
     [apiFilters, applyTaskToColumns, removeTaskFromColumns]
+  );
+
+  const refreshTaskAfterOccurrenceChange = useCallback(async () => {
+    if (!activeTask) return;
+    const detail = await loadTaskDetail(activeTask.id);
+    if (detail) {
+      setDrawerTaskSnapshot(detail);
+      applyUpdatedTask(detail);
+    }
+  }, [activeTask, loadTaskDetail, applyUpdatedTask]);
+
+  const handleDeleteOccurrences = useCallback(
+    (occurrences: BacklogOccurrence[]) => {
+      if (occurrences.length === 0 || isDeletingOccurrences) return;
+
+      const count = occurrences.length;
+      const content =
+        count === 1
+          ? `确定删除 ${occurrences[0].plan_date} 的每日进度记录吗？对应的每日任务也会被删除。`
+          : `确定删除选中的 ${count} 条每日进度记录吗？对应的每日任务也会被删除。`;
+
+      Modal.confirm({
+        title: count === 1 ? "删除每日进度记录" : "批量删除每日进度记录",
+        content,
+        okText: "删除",
+        okType: "danger",
+        cancelText: "取消",
+        onOk: async () => {
+          setIsDeletingOccurrences(true);
+          try {
+            const results = await Promise.allSettled(
+              occurrences.map((occ) => dailyPlanService.deleteTask(occ.daily_task_id))
+            );
+            const failed = results.filter((result) => result.status === "rejected").length;
+            if (failed === 0) {
+              message.success(count === 1 ? "已删除每日进度记录" : `已删除 ${count} 条记录`);
+            } else {
+              message.warning(`删除完成：成功 ${count - failed} 条，失败 ${failed} 条`);
+            }
+            await refreshTaskAfterOccurrenceChange();
+          } catch (error) {
+            console.error("Failed to delete daily occurrences:", error);
+            message.error("删除失败");
+            await refreshTaskAfterOccurrenceChange();
+          } finally {
+            setIsDeletingOccurrences(false);
+          }
+        },
+      });
+    },
+    [isDeletingOccurrences, refreshTaskAfterOccurrenceChange]
   );
 
   const handleCreateSubmit = async () => {
@@ -973,10 +1026,11 @@ export function TodosList() {
   return (
     <div className="relative flex flex-col h-full min-h-0 overflow-hidden px-3 py-3 sm:px-4 sm:py-4">
       <TodosFilterBar
-        filters={filters}
+        filters={draftFilters}
         matchCount={matchCount}
-        onChange={updateFilters}
-        onClear={clearFilters}
+        onChange={updateDraftFilters}
+        onSearch={applySearch}
+        onReset={resetFilters}
         selectionMode={selectionMode}
         onToggleSelectionMode={() => {
           if (selectionMode) exitSelectionMode();
@@ -1156,6 +1210,8 @@ export function TodosList() {
         onScheduleDateChange={setScheduleDate}
         onConfirmSchedule={handleConfirmSchedule}
         onNavigateOccurrence={(occ) => navigate(`/daily-plans?focus=${occ.plan_date}`)}
+        onDeleteOccurrences={handleDeleteOccurrences}
+        isDeletingOccurrences={isDeletingOccurrences}
       />
 
       <Modal

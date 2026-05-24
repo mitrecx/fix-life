@@ -1,4 +1,4 @@
-import { useEffect } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { Trash2, Calendar as CalendarIcon, X } from "lucide-react";
 import { Calendar, Select } from "antd";
 import type { CalendarProps } from "antd";
@@ -53,43 +53,142 @@ const DAILY_STATUS_LABELS: Record<string, string> = {
 function OccurrenceTimeline({
   occurrences,
   onNavigate,
+  onDeleteOccurrences,
+  isDeletingOccurrences,
 }: {
   occurrences: BacklogOccurrence[];
   onNavigate: (occ: BacklogOccurrence) => void;
+  onDeleteOccurrences: (occurrences: BacklogOccurrence[]) => void;
+  isDeletingOccurrences: boolean;
 }) {
+  const [selectedIds, setSelectedIds] = useState<Set<string>>(() => new Set());
+
+  const occurrenceIds = useMemo(
+    () => occurrences.map((occ) => occ.daily_task_id),
+    [occurrences]
+  );
+
+  const selectedCount = selectedIds.size;
+  const allSelected =
+    occurrenceIds.length > 0 && occurrenceIds.every((id) => selectedIds.has(id));
+
+  useEffect(() => {
+    setSelectedIds((prev) => {
+      const next = new Set([...prev].filter((id) => occurrenceIds.includes(id)));
+      return next.size === prev.size ? prev : next;
+    });
+  }, [occurrenceIds]);
+
+  const toggleSelectAll = () => {
+    setSelectedIds(allSelected ? new Set() : new Set(occurrenceIds));
+  };
+
+  const toggleSelect = (dailyTaskId: string) => {
+    setSelectedIds((prev) => {
+      const next = new Set(prev);
+      if (next.has(dailyTaskId)) next.delete(dailyTaskId);
+      else next.add(dailyTaskId);
+      return next;
+    });
+  };
+
+  const selectedOccurrences = occurrences.filter((occ) => selectedIds.has(occ.daily_task_id));
+
   if (occurrences.length === 0) {
     return <p className="text-xs text-gray-400 py-2">暂无每日进度记录</p>;
   }
+
   return (
-    <div className="border border-gray-100 rounded-lg overflow-hidden">
-      <table className="w-full text-xs">
-        <thead className="bg-gray-50 text-gray-500">
-          <tr>
-            <th className="text-left font-medium px-3 py-2">日期</th>
-            <th className="text-left font-medium px-3 py-2">当天状态</th>
-            <th className="text-right font-medium px-3 py-2">操作</th>
-          </tr>
-        </thead>
-        <tbody className="divide-y divide-gray-100">
-          {occurrences.map((occ) => (
-            <tr key={occ.daily_task_id} className="hover:bg-gray-50">
-              <td className="px-3 py-2 text-gray-800">{occ.plan_date}</td>
-              <td className="px-3 py-2 text-gray-600">
-                {DAILY_STATUS_LABELS[occ.daily_status ?? "todo"] ?? occ.daily_status}
-              </td>
-              <td className="px-3 py-2 text-right">
-                <button
-                  type="button"
-                  onClick={() => onNavigate(occ)}
-                  className="text-indigo-600 hover:text-indigo-700 font-medium"
-                >
-                  跳转
-                </button>
-              </td>
+    <div className="space-y-2">
+      {selectedCount > 0 && (
+        <div className="flex flex-wrap items-center gap-2 px-2.5 py-2 bg-red-50 border border-red-100 rounded-lg">
+          <span className="text-xs text-red-900">
+            已选 <span className="font-semibold tabular-nums">{selectedCount}</span> 条
+          </span>
+          <span className="flex-1" />
+          <button
+            type="button"
+            disabled={isDeletingOccurrences}
+            onClick={() => onDeleteOccurrences(selectedOccurrences)}
+            className="inline-flex items-center gap-1 px-2 py-1 text-xs font-medium text-white bg-red-500 rounded-md hover:bg-red-600 disabled:opacity-50 disabled:cursor-not-allowed transition-all"
+          >
+            <Trash2 size={12} />
+            {isDeletingOccurrences ? "删除中…" : "批量删除"}
+          </button>
+          <button
+            type="button"
+            disabled={isDeletingOccurrences}
+            onClick={() => setSelectedIds(new Set())}
+            className="px-2 py-1 text-xs font-medium text-gray-600 bg-white border border-gray-200 rounded-md hover:bg-gray-50 disabled:opacity-50 transition-all"
+          >
+            取消
+          </button>
+        </div>
+      )}
+
+      <div className="border border-gray-100 rounded-lg overflow-hidden">
+        <table className="w-full text-xs">
+          <thead className="bg-gray-50 text-gray-500">
+            <tr>
+              <th className="w-9 px-2 py-2">
+                <input
+                  type="checkbox"
+                  checked={allSelected}
+                  onChange={toggleSelectAll}
+                  disabled={isDeletingOccurrences}
+                  className="rounded border-gray-300 text-indigo-600 focus:ring-indigo-500"
+                  aria-label="全选每日进度记录"
+                />
+              </th>
+              <th className="text-left font-medium px-3 py-2">日期</th>
+              <th className="text-left font-medium px-3 py-2">当天状态</th>
+              <th className="text-right font-medium px-3 py-2">操作</th>
             </tr>
-          ))}
-        </tbody>
-      </table>
+          </thead>
+          <tbody className="divide-y divide-gray-100">
+            {occurrences.map((occ) => {
+              const selected = selectedIds.has(occ.daily_task_id);
+              return (
+                <tr key={occ.daily_task_id} className={selected ? "bg-indigo-50/40" : "hover:bg-gray-50"}>
+                  <td className="px-2 py-2 align-middle">
+                    <input
+                      type="checkbox"
+                      checked={selected}
+                      onChange={() => toggleSelect(occ.daily_task_id)}
+                      disabled={isDeletingOccurrences}
+                      className="rounded border-gray-300 text-indigo-600 focus:ring-indigo-500"
+                      aria-label={`选择 ${occ.plan_date} 的记录`}
+                    />
+                  </td>
+                  <td className="px-3 py-2 text-gray-800">{occ.plan_date}</td>
+                  <td className="px-3 py-2 text-gray-600">
+                    {DAILY_STATUS_LABELS[occ.daily_status ?? "todo"] ?? occ.daily_status}
+                  </td>
+                  <td className="px-3 py-2 text-right whitespace-nowrap">
+                    <button
+                      type="button"
+                      onClick={() => onNavigate(occ)}
+                      disabled={isDeletingOccurrences}
+                      className="text-indigo-600 hover:text-indigo-700 font-medium disabled:opacity-50"
+                    >
+                      跳转
+                    </button>
+                    <span className="text-gray-300 mx-1.5">|</span>
+                    <button
+                      type="button"
+                      onClick={() => onDeleteOccurrences([occ])}
+                      disabled={isDeletingOccurrences}
+                      className="text-red-600 hover:text-red-700 font-medium disabled:opacity-50"
+                    >
+                      删除
+                    </button>
+                  </td>
+                </tr>
+              );
+            })}
+          </tbody>
+        </table>
+      </div>
     </div>
   );
 }
@@ -129,6 +228,8 @@ export interface TaskDetailDrawerProps {
   onScheduleDateChange: (date: Dayjs) => void;
   onConfirmSchedule: () => void;
   onNavigateOccurrence: (occ: BacklogOccurrence) => void;
+  onDeleteOccurrences: (occurrences: BacklogOccurrence[]) => void;
+  isDeletingOccurrences: boolean;
 }
 
 export function TaskDetailDrawer({
@@ -161,6 +262,8 @@ export function TaskDetailDrawer({
   onScheduleDateChange,
   onConfirmSchedule,
   onNavigateOccurrence,
+  onDeleteOccurrences,
+  isDeletingOccurrences,
 }: TaskDetailDrawerProps) {
   useEffect(() => {
     if (!open) return;
@@ -244,6 +347,8 @@ export function TaskDetailDrawer({
               <OccurrenceTimeline
                 occurrences={taskDetail?.occurrences ?? []}
                 onNavigate={onNavigateOccurrence}
+                onDeleteOccurrences={onDeleteOccurrences}
+                isDeletingOccurrences={isDeletingOccurrences}
               />
             )}
           </div>
