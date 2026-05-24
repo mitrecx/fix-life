@@ -139,6 +139,9 @@ Desktop.ini
 # Superpowers / Brainstorm 本地会话产物
 .superpowers/
 
+# Git worktrees
+.worktrees/
+
 # Cursor 项目技能目录
 .cursor/skills/
 
