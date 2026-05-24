@@ -9,6 +9,8 @@ import { TASK_PRIORITY, getTaskPriorityConfig } from "@/types/taskPriority";
 import type { TaskPriority } from "@/types/taskPriority";
 import { linkifyText } from "@/utils/linkifyText";
 
+const descriptionFieldMinHeight = "min-h-[7rem]";
+
 const fieldInputClass =
   "w-full px-2 py-1.5 text-sm border border-gray-200 rounded-md bg-white focus:outline-none focus:ring-1 focus:ring-gray-400";
 
@@ -81,7 +83,9 @@ function ReadOnlyField({
           : undefined
       }
       className={`w-full px-2 py-1.5 text-sm text-gray-600 bg-gray-100 rounded-md border border-gray-100 break-words ${
-        multiline ? "min-h-[4.5rem] whitespace-pre-wrap" : "min-h-[2.25rem] flex items-center"
+        multiline
+          ? `${descriptionFieldMinHeight} whitespace-pre-wrap`
+          : "min-h-[2.25rem] flex items-center"
       }${onClick ? " cursor-text hover:border-gray-200" : ""}`}
     >
       {hasContent ? children : null}
@@ -123,9 +127,9 @@ function DescriptionField({
         onBlur={() => setIsEditing(false)}
         onFocus={() => setIsEditing(true)}
         placeholder="可选描述"
-        rows={3}
+        rows={5}
         autoFocus={isEditing}
-        className={`${fieldInputClass} resize-y min-h-[4.5rem]`}
+        className={`${fieldInputClass} resize-y ${descriptionFieldMinHeight}`}
       />
     );
   }

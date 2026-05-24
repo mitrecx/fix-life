@@ -1,4 +1,4 @@
-import { useState, useEffect, useMemo } from "react";
+import { useState, useEffect, useMemo, useRef } from "react";
 import { Edit, Trash2, Plus, CheckCircle, Circle, Clock, ChevronDown, ChevronUp, BookOpen } from "lucide-react";
 import { Modal, message } from "antd";
 import type { DailyPlan, DailyTask, DailyTaskStatus } from "@/types/dailyPlan";
@@ -8,9 +8,7 @@ import { dailyPlanService } from "@/services/dailyPlanService";
 import { backlogTaskService } from "@/services/backlogTaskService";
 import { DailySummaryModal } from "@/components/DailySummaryModal";
 import { AddToTodayModal } from "@/components/AddToTodayModal";
-import { DailyTaskProgressModal } from "@/components/DailyTaskProgressModal";
 import { systemSettingsService } from "@/services/systemSettingsService";
-import type { DailyProgressChoice } from "@/types/backlogTask";
 
 interface DailyPlanCardProps {
   plan: DailyPlan;
@@ -80,16 +78,128 @@ const formatProgressDelta = (delta: number | null | undefined) => {
   return "0%";
 };
 
+const getTaskProgressSegments = (task: DailyTask) => {
+  const total = task.progress_after ?? 0;
+  const today = task.progress_delta ?? 0;
+  const past = Math.max(0, total - today);
+  return { total, today, past };
+};
+
+const buildThreeSegmentTrackStyle = (past: number, current: number) => ({
+  background: `linear-gradient(to right,
+    rgb(148 163 184) 0%, rgb(148 163 184) ${past}%,
+    rgb(245 158 11) ${past}%, rgb(245 158 11) ${current}%,
+    rgb(229 231 235) ${current}%, rgb(229 231 235) 100%)`,
+});
+
+function DailyTaskProgressSlider({
+  task,
+  onCommit,
+}: {
+  task: DailyTask;
+  onCommit: (task: DailyTask, progress: number) => Promise<void>;
+}) {
+  const { total, past } = getTaskProgressSegments(task);
+  const [value, setValue] = useState(total);
+  const [updating, setUpdating] = useState(false);
+  const draggingRef = useRef(false);
+  const floorRef = useRef(past);
+
+  useEffect(() => {
+    const segments = getTaskProgressSegments(task);
+    if (!draggingRef.current) {
+      setValue(segments.total);
+      floorRef.current = segments.past;
+    }
+  }, [task.id, task.progress_after, task.progress_delta]);
+
+  const minProgress = floorRef.current;
+  const atMax = minProgress >= 100;
+
+  const commit = async (next: number) => {
+    const clamped = Math.min(100, Math.max(minProgress, Math.round(next)));
+    setValue(clamped);
+    if (clamped === (task.progress_after ?? 0)) return;
+
+    setUpdating(true);
+    try {
+      await onCommit(task, clamped);
+    } catch {
+      setValue(task.progress_after ?? 0);
+    } finally {
+      setUpdating(false);
+    }
+  };
+
+  const beginInteraction = (event: React.SyntheticEvent) => {
+    event.stopPropagation();
+    draggingRef.current = true;
+  };
+
+  const endInteraction = (event: React.SyntheticEvent, nextValue?: number) => {
+    event.stopPropagation();
+    draggingRef.current = false;
+    if (nextValue != null) {
+      void commit(nextValue);
+    }
+  };
+
+  const trackStyle = buildThreeSegmentTrackStyle(minProgress, value);
+
+  return (
+    <div
+      data-daily-progress-slider
+      className="w-full mt-1.5 flex items-center gap-2 touch-none"
+      onPointerDown={beginInteraction}
+      onTouchStart={beginInteraction}
+      onClick={(e) => e.stopPropagation()}
+      onDragStart={(e) => e.preventDefault()}
+      title={
+        atMax
+          ? "进度已满"
+          : `过往 ${minProgress}% · 今日 ${Math.max(0, value - minProgress)}% · 拖动不低于 ${minProgress}%`
+      }
+    >
+      <input
+        type="range"
+        min={minProgress}
+        max={100}
+        step={1}
+        value={value}
+        disabled={atMax || updating}
+        draggable={false}
+        style={trackStyle}
+        onDragStart={(e) => e.preventDefault()}
+        onChange={(e) => setValue(Number(e.target.value))}
+        onPointerUp={(e) => endInteraction(e, Number(e.currentTarget.value))}
+        onMouseUp={(e) => endInteraction(e, Number(e.currentTarget.value))}
+        onTouchEnd={(e) => endInteraction(e, Number(e.currentTarget.value))}
+        onPointerCancel={(e) => endInteraction(e)}
+        onBlur={(e) => endInteraction(e, Number(e.currentTarget.value))}
+        onKeyUp={(e) => endInteraction(e, Number(e.currentTarget.value))}
+        className="kanban-progress-range flex-1 h-1.5 rounded-full appearance-none cursor-pointer disabled:cursor-default disabled:opacity-60
+          [&::-webkit-slider-runnable-track]:h-1.5 [&::-webkit-slider-runnable-track]:rounded-full [&::-webkit-slider-runnable-track]:appearance-none
+          [&::-webkit-slider-thumb]:appearance-none [&::-webkit-slider-thumb]:h-3 [&::-webkit-slider-thumb]:w-3
+          [&::-webkit-slider-thumb]:rounded-full [&::-webkit-slider-thumb]:bg-amber-500 [&::-webkit-slider-thumb]:border-2 [&::-webkit-slider-thumb]:border-white
+          [&::-webkit-slider-thumb]:shadow-sm [&::-webkit-slider-thumb]:-mt-[3px]
+          [&::-moz-range-track]:h-1.5 [&::-moz-range-track]:rounded-full [&::-moz-range-track]:bg-transparent
+          [&::-moz-range-progress]:h-1.5 [&::-moz-range-progress]:rounded-full [&::-moz-range-progress]:bg-amber-500
+          [&::-moz-range-thumb]:h-3 [&::-moz-range-thumb]:w-3 [&::-moz-range-thumb]:rounded-full [&::-moz-range-thumb]:border-2 [&::-moz-range-thumb]:border-white [&::-moz-range-thumb]:bg-amber-500"
+        aria-label={`${task.title} 进度`}
+      />
+      <span className="text-xs text-amber-600 font-medium tabular-nums shrink-0 w-8 text-right">
+        {value}%
+      </span>
+    </div>
+  );
+}
+
 export function DailyPlanCard({ plan, onUpdate, onEdit, onDelete }: DailyPlanCardProps) {
   const [addModalOpen, setAddModalOpen] = useState(false);
   const [isTaskSectionCollapsed, setIsTaskSectionCollapsed] = useState(false);
   const [showSummaryModal, setShowSummaryModal] = useState(false);
   const [showDailySummary, setShowDailySummary] = useState(false);
   const [expandedSummary, setExpandedSummary] = useState(false);
-  const [progressModalTask, setProgressModalTask] = useState<DailyTask | null>(null);
-  const [backlogProgress, setBacklogProgress] = useState(0);
-  const [progressModalLoading, setProgressModalLoading] = useState(false);
-
   useEffect(() => {
     const loadSettings = async () => {
       const settings = await systemSettingsService.getSettings();
@@ -117,19 +227,6 @@ export function DailyPlanCard({ plan, onUpdate, onEdit, onDelete }: DailyPlanCar
   const handleToggleTaskStatus = async (task: DailyTask) => {
     const newStatus: DailyTaskStatus = task.status === "done" ? "todo" : "done";
 
-    if (newStatus === "done" && task.backlog_task_id) {
-      try {
-        const backlog = await backlogTaskService.get(task.backlog_task_id);
-        if (backlog.progress < 100) {
-          setBacklogProgress(backlog.progress);
-          setProgressModalTask(task);
-          return;
-        }
-      } catch (error) {
-        console.error("Failed to load backlog task:", error);
-      }
-    }
-
     try {
       await updateDailyStatus(task, newStatus);
     } catch (error) {
@@ -138,24 +235,26 @@ export function DailyPlanCard({ plan, onUpdate, onEdit, onDelete }: DailyPlanCar
     }
   };
 
-  const handleProgressModalConfirm = async (choice: DailyProgressChoice) => {
-    if (!progressModalTask) return;
-    setProgressModalLoading(true);
+  const handleLinkedProgressCommit = async (task: DailyTask, progress: number) => {
+    if (!task.backlog_task_id) return;
+
     try {
-      await dailyPlanService.updateTaskStatus(progressModalTask.id, "done");
-      if (choice !== "keep" && progressModalTask.backlog_task_id) {
-        await backlogTaskService.update(progressModalTask.backlog_task_id, {
-          progress: choice,
-          progress_plan_date: plan.plan_date,
-        });
+      await backlogTaskService.update(task.backlog_task_id, {
+        progress,
+        progress_plan_date: plan.plan_date,
+      });
+
+      if (progress >= 100 && task.status !== "done") {
+        await dailyPlanService.updateTaskStatus(task.id, "done");
+      } else if (progress < 100 && task.status === "done") {
+        await dailyPlanService.updateTaskStatus(task.id, "todo");
       }
-      setProgressModalTask(null);
+
       onUpdate();
     } catch (error) {
-      console.error("Failed to complete task:", error);
-      message.error("更新失败");
-    } finally {
-      setProgressModalLoading(false);
+      console.error("Failed to update task progress:", error);
+      message.error("更新进度失败");
+      throw error;
     }
   };
 
@@ -278,16 +377,18 @@ export function DailyPlanCard({ plan, onUpdate, onEdit, onDelete }: DailyPlanCar
                   key={task.id}
                   className="flex items-start gap-2 p-2 bg-white rounded-lg border border-gray-100 group hover:border-indigo-200 transition-all duration-200"
                 >
-                  <button
-                    onClick={() => handleToggleTaskStatus(task)}
-                    className={`flex-shrink-0 p-0.5 rounded transition-all mt-0.5 ${
-                      task.status === "done"
-                        ? "text-emerald-500 bg-emerald-50"
-                        : "text-gray-300 hover:text-emerald-400 hover:bg-emerald-50"
-                    }`}
-                  >
-                    <StatusIcon size={16} strokeWidth={2.5} />
-                  </button>
+                  {!task.backlog_task_id && (
+                    <button
+                      onClick={() => handleToggleTaskStatus(task)}
+                      className={`flex-shrink-0 p-0.5 rounded transition-all mt-0.5 ${
+                        task.status === "done"
+                          ? "text-emerald-500 bg-emerald-50"
+                          : "text-gray-300 hover:text-emerald-400 hover:bg-emerald-50"
+                      }`}
+                    >
+                      <StatusIcon size={16} strokeWidth={2.5} />
+                    </button>
+                  )}
                   <div className="flex-1 min-w-0">
                     <div className="flex items-center gap-2 flex-wrap">
                       <span
@@ -327,6 +428,9 @@ export function DailyPlanCard({ plan, onUpdate, onEdit, onDelete }: DailyPlanCar
                         </span>
                       )}
                     </div>
+                    {task.backlog_task_id && (
+                      <DailyTaskProgressSlider task={task} onCommit={handleLinkedProgressCommit} />
+                    )}
                     {task.backlog_task_id && (
                       <div className="flex items-center gap-3 mt-1">
                         <span className="text-xs text-gray-500 tabular-nums">
@@ -399,15 +503,6 @@ export function DailyPlanCard({ plan, onUpdate, onEdit, onDelete }: DailyPlanCar
         existingBacklogIds={existingBacklogIds}
         onClose={() => setAddModalOpen(false)}
         onSuccess={onUpdate}
-      />
-
-      <DailyTaskProgressModal
-        open={!!progressModalTask}
-        taskTitle={progressModalTask?.title ?? ""}
-        currentProgress={backlogProgress}
-        loading={progressModalLoading}
-        onConfirm={handleProgressModalConfirm}
-        onCancel={() => setProgressModalTask(null)}
       />
 
       {showSummaryModal && (

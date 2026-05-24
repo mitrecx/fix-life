@@ -104,7 +104,7 @@ export default function SettingsPage() {
       {
         mcpServers: {
           fixlife: {
-            url: `${origin}/mcp`,
+            url: `${origin}/mcp/`,
             headers: {
               Authorization: `Bearer ${apiKey}`,
             },

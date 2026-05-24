@@ -75,4 +75,8 @@ def create_mcp_server() -> FastMCP:
 
 
 mcp_server = create_mcp_server()
-mcp_app = mcp_server.http_app(path="/", transport="streamable-http")
+mcp_app = mcp_server.http_app(
+    path="/",
+    transport="streamable-http",
+    stateless_http=True,
+)
