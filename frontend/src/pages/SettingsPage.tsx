@@ -7,13 +7,18 @@ import {
   Send,
   Mail,
   MessageSquare,
+  Key,
+  Copy,
+  Trash2,
+  Plus,
 } from "lucide-react";
-import { Switch, Input, message, Tabs } from "antd";
+import { Switch, Input, message, Tabs, Modal, Button } from "antd";
 import type { TabsProps } from "antd";
 import { systemSettingsService } from "@/services/systemSettingsService";
 import type { SystemSettings } from "@/types/systemSettings";
+import type { McpApiKey, McpApiKeyCreateResponse } from "@/types/mcpApiKey";
 
-type SettingTab = "display" | "notification";
+type SettingTab = "display" | "notification" | "mcp";
 type NotificationTab = "email" | "feishu";
 
 export default function SettingsPage() {
@@ -30,9 +35,14 @@ export default function SettingsPage() {
   const [notificationTab, setNotificationTab] = useState<NotificationTab>("email");
   const [isLoading, setIsLoading] = useState(true);
   const [isSaving, setIsSaving] = useState(false);
+  const [mcpKeys, setMcpKeys] = useState<McpApiKey[]>([]);
+  const [mcpKeyName, setMcpKeyName] = useState("");
+  const [isCreatingMcpKey, setIsCreatingMcpKey] = useState(false);
+  const [createdMcpKey, setCreatedMcpKey] = useState<McpApiKeyCreateResponse | null>(null);
 
   useEffect(() => {
     loadSettings();
+    loadMcpKeys();
   }, []);
 
   const loadSettings = async () => {
@@ -46,6 +56,66 @@ export default function SettingsPage() {
     } finally {
       setIsLoading(false);
     }
+  };
+
+  const loadMcpKeys = async () => {
+    try {
+      const items = await systemSettingsService.listMcpKeys();
+      setMcpKeys(items);
+    } catch (error) {
+      console.error("Failed to load MCP keys:", error);
+    }
+  };
+
+  const handleCreateMcpKey = async () => {
+    if (!mcpKeyName.trim()) {
+      message.error("请输入 Key 名称");
+      return;
+    }
+    try {
+      setIsCreatingMcpKey(true);
+      const created = await systemSettingsService.createMcpKey(mcpKeyName.trim());
+      setCreatedMcpKey(created);
+      setMcpKeyName("");
+      await loadMcpKeys();
+      message.success("API Key 已创建");
+    } catch (error) {
+      console.error("Failed to create MCP key:", error);
+      message.error("创建 API Key 失败");
+    } finally {
+      setIsCreatingMcpKey(false);
+    }
+  };
+
+  const handleRevokeMcpKey = async (keyId: string) => {
+    try {
+      await systemSettingsService.revokeMcpKey(keyId);
+      await loadMcpKeys();
+      message.success("API Key 已撤销");
+    } catch (error) {
+      console.error("Failed to revoke MCP key:", error);
+      message.error("撤销 API Key 失败");
+    }
+  };
+
+  const copyCursorConfig = async (apiKey: string) => {
+    const origin = window.location.origin;
+    const config = JSON.stringify(
+      {
+        mcpServers: {
+          fixlife: {
+            url: `${origin}/mcp`,
+            headers: {
+              Authorization: `Bearer ${apiKey}`,
+            },
+          },
+        },
+      },
+      null,
+      2,
+    );
+    await navigator.clipboard.writeText(config);
+    message.success("Cursor 配置已复制");
   };
 
   const handleSave = async () => {
@@ -74,6 +144,12 @@ export default function SettingsPage() {
       icon: Send,
       label: "推送周报",
       description: "配置周总结的推送方式",
+    },
+    {
+      key: "mcp" as SettingTab,
+      icon: Key,
+      label: "MCP 集成",
+      description: "生成 API Key 供 Agent 连接",
     },
   ];
 
@@ -376,10 +452,109 @@ export default function SettingsPage() {
                   />
                 </div>
               )}
+
+              {activeTab === "mcp" && (
+                <div className="space-y-4">
+                  <div className="mb-6">
+                    <h2 className="text-xl font-semibold text-gray-800 mb-2">
+                      MCP 集成
+                    </h2>
+                    <p className="text-sm text-gray-500">
+                      通过 Streamable HTTP 连接 Fix Life MCP Server。API Key 明文仅创建时显示一次。
+                    </p>
+                  </div>
+
+                  <div className="p-4 bg-gray-50 rounded-xl border border-gray-200 space-y-3">
+                    <label className="block text-sm font-medium text-gray-700">
+                      新建 API Key
+                    </label>
+                    <div className="flex gap-2">
+                      <Input
+                        placeholder="例如：Cursor 办公室 Mac"
+                        value={mcpKeyName}
+                        onChange={(e) => setMcpKeyName(e.target.value)}
+                        disabled={isCreatingMcpKey}
+                        size="large"
+                      />
+                      <Button
+                        type="primary"
+                        icon={<Plus size={16} />}
+                        loading={isCreatingMcpKey}
+                        onClick={handleCreateMcpKey}
+                      >
+                        生成
+                      </Button>
+                    </div>
+                  </div>
+
+                  <div className="space-y-3">
+                    {mcpKeys.length === 0 ? (
+                      <div className="p-4 text-sm text-gray-500 bg-gray-50 rounded-xl border border-gray-200">
+                        还没有 MCP API Key。生成后可在 Cursor 等客户端中使用。
+                      </div>
+                    ) : (
+                      mcpKeys.map((key) => (
+                        <div
+                          key={key.id}
+                          className="flex items-center justify-between p-4 bg-gray-50 rounded-xl border border-gray-200"
+                        >
+                          <div>
+                            <div className="text-sm font-semibold text-gray-800">{key.name}</div>
+                            <div className="text-xs text-gray-500 mt-1 font-mono">
+                              {key.key_prefix}...{key.key_suffix}
+                            </div>
+                            <div className="text-xs text-gray-400 mt-1">
+                              创建于 {new Date(key.created_at).toLocaleString()}
+                              {key.last_used_at
+                                ? ` · 最近使用 ${new Date(key.last_used_at).toLocaleString()}`
+                                : ""}
+                            </div>
+                          </div>
+                          <button
+                            onClick={() => handleRevokeMcpKey(key.id)}
+                            className="p-2 text-red-500 hover:bg-red-50 rounded-lg transition-colors"
+                            title="撤销"
+                          >
+                            <Trash2 size={16} />
+                          </button>
+                        </div>
+                      ))
+                    )}
+                  </div>
+                </div>
+              )}
             </div>
           )}
         </div>
       </div>
+
+      <Modal
+        title="API Key 已创建"
+        open={!!createdMcpKey}
+        onCancel={() => setCreatedMcpKey(null)}
+        footer={[
+          <Button key="copy-config" icon={<Copy size={14} />} onClick={() => createdMcpKey && copyCursorConfig(createdMcpKey.api_key)}>
+            复制 Cursor 配置
+          </Button>,
+          <Button key="close" type="primary" onClick={() => setCreatedMcpKey(null)}>
+            我已保存
+          </Button>,
+        ]}
+      >
+        {createdMcpKey && (
+          <div className="space-y-3">
+            <p className="text-sm text-gray-600">
+              请立即复制并妥善保存。关闭后将无法再次查看完整 Key。
+            </p>
+            <Input.TextArea
+              value={createdMcpKey.api_key}
+              readOnly
+              autoSize={{ minRows: 2, maxRows: 4 }}
+              className="font-mono"
+            />
+          </div>
+        )}
+      </Modal>
     </div>
   );
 }

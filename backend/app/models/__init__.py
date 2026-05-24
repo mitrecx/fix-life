@@ -1,4 +1,5 @@
 from app.models.user import User
+from app.models.mcp_api_key import McpApiKey
 from app.models.permission import Permission
 from app.models.role import Role
 from app.models.role_permission import RolePermission
@@ -20,6 +21,7 @@ from app.models.weekly_summary import WeeklySummary
 
 __all__ = [
     "User",
+    "McpApiKey",
     "Permission",
     "Role",
     "RolePermission",

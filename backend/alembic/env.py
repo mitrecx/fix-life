@@ -11,6 +11,7 @@ sys.path.append(str(Path(__file__).parent.parent))
 from app.db.base import Base
 from app.models import (  # noqa
     User,
+    McpApiKey,
     YearlyGoal,
     MonthlyMilestone,
     Role,
@@ -18,6 +19,7 @@ from app.models import (  # noqa
     UserRole,
     RolePermission,
 )
+from app.models.systemSettings import SystemSettings  # noqa: F401
 from app.core.config import settings
 
 # this is the Alembic Config object
