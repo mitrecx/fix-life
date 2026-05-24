@@ -1,6 +1,7 @@
 import { useState, useEffect, useCallback, useMemo } from "react";
-import { Trash2, Calendar, SquarePen, Plus, CheckSquare, X } from "lucide-react";
-import { DatePicker, Modal, message } from "antd";
+import { Trash2, Calendar as CalendarIcon, SquarePen, Plus, CheckSquare, X } from "lucide-react";
+import { Calendar, Modal, message, Select } from "antd";
+import type { CalendarProps } from "antd";
 import type { Dayjs } from "dayjs";
 import dayjs from "dayjs";
 import { useSearchParams } from "react-router-dom";
@@ -379,7 +380,7 @@ function KanbanCard({
             }}
             className="flex items-center gap-0.5 px-1.5 py-0.5 text-[10px] text-blue-600 hover:bg-blue-50 rounded"
           >
-            <Calendar size={11} />
+            <CalendarIcon size={11} />
             安排
           </button>
         )}
@@ -395,6 +396,40 @@ function KanbanCard({
           删除
         </button>
       </div>
+    </div>
+  );
+}
+
+function scheduleCalendarHeader({ value, onChange }: Parameters<NonNullable<CalendarProps<Dayjs>["headerRender"]>>[0]) {
+  const year = value.year();
+  const month = value.month();
+
+  const yearOptions = Array.from({ length: 11 }, (_, i) => {
+    const y = year - 5 + i;
+    return { label: `${y}年`, value: y };
+  });
+
+  const monthOptions = Array.from({ length: 12 }, (_, i) => ({
+    label: `${i + 1}月`,
+    value: i,
+  }));
+
+  return (
+    <div className="flex items-center justify-center gap-2 py-2">
+      <Select
+        size="small"
+        value={year}
+        options={yearOptions}
+        onChange={(newYear) => onChange(value.year(newYear))}
+        style={{ width: 96 }}
+      />
+      <Select
+        size="small"
+        value={month}
+        options={monthOptions}
+        onChange={(newMonth) => onChange(value.month(newMonth))}
+        style={{ width: 80 }}
+      />
     </div>
   );
 }
@@ -1129,23 +1164,24 @@ export function TodosList() {
       </Modal>
 
       <Modal
-        title="安排到某天"
+        title="安排到每日进度"
         open={!!schedulingTask}
         onOk={handleSchedule}
         onCancel={() => setSchedulingTask(null)}
         okText="确认安排"
         cancelText="取消"
+        width={360}
       >
         {schedulingTask && (
           <div className="py-2">
             <p className="text-sm text-gray-600 mb-3">
               将「{schedulingTask.title}」添加到每日进度：
             </p>
-            <DatePicker
+            <Calendar
+              fullscreen={false}
               value={scheduleDate}
-              onChange={(date) => date && setScheduleDate(date)}
-              className="w-full"
-              format="YYYY-MM-DD"
+              onSelect={(date) => setScheduleDate(date)}
+              headerRender={scheduleCalendarHeader}
             />
           </div>
         )}
