@@ -59,6 +59,7 @@ class Settings(BaseSettings):
 
     # GitHub (optional, for MCP GitHub issue todo skill)
     GITHUB_TOKEN: str = ""
+    GITHUB_DEFAULT_OWNER: str = ""
 
     # Frontend
     FRONTEND_URL: str = "http://localhost:5277"

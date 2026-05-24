@@ -36,6 +36,21 @@ def test_parse_github_issue_reference_accepts_shorthand():
     assert ref2 is not None
     assert ref2.url == "https://github.com/acme/app/issues/7"
 
+    ref3 = parse_github_issue_reference("x2-tech/x-pulsar issue 518")
+    assert ref3 is not None
+    assert ref3.url == "https://github.com/x2-tech/x-pulsar/issues/518"
+
+
+@patch("app.mcp.skills.github_issue_todo.settings")
+def test_parse_github_issue_reference_accepts_repo_issue_with_default_owner(mock_settings):
+    from app.mcp.skills.github_issue_todo import parse_github_issue_reference
+
+    mock_settings.GITHUB_DEFAULT_OWNER = "x2-tech"
+
+    ref = parse_github_issue_reference("对应 x-pulsar issue 518。")
+    assert ref is not None
+    assert ref.url == "https://github.com/x2-tech/x-pulsar/issues/518"
+
 
 def test_find_github_issue_url_prefers_title_then_description():
     ref = find_github_issue_url(
@@ -59,6 +74,31 @@ def test_enrich_todo_from_github_issue_sets_title_description_and_work(mock_fetc
 
     assert enriched["title"] == "Fix progress sync between pages"
     assert enriched["description"] == "https://github.com/mitrecx/fix-life/issues/99"
+    assert enriched["context"] == "work"
+    mock_fetch.assert_called_once()
+
+
+@patch("app.mcp.skills.github_issue_todo.fetch_github_issue_title")
+@patch("app.mcp.skills.github_issue_todo.settings")
+def test_enrich_todo_strips_repo_issue_shorthand_description(mock_settings, mock_fetch):
+    mock_settings.GITHUB_DEFAULT_OWNER = "x2-tech"
+    mock_fetch.return_value = "【Users】邮箱字段应改为必填非空并避免空字符串写入"
+
+    enriched = enrich_todo_from_github_issue(
+        {
+            "title": "【Users】邮箱字段应改为必填非空并避免空字符串写入",
+            "description": (
+                "对应 x-pulsar issue 518。\n\n"
+                "**背景**\n"
+                "邮箱字段不再允许为空。\n\n"
+                "**主要改动点**\n"
+                "- backend/features/users/schemas.py\n"
+            ),
+        }
+    )
+
+    assert enriched["title"] == "【Users】邮箱字段应改为必填非空并避免空字符串写入"
+    assert enriched["description"] == "https://github.com/x2-tech/x-pulsar/issues/518"
     assert enriched["context"] == "work"
     mock_fetch.assert_called_once()
 

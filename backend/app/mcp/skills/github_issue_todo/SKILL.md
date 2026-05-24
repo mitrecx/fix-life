@@ -30,6 +30,8 @@ Supported issue references in `title` or `description`:
 - `https://github.com/owner/repo/issues/42`
 - `github.com/owner/repo/issues/42`
 - `GitHub: owner/repo#42` or `owner/repo#42` (even inside a longer description)
+- `owner/repo issue 42`
+- `repo issue 42` or `对应 repo issue 42` (requires server `GITHUB_DEFAULT_OWNER`)
 
 No extra action field is required; pass the URL in `title` or `description`.
 
@@ -45,5 +47,6 @@ No extra action field is required; pass the URL in `title` or `description`.
 ## Notes
 
 - Private repos or heavy usage may require `GITHUB_TOKEN` on the server.
+- `repo issue N` shorthand requires `GITHUB_DEFAULT_OWNER` (e.g. `x2-tech` for `x-pulsar issue 518`).
 - Pull request URLs (`/pull/N`) are not handled; use issue URLs only.
 - If GitHub is unreachable, create fails with `GITHUB_FETCH_FAILED`.

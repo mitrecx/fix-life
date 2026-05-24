@@ -18,6 +18,14 @@ _GITHUB_ISSUE_SHORTHAND_RE = re.compile(
     r"(?:GitHub:\s*)?(?P<owner>[\w.-]+)/(?P<repo>[\w.-]+)#(?P<number>\d+)",
     re.IGNORECASE,
 )
+_GITHUB_ISSUE_SLASH_ISSUE_RE = re.compile(
+    r"(?P<owner>[\w.-]+)/(?P<repo>[\w.-]+)\s+issue\s+#?(?P<number>\d+)",
+    re.IGNORECASE,
+)
+_GITHUB_ISSUE_REPO_NUMBER_RE = re.compile(
+    r"(?:对应\s*)?(?P<repo>[\w.-]+)\s+issue\s+#?(?P<number>\d+)",
+    re.IGNORECASE,
+)
 
 
 @dataclass(frozen=True)
@@ -44,17 +52,33 @@ def parse_github_issue_url(text: str) -> GitHubIssueRef | None:
     return _issue_ref(match.group("owner"), match.group("repo"), match.group("number"))
 
 
+def _default_github_owner() -> str | None:
+    owner = (settings.GITHUB_DEFAULT_OWNER or "").strip()
+    return owner or None
+
+
 def parse_github_issue_reference(text: str) -> GitHubIssueRef | None:
-    """Parse full GitHub issue URLs or shorthand like owner/repo#518."""
+    """Parse GitHub issue URLs and common shorthand references."""
     content = text or ""
     ref = parse_github_issue_url(content)
     if ref is not None:
         return ref
 
     match = _GITHUB_ISSUE_SHORTHAND_RE.search(content)
-    if not match:
-        return None
-    return _issue_ref(match.group("owner"), match.group("repo"), match.group("number"))
+    if match:
+        return _issue_ref(match.group("owner"), match.group("repo"), match.group("number"))
+
+    match = _GITHUB_ISSUE_SLASH_ISSUE_RE.search(content)
+    if match:
+        return _issue_ref(match.group("owner"), match.group("repo"), match.group("number"))
+
+    match = _GITHUB_ISSUE_REPO_NUMBER_RE.search(content)
+    if match:
+        owner = _default_github_owner()
+        if owner:
+            return _issue_ref(owner, match.group("repo"), match.group("number"))
+
+    return None
 
 
 def find_github_issue_url(*texts: str | None) -> GitHubIssueRef | None:
@@ -64,6 +88,10 @@ def find_github_issue_url(*texts: str | None) -> GitHubIssueRef | None:
         ref = parse_github_issue_reference(text)
         if ref is not None:
             return ref
+
+    combined = "\n".join(text for text in texts if text)
+    if combined:
+        return parse_github_issue_reference(combined)
     return None
 
 
