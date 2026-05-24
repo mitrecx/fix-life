@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback, useMemo, type ReactNode } from "react";
+import { useState, useEffect, useCallback, useMemo } from "react";
 import { Trash2, Calendar, Undo2, SquarePen, Plus } from "lucide-react";
 import { DatePicker, Modal, message } from "antd";
 import type { Dayjs } from "dayjs";
@@ -6,16 +6,16 @@ import dayjs from "dayjs";
 import { useSearchParams } from "react-router-dom";
 import { backlogTaskService } from "@/services/backlogTaskService";
 import { TodosFilterBar } from "@/components/TodosFilterBar";
+import { TaskFormPanel } from "@/components/TaskFormPanel";
 import type {
   BacklogTask,
   BacklogListFilters,
   BacklogContextFilter,
   BacklogPriorityFilter,
-  TodoFormStatus,
+  TaskFormStatus,
 } from "@/types/backlogTask";
 import type { TaskContext } from "@/types/taskContext";
 import {
-  TASK_CONTEXT,
   DEFAULT_TASK_CONTEXT,
   getTaskContextConfig,
 } from "@/types/taskContext";
@@ -137,10 +137,6 @@ function formatDateTime(dateStr: string) {
   return dayjs(dateStr).format("M/D HH:mm");
 }
 
-function formatFullDateTime(dateStr: string) {
-  return dayjs(dateStr).format("YYYY-MM-DD HH:mm");
-}
-
 const STATUS_LABELS: Record<BacklogTask["status"], string> = {
   pending: "待处理",
   scheduled: "已安排",
@@ -148,278 +144,8 @@ const STATUS_LABELS: Record<BacklogTask["status"], string> = {
   cancelled: "已取消",
 };
 
-const FORM_STATUS_OPTIONS: { value: TodoFormStatus; label: string }[] = [
-  { value: "pending", label: "待处理" },
-  { value: "done", label: "已完成" },
-];
-
-function taskToFormStatus(task: BacklogTask): TodoFormStatus {
+function taskToFormStatus(task: BacklogTask): TaskFormStatus {
   return task.status === "done" ? "done" : "pending";
-}
-
-function DetailRow({ label, children }: { label: string; children: ReactNode }) {
-  return (
-    <div className="flex gap-3 py-2.5 border-b border-gray-100 last:border-0">
-      <dt className="text-sm text-gray-500 w-20 shrink-0">{label}</dt>
-      <dd className="text-sm text-gray-900 flex-1 break-words min-w-0">{children}</dd>
-    </div>
-  );
-}
-
-function ReadOnlyField({
-  children,
-  multiline = false,
-}: {
-  children: ReactNode;
-  multiline?: boolean;
-}) {
-  const hasContent =
-    children !== null &&
-    children !== undefined &&
-    children !== false &&
-    !(typeof children === "string" && children.trim() === "");
-  return (
-    <div
-      className={`w-full px-2 py-1.5 text-sm text-gray-600 bg-gray-100 rounded-md border border-gray-100 break-words ${
-        multiline ? "min-h-[4.5rem] whitespace-pre-wrap" : "min-h-[2.25rem] flex items-center"
-      }`}
-    >
-      {hasContent ? children : null}
-    </div>
-  );
-}
-
-const fieldInputClass =
-  "w-full px-2 py-1.5 text-sm border border-gray-200 rounded-md bg-white focus:outline-none focus:ring-1 focus:ring-gray-400";
-
-type TodoPanelMode = "view" | "edit" | "create";
-
-interface TodoPanelProps {
-  mode: TodoPanelMode;
-  task?: BacklogTask;
-  title: string;
-  description: string;
-  context: TaskContext;
-  priority: TaskPriority;
-  status: TodoFormStatus;
-  onTitleChange: (value: string) => void;
-  onDescriptionChange: (value: string) => void;
-  onContextChange: (value: TaskContext) => void;
-  onPriorityChange: (value: TaskPriority) => void;
-  onStatusChange: (value: TodoFormStatus) => void;
-  onSubmit: () => void;
-}
-
-function TodoPanel({
-  mode,
-  task,
-  title,
-  description,
-  context,
-  priority,
-  status,
-  onTitleChange,
-  onDescriptionChange,
-  onContextChange,
-  onPriorityChange,
-  onStatusChange,
-  onSubmit,
-}: TodoPanelProps) {
-  const editing = mode === "edit" || mode === "create";
-
-  return (
-    <dl className="py-1">
-      <DetailRow label="标题">
-        {editing ? (
-          <input
-            type="text"
-            value={title}
-            onChange={(e) => onTitleChange(e.target.value)}
-            placeholder="待办标题"
-            autoFocus={mode === "create" || mode === "edit"}
-            onKeyDown={(e) => {
-              if (e.key === "Enter" && title.trim()) onSubmit();
-            }}
-            className={fieldInputClass}
-          />
-        ) : (
-          <ReadOnlyField>{task?.title}</ReadOnlyField>
-        )}
-      </DetailRow>
-      <DetailRow label="描述">
-        {editing ? (
-          <textarea
-            value={description}
-            onChange={(e) => onDescriptionChange(e.target.value)}
-            placeholder="可选描述"
-            rows={3}
-            className={`${fieldInputClass} resize-y min-h-[4.5rem]`}
-          />
-        ) : (
-          <ReadOnlyField multiline>{task?.description?.trim() || null}</ReadOnlyField>
-        )}
-      </DetailRow>
-      <DetailRow label="状态">
-        {editing ? (
-          <StatusSelector value={status} onChange={onStatusChange} />
-        ) : (
-          <ReadOnlyField>{task ? STATUS_LABELS[task.status] : null}</ReadOnlyField>
-        )}
-      </DetailRow>
-      <DetailRow label="优先级">
-        {editing ? (
-          <PrioritySelector value={priority} onChange={onPriorityChange} />
-        ) : (
-          <ReadOnlyField>{task && <PriorityBadge priority={task.priority} />}</ReadOnlyField>
-        )}
-      </DetailRow>
-      <DetailRow label="分类">
-        {editing ? (
-          <ContextSelector value={context} onChange={onContextChange} />
-        ) : (
-          <ReadOnlyField>{task && <ContextBadge context={task.context} />}</ReadOnlyField>
-        )}
-      </DetailRow>
-      <DetailRow label="创建时间">
-        <ReadOnlyField>
-          {task ? formatFullDateTime(task.created_at) : null}
-        </ReadOnlyField>
-      </DetailRow>
-      <DetailRow label="安排日期">
-        <ReadOnlyField>
-          {task?.scheduled_date ? dayjs(task.scheduled_date).format("YYYY-MM-DD") : null}
-        </ReadOnlyField>
-      </DetailRow>
-      <DetailRow label="完成时间">
-        <ReadOnlyField>
-          {task?.completed_at ? formatFullDateTime(task.completed_at) : null}
-        </ReadOnlyField>
-      </DetailRow>
-      <DetailRow label="更新时间">
-        <ReadOnlyField>
-          {task ? formatFullDateTime(task.updated_at) : null}
-        </ReadOnlyField>
-      </DetailRow>
-    </dl>
-  );
-}
-
-function PriorityBadge({ priority }: { priority: TaskPriority }) {
-  const config = getTaskPriorityConfig(priority);
-  if (!config) return null;
-  return (
-    <span
-      className="inline-block text-xs px-1.5 py-0.5 rounded font-medium"
-      style={{
-        backgroundColor: `${config.color}18`,
-        color: config.color,
-      }}
-    >
-      {config.label}
-    </span>
-  );
-}
-
-function ContextBadge({ context }: { context: TaskContext }) {
-  const config = getTaskContextConfig(context);
-  if (!config) return null;
-  return (
-    <span
-      className="inline-block text-xs px-1.5 py-0.5 rounded font-medium"
-      style={{
-        backgroundColor: `${config.color}12`,
-        color: config.color,
-      }}
-    >
-      {config.label}
-    </span>
-  );
-}
-
-function StatusSelector({
-  value,
-  onChange,
-}: {
-  value: TodoFormStatus;
-  onChange: (value: TodoFormStatus) => void;
-}) {
-  return (
-    <div className="flex items-center flex-wrap gap-1">
-      {FORM_STATUS_OPTIONS.map((s) => (
-        <button
-          key={s.value}
-          type="button"
-          onClick={() => onChange(s.value)}
-          className={`px-2.5 py-1 text-xs rounded-md border transition-all ${
-            value === s.value
-              ? s.value === "done"
-                ? "border-emerald-600 bg-emerald-600 text-white"
-                : "border-indigo-600 bg-indigo-600 text-white"
-              : "border-gray-200 text-gray-600 hover:border-gray-300"
-          }`}
-        >
-          {s.label}
-        </button>
-      ))}
-    </div>
-  );
-}
-
-function PrioritySelector({
-  value,
-  onChange,
-}: {
-  value: TaskPriority;
-  onChange: (value: TaskPriority) => void;
-}) {
-  return (
-    <div className="flex items-center flex-wrap gap-1">
-      {TASK_PRIORITY.map((p) => (
-        <button
-          key={p.value}
-          type="button"
-          onClick={() => onChange(p.value)}
-          className={`px-2.5 py-1 text-xs rounded-md border transition-all ${
-            value === p.value
-              ? "border-gray-800 text-white"
-              : "border-gray-200 text-gray-600 hover:border-gray-300"
-          }`}
-          style={
-            value === p.value ? { backgroundColor: p.color, borderColor: p.color } : undefined
-          }
-        >
-          {p.label}
-        </button>
-      ))}
-    </div>
-  );
-}
-
-function ContextSelector({
-  value,
-  onChange,
-}: {
-  value: TaskContext;
-  onChange: (value: TaskContext) => void;
-}) {
-  return (
-    <div className="flex items-center flex-wrap gap-1">
-      {TASK_CONTEXT.map((c) => (
-        <button
-          key={c.value}
-          type="button"
-          onClick={() => onChange(c.value)}
-          className={`px-2.5 py-1 text-xs rounded-md border transition-all ${
-            value === c.value
-              ? "border-gray-800 bg-gray-800 text-white"
-              : "border-gray-200 text-gray-600 hover:border-gray-300"
-          }`}
-        >
-          {c.label}
-        </button>
-      ))}
-    </div>
-  );
 }
 
 interface KanbanCardProps {
@@ -625,7 +351,7 @@ export function TodosList() {
   const [formDescription, setFormDescription] = useState("");
   const [formContext, setFormContext] = useState<TaskContext>(DEFAULT_TASK_CONTEXT);
   const [formPriority, setFormPriority] = useState<TaskPriority>(DEFAULT_TASK_PRIORITY);
-  const [formStatus, setFormStatus] = useState<TodoFormStatus>("pending");
+  const [formStatus, setFormStatus] = useState<TaskFormStatus>("pending");
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [schedulingTask, setSchedulingTask] = useState<BacklogTask | null>(null);
   const [viewingTask, setViewingTask] = useState<BacklogTask | null>(null);
@@ -634,7 +360,7 @@ export function TodosList() {
   const [detailContext, setDetailContext] = useState<TaskContext>(DEFAULT_TASK_CONTEXT);
   const [detailPriority, setDetailPriority] = useState<TaskPriority>(DEFAULT_TASK_PRIORITY);
   const [detailDescription, setDetailDescription] = useState("");
-  const [detailStatus, setDetailStatus] = useState<TodoFormStatus>("pending");
+  const [detailStatus, setDetailStatus] = useState<TaskFormStatus>("pending");
   const [scheduleDate, setScheduleDate] = useState<Dayjs>(dayjs());
   const [dragging, setDragging] = useState<{ task: BacklogTask; from: KanbanColumnId } | null>(null);
   const [dropTarget, setDropTarget] = useState<KanbanColumnId | null>(null);
@@ -1107,9 +833,8 @@ export function TodosList() {
         }
       >
         {viewingTask && (
-          <TodoPanel
+          <TaskFormPanel
             mode={detailEditing ? "edit" : "view"}
-            task={viewingTask}
             title={detailTitle}
             description={detailDescription}
             context={detailContext}
@@ -1121,6 +846,13 @@ export function TodosList() {
             onPriorityChange={setDetailPriority}
             onStatusChange={setDetailStatus}
             onSubmit={handleDetailSave}
+            statusLabel={STATUS_LABELS[viewingTask.status]}
+            timestamps={{
+              createdAt: viewingTask.created_at,
+              scheduledDate: viewingTask.scheduled_date,
+              completedAt: viewingTask.completed_at,
+              updatedAt: viewingTask.updated_at,
+            }}
           />
         )}
       </Modal>
@@ -1135,7 +867,7 @@ export function TodosList() {
         confirmLoading={isSubmitting}
         okButtonProps={{ disabled: !formTitle.trim() }}
       >
-        <TodoPanel
+        <TaskFormPanel
           mode="create"
           title={formTitle}
           description={formDescription}

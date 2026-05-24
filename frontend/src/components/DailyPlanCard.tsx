@@ -1,11 +1,16 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback } from "react";
 import { Edit, Trash2, Plus, CheckCircle, Circle, Clock, ChevronDown, ChevronUp, BookOpen } from "lucide-react";
 import { Modal, message } from "antd";
-import type { DailyPlan, DailyTask, DailyTaskStatus, DailyTaskPriority, TaskContext } from "@/types/dailyPlan";
+import type { DailyPlan, DailyTask, DailyTaskStatus } from "@/types/dailyPlan";
 import { DAILY_TASK_PRIORITY } from "@/types/dailyPlan";
-import { TASK_CONTEXT, DEFAULT_TASK_CONTEXT, getTaskContextConfig } from "@/types/taskContext";
+import { DEFAULT_TASK_CONTEXT, getTaskContextConfig } from "@/types/taskContext";
+import type { TaskContext } from "@/types/taskContext";
+import { DEFAULT_TASK_PRIORITY } from "@/types/taskPriority";
+import type { TaskPriority } from "@/types/taskPriority";
+import type { TaskFormStatus } from "@/types/backlogTask";
 import { dailyPlanService } from "@/services/dailyPlanService";
 import { DailySummaryModal } from "@/components/DailySummaryModal";
+import { TaskFormPanel } from "@/components/TaskFormPanel";
 import { systemSettingsService } from "@/services/systemSettingsService";
 
 interface DailyPlanCardProps {
@@ -77,11 +82,17 @@ const formatDate = (dateStr: string) => {
   return `${date.getMonth() + 1}月${date.getDate()}日`;
 };
 
+function formStatusToDailyStatus(status: TaskFormStatus): DailyTaskStatus {
+  return status === "done" ? "done" : "todo";
+}
+
 export function DailyPlanCard({ plan, onUpdate, onEdit, onDelete }: DailyPlanCardProps) {
-  const [showTaskForm, setShowTaskForm] = useState(false);
-  const [newTaskTitle, setNewTaskTitle] = useState("");
-  const [newTaskPriority, setNewTaskPriority] = useState<DailyTaskPriority>("medium");
-  const [newTaskContext, setNewTaskContext] = useState<TaskContext>(DEFAULT_TASK_CONTEXT);
+  const [taskFormOpen, setTaskFormOpen] = useState(false);
+  const [formTitle, setFormTitle] = useState("");
+  const [formDescription, setFormDescription] = useState("");
+  const [formPriority, setFormPriority] = useState<TaskPriority>(DEFAULT_TASK_PRIORITY);
+  const [formContext, setFormContext] = useState<TaskContext>(DEFAULT_TASK_CONTEXT);
+  const [formStatus, setFormStatus] = useState<TaskFormStatus>("pending");
   const [isTaskSectionCollapsed, setIsTaskSectionCollapsed] = useState(false);
   const [showSummaryModal, setShowSummaryModal] = useState(false);
   const [isSubmittingTask, setIsSubmittingTask] = useState(false);
@@ -100,25 +111,42 @@ export function DailyPlanCard({ plan, onUpdate, onEdit, onDelete }: DailyPlanCar
   const weekdayConfig = getWeekdayConfig(plan.plan_date);
   const progressColor = getProgressColor(plan.completion_rate);
 
-  const handleAddTask = async (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!newTaskTitle.trim() || isSubmittingTask) return;
+  const resetTaskForm = useCallback(() => {
+    setFormTitle("");
+    setFormDescription("");
+    setFormPriority(DEFAULT_TASK_PRIORITY);
+    setFormContext(DEFAULT_TASK_CONTEXT);
+    setFormStatus("pending");
+  }, []);
+
+  const openTaskForm = () => {
+    resetTaskForm();
+    setTaskFormOpen(true);
+  };
+
+  const closeTaskForm = () => {
+    setTaskFormOpen(false);
+    resetTaskForm();
+  };
+
+  const handleAddTask = async () => {
+    if (!formTitle.trim() || isSubmittingTask) return;
 
     setIsSubmittingTask(true);
+    const trimmedDescription = formDescription.trim();
     try {
       await dailyPlanService.createTask(plan.id, {
-        title: newTaskTitle,
-        priority: newTaskPriority,
-        context: newTaskContext,
-        status: "todo",
+        title: formTitle.trim(),
+        description: trimmedDescription || undefined,
+        priority: formPriority,
+        context: formContext,
+        status: formStatusToDailyStatus(formStatus),
       });
-      setNewTaskTitle("");
-      setNewTaskPriority("medium");
-      setNewTaskContext(DEFAULT_TASK_CONTEXT);
-      setShowTaskForm(false);
+      closeTaskForm();
       onUpdate();
     } catch (error) {
       console.error("Failed to create task:", error);
+      message.error("添加失败");
     } finally {
       setIsSubmittingTask(false);
     }
@@ -239,80 +267,13 @@ export function DailyPlanCard({ plan, onUpdate, onEdit, onDelete }: DailyPlanCar
           <div className="flex items-center justify-between mb-2">
             <h4 className="text-xs font-semibold text-gray-700">任务清单</h4>
             <button
-              onClick={() => setShowTaskForm(!showTaskForm)}
+              onClick={openTaskForm}
               className="flex items-center gap-1 text-xs text-indigo-600 hover:text-indigo-700 font-medium transition-colors"
             >
               <Plus size={14} />
               添加任务
             </button>
           </div>
-
-          {showTaskForm && (
-            <form onSubmit={handleAddTask} className="mb-2">
-              <div className="flex gap-2 mb-2">
-                <input
-                  type="text"
-                  value={newTaskTitle}
-                  onChange={(e) => setNewTaskTitle(e.target.value)}
-                  className="flex-1 px-3 py-1.5 text-sm border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent"
-                  placeholder="输入新任务名称..."
-                  autoFocus
-                />
-              </div>
-              <div className="flex items-center gap-2 mb-2">
-                <span className="text-xs text-gray-500">标签:</span>
-                {TASK_CONTEXT.map((c) => (
-                  <button
-                    key={c.value}
-                    type="button"
-                    onClick={() => setNewTaskContext(c.value)}
-                    className={`px-2.5 py-1 text-xs rounded-lg border-2 transition-all ${
-                      newTaskContext === c.value
-                        ? "border-current"
-                        : "border-gray-200 hover:border-gray-300"
-                    }`}
-                    style={{
-                      backgroundColor: newTaskContext === c.value ? `${c.color}15` : "white",
-                      color: newTaskContext === c.value ? c.color : "gray",
-                    }}
-                  >
-                    {c.label}
-                  </button>
-                ))}
-              </div>
-              <div className="flex items-center gap-2 mb-2">
-                <span className="text-xs text-gray-500">优先级:</span>
-                {DAILY_TASK_PRIORITY.map((p) => (
-                  <button
-                    key={p.value}
-                    type="button"
-                    onClick={() => setNewTaskPriority(p.value)}
-                    className={`px-2.5 py-1 text-xs rounded-lg border-2 transition-all ${
-                      newTaskPriority === p.value
-                        ? "border-current"
-                        : "border-gray-200 hover:border-gray-300"
-                    }`}
-                    style={{
-                      backgroundColor: newTaskPriority === p.value ? `${p.color}15` : "white",
-                      color: newTaskPriority === p.value ? p.color : "gray",
-                    }}
-                  >
-                    {p.label}
-                  </button>
-                ))}
-              </div>
-              <button
-                type="submit"
-                disabled={isSubmittingTask}
-                className="w-full px-4 py-1.5 text-xs font-medium text-white rounded-lg transition-all disabled:opacity-50 disabled:cursor-not-allowed"
-                style={{ background: 'linear-gradient(to right, rgb(99 102 241), rgb(168 85 247))' }}
-                onMouseOver={(e) => !isSubmittingTask && (e.currentTarget.style.background = 'linear-gradient(to right, rgb(79 70 229), rgb(147 51 234))')}
-                onMouseOut={(e) => e.currentTarget.style.background = 'linear-gradient(to right, rgb(99 102 241), rgb(168 85 247))'}
-              >
-                {isSubmittingTask ? "添加中..." : "完成"}
-              </button>
-            </form>
-          )}
 
           <div className="space-y-1.5">
             {sortTasks(plan.daily_tasks).map((task) => {
@@ -427,6 +388,32 @@ export function DailyPlanCard({ plan, onUpdate, onEdit, onDelete }: DailyPlanCar
           )}
         </div>
       )}
+
+      <Modal
+        title="添加任务"
+        open={taskFormOpen}
+        onOk={handleAddTask}
+        onCancel={closeTaskForm}
+        okText="添加"
+        cancelText="取消"
+        confirmLoading={isSubmittingTask}
+        okButtonProps={{ disabled: !formTitle.trim() }}
+      >
+        <TaskFormPanel
+          mode="create"
+          title={formTitle}
+          description={formDescription}
+          context={formContext}
+          priority={formPriority}
+          status={formStatus}
+          onTitleChange={setFormTitle}
+          onDescriptionChange={setFormDescription}
+          onContextChange={setFormContext}
+          onPriorityChange={setFormPriority}
+          onStatusChange={setFormStatus}
+          onSubmit={handleAddTask}
+        />
+      </Modal>
 
       {/* Summary Modal */}
       {showSummaryModal && (

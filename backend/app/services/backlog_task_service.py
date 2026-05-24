@@ -5,11 +5,11 @@ from sqlalchemy import cast, Date
 from sqlalchemy.orm import Session
 
 from app.models.backlog_task import BacklogTask, BacklogTaskStatus
-from app.models.daily_plan import DailyTaskStatus
+from app.models.daily_plan import DailyTaskPriority, DailyTaskStatus
 from app.models.task_context import TaskContext
 from app.models.task_priority import TaskPriority
 from app.schemas.backlog_task import BacklogTaskCreate, BacklogTaskUpdate, BacklogTaskSchedule
-from app.schemas.daily_plan import DailyPlanCreate, DailyTaskCreate
+from app.schemas.daily_plan import DailyPlanCreate, DailyTaskCreate, DailyTaskUpdate
 from app.services.daily_plan_service import DailyPlanService
 
 BacklogTimeField = Literal["created", "scheduled", "completed"]
@@ -76,6 +76,59 @@ class BacklogTaskService:
     def get_task(self, task_id: str) -> Optional[BacklogTask]:
         return self.db.query(BacklogTask).filter(BacklogTask.id == task_id).first()
 
+    @staticmethod
+    def _completion_plan_date() -> date:
+        return date.today()
+
+    @staticmethod
+    def _backlog_priority_to_daily(priority: TaskPriority) -> DailyTaskPriority:
+        return DailyTaskPriority(priority.value)
+
+    def _daily_task_payload(self, task: BacklogTask) -> DailyTaskCreate:
+        return DailyTaskCreate(
+            title=task.title,
+            description=task.description,
+            context=task.context,
+            priority=self._backlog_priority_to_daily(task.priority),
+            status=DailyTaskStatus.DONE,
+        )
+
+    def _sync_completed_daily_task(self, user_id: str, task: BacklogTask) -> None:
+        """Ensure a completed daily task exists for today and link it to the backlog task."""
+        plan_date = self._completion_plan_date()
+        daily_service = DailyPlanService(self.db)
+
+        if task.daily_task_id:
+            daily_task = daily_service.get_task(str(task.daily_task_id))
+            if daily_task:
+                plan = daily_service.get_plan(str(daily_task.daily_plan_id))
+                if plan and plan.plan_date == plan_date:
+                    daily_service.update_task(
+                        str(daily_task.id),
+                        DailyTaskUpdate(
+                            title=task.title,
+                            description=task.description,
+                            context=task.context,
+                            priority=self._backlog_priority_to_daily(task.priority),
+                            status=DailyTaskStatus.DONE,
+                        ),
+                    )
+                    task.scheduled_date = plan_date
+                    return
+                daily_service.delete_task(str(task.daily_task_id))
+                task.daily_task_id = None
+
+        plan, _ = daily_service.create_or_merge_plan(
+            user_id,
+            DailyPlanCreate(plan_date=plan_date),
+        )
+        daily_task = daily_service.create_task(str(plan.id), self._daily_task_payload(task))
+        if not daily_task:
+            return
+
+        task.daily_task_id = daily_task.id
+        task.scheduled_date = plan_date
+
     def create_task(self, user_id: str, task_in: BacklogTaskCreate) -> BacklogTask:
         data = task_in.model_dump(exclude_unset=True)
         status = data.get("status", BacklogTaskStatus.PENDING)
@@ -83,6 +136,8 @@ class BacklogTaskService:
             data["completed_at"] = datetime.utcnow()
         task = BacklogTask(**data, user_id=user_id)
         self.db.add(task)
+        if status == BacklogTaskStatus.DONE:
+            self._sync_completed_daily_task(user_id, task)
         self.db.commit()
         self.db.refresh(task)
         return task
@@ -102,6 +157,7 @@ class BacklogTaskService:
             if new_status == BacklogTaskStatus.DONE:
                 task.status = BacklogTaskStatus.DONE
                 task.completed_at = datetime.utcnow()
+                self._sync_completed_daily_task(str(task.user_id), task)
             elif new_status == BacklogTaskStatus.PENDING:
                 if task.daily_task_id:
                     DailyPlanService(self.db).delete_task(str(task.daily_task_id))
@@ -132,6 +188,7 @@ class BacklogTaskService:
 
         task.status = BacklogTaskStatus.DONE
         task.completed_at = datetime.utcnow()
+        self._sync_completed_daily_task(str(task.user_id), task)
         self.db.commit()
         self.db.refresh(task)
         return task
