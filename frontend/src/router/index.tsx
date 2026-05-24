@@ -4,6 +4,8 @@ import ProtectedRoute from "@/components/ProtectedRoute";
 import RequireNoPasswordReset from "@/components/RequireNoPasswordReset";
 import RequireUsersManage from "@/components/RequireUsersManage";
 import Layout from "@/components/Layout";
+import SettingsLayout from "@/components/SettingsLayout";
+import RequireSystemStatusRead from "@/components/RequireSystemStatusRead";
 import PageLoader from "@/components/PageLoader";
 import LoginPage from "@/pages/LoginPage";
 
@@ -15,9 +17,12 @@ const DailyPlansPage = lazy(() => import("@/pages/DailyPlansPage"));
 const TodosPage = lazy(() => import("@/pages/TodosPage"));
 const AnalyticsPage = lazy(() => import("@/pages/AnalyticsPage"));
 const WeeklySummaryDetailPage = lazy(() => import("@/pages/WeeklySummaryDetailPage"));
-const SettingsPage = lazy(() => import("@/pages/SettingsPage"));
+const SettingsDisplayPage = lazy(() => import("@/pages/settings/SettingsDisplayPage"));
+const SettingsNotificationPage = lazy(() => import("@/pages/settings/SettingsNotificationPage"));
+const SettingsMcpPage = lazy(() => import("@/pages/settings/SettingsMcpPage"));
 const ProfilePage = lazy(() => import("@/pages/ProfilePage"));
 const SystemStatusPage = lazy(() => import("@/pages/SystemStatusPage"));
+const IpBanManagementPage = lazy(() => import("@/pages/IpBanManagementPage"));
 const ForceChangePasswordPage = lazy(() => import("@/pages/ForceChangePasswordPage"));
 const AdminUsersPage = lazy(() => import("@/pages/AdminUsersPage"));
 
@@ -97,8 +102,20 @@ export const router = createBrowserRouter([
         element: <AnalyticsPage />,
       },
       {
+        path: "system-management",
+        element: <Navigate to="/settings/status" replace />,
+      },
+      {
+        path: "system-management/status",
+        element: <Navigate to="/settings/status" replace />,
+      },
+      {
+        path: "system-management/ip-bans",
+        element: <Navigate to="/settings/ip-bans" replace />,
+      },
+      {
         path: "system-status",
-        element: <SystemStatusPage />,
+        element: <Navigate to="/settings/status" replace />,
       },
       {
         path: "admin/users",
@@ -110,7 +127,57 @@ export const router = createBrowserRouter([
       },
       {
         path: "settings",
-        element: <SettingsPage />,
+        element: <SettingsLayout />,
+        children: [
+          {
+            index: true,
+            element: <Navigate to="display" replace />,
+          },
+          {
+            path: "display",
+            element: (
+              <Suspense fallback={<PageLoader />}>
+                <SettingsDisplayPage />
+              </Suspense>
+            ),
+          },
+          {
+            path: "notification",
+            element: (
+              <Suspense fallback={<PageLoader />}>
+                <SettingsNotificationPage />
+              </Suspense>
+            ),
+          },
+          {
+            path: "mcp",
+            element: (
+              <Suspense fallback={<PageLoader />}>
+                <SettingsMcpPage />
+              </Suspense>
+            ),
+          },
+          {
+            path: "status",
+            element: (
+              <RequireSystemStatusRead>
+                <Suspense fallback={<PageLoader />}>
+                  <SystemStatusPage />
+                </Suspense>
+              </RequireSystemStatusRead>
+            ),
+          },
+          {
+            path: "ip-bans",
+            element: (
+              <RequireSystemStatusRead>
+                <Suspense fallback={<PageLoader />}>
+                  <IpBanManagementPage />
+                </Suspense>
+              </RequireSystemStatusRead>
+            ),
+          },
+        ],
       },
       {
         path: "profile",

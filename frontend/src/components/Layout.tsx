@@ -1,5 +1,5 @@
 import { Suspense, useMemo, useState, useEffect, type MouseEvent } from "react";
-import { Outlet, NavLink, useNavigate } from "react-router-dom";
+import { Outlet, NavLink, useNavigate, useLocation } from "react-router-dom";
 import {
   LogOut,
   Settings,
@@ -8,7 +8,6 @@ import {
   Calendar,
   Target,
   BarChart3,
-  Activity,
   Users,
   type LucideIcon,
 } from "lucide-react";
@@ -16,7 +15,6 @@ import { message } from "antd";
 import { useAuthStore } from "@/store/authStore";
 import PageLoader from "@/components/PageLoader";
 
-const SYSTEM_STATUS_READ = "system_status:read";
 const USERS_MANAGE = "users:manage";
 const SIDEBAR_COLLAPSED_KEY = "fix-life-sidebar-collapsed";
 
@@ -37,6 +35,7 @@ function readCollapsedPreference(): boolean {
 export default function Layout() {
   const { user, clearAuth } = useAuthStore();
   const navigate = useNavigate();
+  const location = useLocation();
   const [collapsed, setCollapsed] = useState(readCollapsedPreference);
 
   useEffect(() => {
@@ -55,12 +54,10 @@ export default function Layout() {
       { path: "/yearly-goals", label: "年度目标", icon: Target },
       { path: "/analytics", label: "数据统计", icon: BarChart3 },
     ];
-    if (user?.permissions?.includes(SYSTEM_STATUS_READ)) {
-      items.push({ path: "/system-status", label: "系统状态", icon: Activity });
-    }
     if (user?.permissions?.includes(USERS_MANAGE)) {
       items.push({ path: "/admin/users", label: "用户管理", icon: Users });
     }
+    items.push({ path: "/settings/display", label: "系统设置", icon: Settings });
     return items;
   }, [user]);
 
@@ -112,13 +109,18 @@ export default function Layout() {
         <nav className={`flex-1 overflow-y-auto py-4 space-y-1 ${collapsed ? "px-2" : "px-3"}`}>
           {navItems.map((item) => {
             const Icon = item.icon;
+            const isSettings =
+              item.path.startsWith("/settings") &&
+              location.pathname.startsWith("/settings/");
             return (
               <NavLink
                 key={item.path}
                 to={item.path}
                 onDoubleClick={handleToggleDoubleClick}
                 title={collapsed ? `${item.label} · ${collapseHint}` : `${item.label} · ${collapseHint}`}
-                className={navLinkClass}
+                className={({ isActive }) =>
+                  navLinkClass({ isActive: isActive || isSettings })
+                }
               >
                 <Icon size={18} className="flex-shrink-0 pointer-events-none" />
                 {!collapsed && <span className="truncate pointer-events-none">{item.label}</span>}
@@ -128,16 +130,6 @@ export default function Layout() {
         </nav>
 
         <div className={`border-t border-gray-200 space-y-1 ${collapsed ? "p-2" : "p-3"}`}>
-          <NavLink
-            to="/settings"
-            onDoubleClick={handleToggleDoubleClick}
-            title={`系统设置 · ${collapseHint}`}
-            className={navLinkClass}
-          >
-            <Settings size={18} className="flex-shrink-0 pointer-events-none" />
-            {!collapsed && <span className="pointer-events-none">系统设置</span>}
-          </NavLink>
-
           <NavLink
             to="/profile"
             onDoubleClick={handleToggleDoubleClick}

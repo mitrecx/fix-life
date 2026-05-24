@@ -71,7 +71,7 @@ export default function SystemStatusPage() {
     } catch (e) {
       if (e instanceof SystemStatusForbiddenError) {
         message.error("无权查看系统状态");
-        navigate("/daily-plans", { replace: true });
+        navigate("/settings/display", { replace: true });
         return;
       }
       const msg = e instanceof Error ? e.message : "加载失败";
@@ -93,7 +93,7 @@ export default function SystemStatusPage() {
   }, [load]);
 
   return (
-    <div className="max-w-3xl mx-auto space-y-4">
+    <div className="space-y-4">
       <div className="flex items-center justify-between gap-4 flex-wrap">
         <Title level={3} className="!mb-0">
           系统状态
