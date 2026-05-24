@@ -1,6 +1,10 @@
+import type { TaskContext } from "./taskContext";
+
 export type DailyTaskPriority = "low" | "medium" | "high";
 
 export type DailyTaskStatus = "todo" | "in-progress" | "done" | "cancelled";
+
+export type { TaskContext };
 
 export interface DailyTask {
   id: string;
@@ -9,6 +13,7 @@ export interface DailyTask {
   description?: string;
   priority: DailyTaskPriority;
   status: DailyTaskStatus;
+  context: TaskContext;
   estimated_minutes?: number;
   actual_minutes: number;
   time_slot?: string;
@@ -21,6 +26,7 @@ export interface DailyTaskCreate {
   description?: string;
   priority?: DailyTaskPriority;
   status?: DailyTaskStatus;
+  context?: TaskContext;
   estimated_minutes?: number;
   time_slot?: string;
 }
@@ -30,6 +36,7 @@ export interface DailyTaskUpdate {
   description?: string;
   priority?: DailyTaskPriority;
   status?: DailyTaskStatus;
+  context?: TaskContext;
   estimated_minutes?: number;
   actual_minutes?: number;
   time_slot?: string;

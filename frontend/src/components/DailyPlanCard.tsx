@@ -1,8 +1,9 @@
 import { useState, useEffect } from "react";
 import { Edit, Trash2, Plus, CheckCircle, Circle, Clock, ChevronDown, ChevronUp, BookOpen } from "lucide-react";
 import { Modal, message } from "antd";
-import type { DailyPlan, DailyTask, DailyTaskStatus, DailyTaskPriority } from "@/types/dailyPlan";
+import type { DailyPlan, DailyTask, DailyTaskStatus, DailyTaskPriority, TaskContext } from "@/types/dailyPlan";
 import { DAILY_TASK_PRIORITY } from "@/types/dailyPlan";
+import { TASK_CONTEXT, DEFAULT_TASK_CONTEXT, getTaskContextConfig } from "@/types/taskContext";
 import { dailyPlanService } from "@/services/dailyPlanService";
 import { DailySummaryModal } from "@/components/DailySummaryModal";
 import { systemSettingsService } from "@/services/systemSettingsService";
@@ -80,6 +81,7 @@ export function DailyPlanCard({ plan, onUpdate, onEdit, onDelete }: DailyPlanCar
   const [showTaskForm, setShowTaskForm] = useState(false);
   const [newTaskTitle, setNewTaskTitle] = useState("");
   const [newTaskPriority, setNewTaskPriority] = useState<DailyTaskPriority>("medium");
+  const [newTaskContext, setNewTaskContext] = useState<TaskContext>(DEFAULT_TASK_CONTEXT);
   const [isTaskSectionCollapsed, setIsTaskSectionCollapsed] = useState(false);
   const [showSummaryModal, setShowSummaryModal] = useState(false);
   const [isSubmittingTask, setIsSubmittingTask] = useState(false);
@@ -107,10 +109,12 @@ export function DailyPlanCard({ plan, onUpdate, onEdit, onDelete }: DailyPlanCar
       await dailyPlanService.createTask(plan.id, {
         title: newTaskTitle,
         priority: newTaskPriority,
+        context: newTaskContext,
         status: "todo",
       });
       setNewTaskTitle("");
       setNewTaskPriority("medium");
+      setNewTaskContext(DEFAULT_TASK_CONTEXT);
       setShowTaskForm(false);
       onUpdate();
     } catch (error) {
@@ -256,6 +260,27 @@ export function DailyPlanCard({ plan, onUpdate, onEdit, onDelete }: DailyPlanCar
                 />
               </div>
               <div className="flex items-center gap-2 mb-2">
+                <span className="text-xs text-gray-500">标签:</span>
+                {TASK_CONTEXT.map((c) => (
+                  <button
+                    key={c.value}
+                    type="button"
+                    onClick={() => setNewTaskContext(c.value)}
+                    className={`px-2.5 py-1 text-xs rounded-lg border-2 transition-all ${
+                      newTaskContext === c.value
+                        ? "border-current"
+                        : "border-gray-200 hover:border-gray-300"
+                    }`}
+                    style={{
+                      backgroundColor: newTaskContext === c.value ? `${c.color}15` : "white",
+                      color: newTaskContext === c.value ? c.color : "gray",
+                    }}
+                  >
+                    {c.label}
+                  </button>
+                ))}
+              </div>
+              <div className="flex items-center gap-2 mb-2">
                 <span className="text-xs text-gray-500">优先级:</span>
                 {DAILY_TASK_PRIORITY.map((p) => (
                   <button
@@ -293,6 +318,7 @@ export function DailyPlanCard({ plan, onUpdate, onEdit, onDelete }: DailyPlanCar
             {sortTasks(plan.daily_tasks).map((task) => {
               const StatusIcon = STATUS_ICONS[task.status];
               const priorityConfig = DAILY_TASK_PRIORITY.find((p) => p.value === task.priority);
+              const contextConfig = getTaskContextConfig(task.context ?? DEFAULT_TASK_CONTEXT);
 
               return (
                 <div
@@ -321,6 +347,18 @@ export function DailyPlanCard({ plan, onUpdate, onEdit, onDelete }: DailyPlanCar
                   {task.time_slot && (
                     <span className="text-xs px-1.5 py-0.5 rounded bg-gray-100 text-gray-600">
                       {task.time_slot}
+                    </span>
+                  )}
+                  {contextConfig && (
+                    <span
+                      className="text-xs px-2 py-0.5 rounded font-medium"
+                      style={{
+                        backgroundColor: `${contextConfig.color}15`,
+                        color: contextConfig.color,
+                        border: `1px solid ${contextConfig.color}30`,
+                      }}
+                    >
+                      {contextConfig.label}
                     </span>
                   )}
                   {priorityConfig && (

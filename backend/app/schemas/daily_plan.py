@@ -4,6 +4,7 @@ from typing import Optional, List
 from uuid import UUID
 
 from app.models.daily_plan import DailyTaskPriority, DailyTaskStatus
+from app.models.task_context import TaskContext
 from app.schemas.daily_summary import DailySummaryResponse
 
 
@@ -12,6 +13,7 @@ class DailyTaskBase(BaseModel):
     description: Optional[str] = Field(None, max_length=1000, description="Task description")
     priority: DailyTaskPriority = Field(default=DailyTaskPriority.MEDIUM, description="Task priority")
     status: DailyTaskStatus = Field(default=DailyTaskStatus.TODO, description="Task status")
+    context: TaskContext = Field(default=TaskContext.LEARNING, description="Task context (work, learning, life)")
     estimated_minutes: Optional[int] = Field(None, gt=0, description="Estimated minutes to complete")
     time_slot: Optional[str] = Field(None, max_length=50, description="Time slot (e.g., morning, afternoon)")
 
@@ -28,6 +30,7 @@ class DailyTaskUpdate(BaseModel):
     description: Optional[str] = Field(None, max_length=1000)
     priority: Optional[DailyTaskPriority] = None
     status: Optional[DailyTaskStatus] = None
+    context: Optional[TaskContext] = None
     estimated_minutes: Optional[int] = Field(None, gt=0)
     actual_minutes: Optional[int] = Field(None, ge=0)
     time_slot: Optional[str] = Field(None, max_length=50)

@@ -6,6 +6,7 @@ from sqlalchemy.orm import relationship
 import uuid
 
 from app.db.base import Base
+from app.models.task_context import TaskContext
 
 
 class SummaryType(str, enum.Enum):
@@ -72,6 +73,7 @@ class DailyTask(Base):
     description = Column(Text)
     priority = Column(Enum(DailyTaskPriority, values_callable=lambda x: [e.value for e in x]), default=DailyTaskPriority.MEDIUM)
     status = Column(Enum(DailyTaskStatus, values_callable=lambda x: [e.value for e in x]), default=DailyTaskStatus.TODO)
+    context = Column(Enum(TaskContext, values_callable=lambda x: [e.value for e in x]), default=TaskContext.LEARNING, nullable=False)
     estimated_minutes = Column(Integer)
     actual_minutes = Column(Integer, default=0)
     time_slot = Column(String(50))  # e.g., "morning", "afternoon", "evening"

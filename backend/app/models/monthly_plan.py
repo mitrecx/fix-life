@@ -6,6 +6,7 @@ from sqlalchemy.orm import relationship
 import uuid
 
 from app.db.base import Base
+from app.models.task_context import TaskContext
 
 
 class TaskPriority(str, enum.Enum):
@@ -68,6 +69,7 @@ class MonthlyTask(Base):
     description = Column(Text)
     priority = Column(Enum(TaskPriority, values_callable=lambda x: [e.value for e in x]), default=TaskPriority.MEDIUM)
     status = Column(Enum(TaskStatus, values_callable=lambda x: [e.value for e in x]), default=TaskStatus.TODO)
+    context = Column(Enum(TaskContext, values_callable=lambda x: [e.value for e in x]), default=TaskContext.LEARNING, nullable=False)
     due_date = Column(Date)
     estimated_hours = Column(Numeric(5, 2))
     actual_hours = Column(Numeric(5, 2), default=0)

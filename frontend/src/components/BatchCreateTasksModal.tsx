@@ -4,8 +4,9 @@ import { DatePicker, message } from "antd";
 import type { Dayjs } from "dayjs";
 import dayjs from "dayjs";
 import { dailyPlanService } from "@/services/dailyPlanService";
-import type { DailyTaskPriority } from "@/types/dailyPlan";
+import type { DailyTaskPriority, TaskContext } from "@/types/dailyPlan";
 import { DAILY_TASK_PRIORITY } from "@/types/dailyPlan";
+import { TASK_CONTEXT, DEFAULT_TASK_CONTEXT } from "@/types/taskContext";
 
 interface BatchCreateTasksModalProps {
   onClose: () => void;
@@ -17,6 +18,7 @@ export function BatchCreateTasksModal({ onClose, onSuccess }: BatchCreateTasksMo
   const [startDate, setStartDate] = useState<Dayjs>(dayjs());
   const [endDate, setEndDate] = useState<Dayjs>(dayjs().add(6, "day"));
   const [priority, setPriority] = useState<DailyTaskPriority>("medium");
+  const [context, setContext] = useState<TaskContext>(DEFAULT_TASK_CONTEXT);
   const [isSubmitting, setIsSubmitting] = useState(false);
 
   const handleSubmit = async () => {
@@ -72,6 +74,7 @@ export function BatchCreateTasksModal({ onClose, onSuccess }: BatchCreateTasksMo
         await dailyPlanService.createTask(planId, {
           title: taskTitle,
           priority,
+          context,
           status: "todo",
         });
         createdCount++;
@@ -161,6 +164,33 @@ export function BatchCreateTasksModal({ onClose, onSuccess }: BatchCreateTasksMo
                 placeholder="选择结束日期"
                 format="YYYY-MM-DD"
               />
+            </div>
+          </div>
+
+          {/* 标签 */}
+          <div>
+            <label className="block text-sm font-semibold text-gray-700 mb-2">
+              标签
+            </label>
+            <div className="flex gap-2">
+              {TASK_CONTEXT.map((c) => (
+                <button
+                  key={c.value}
+                  type="button"
+                  onClick={() => setContext(c.value)}
+                  disabled={isSubmitting}
+                  className="px-4 py-2 rounded-lg text-sm font-medium transition-all disabled:opacity-50 disabled:cursor-not-allowed"
+                  style={{
+                    backgroundColor: context === c.value ? `${c.color}15` : "white",
+                    color: c.color,
+                    ...(context === c.value ? {
+                      boxShadow: `0 0 0 2px ${c.color}`
+                    } : {})
+                  }}
+                >
+                  {c.label}
+                </button>
+              ))}
             </div>
           </div>
 

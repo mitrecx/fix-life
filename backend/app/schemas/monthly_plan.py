@@ -4,6 +4,7 @@ from typing import Optional, List
 from uuid import UUID
 
 from app.models.monthly_plan import TaskPriority, TaskStatus
+from app.models.task_context import TaskContext
 
 
 class MonthlyTaskBase(BaseModel):
@@ -11,6 +12,7 @@ class MonthlyTaskBase(BaseModel):
     description: Optional[str] = Field(None, max_length=1000, description="Task description")
     priority: TaskPriority = Field(default=TaskPriority.MEDIUM, description="Task priority")
     status: TaskStatus = Field(default=TaskStatus.TODO, description="Task status")
+    context: TaskContext = Field(default=TaskContext.LEARNING, description="Task context (work, learning, life)")
     due_date: Optional[date] = Field(None, description="Task due date")
     estimated_hours: Optional[float] = Field(None, gt=0, description="Estimated hours to complete")
 
@@ -27,6 +29,7 @@ class MonthlyTaskUpdate(BaseModel):
     description: Optional[str] = Field(None, max_length=1000)
     priority: Optional[TaskPriority] = None
     status: Optional[TaskStatus] = None
+    context: Optional[TaskContext] = None
     due_date: Optional[date] = None
     estimated_hours: Optional[float] = Field(None, gt=0)
     actual_hours: Optional[float] = Field(None, ge=0)

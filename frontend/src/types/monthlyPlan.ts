@@ -1,6 +1,10 @@
+import type { TaskContext } from "./taskContext";
+
 export type TaskPriority = "low" | "medium" | "high";
 
 export type TaskStatus = "todo" | "in-progress" | "done" | "cancelled";
+
+export type { TaskContext };
 
 export interface MonthlyTask {
   id: string;
@@ -9,6 +13,7 @@ export interface MonthlyTask {
   description?: string;
   priority: TaskPriority;
   status: TaskStatus;
+  context: TaskContext;
   due_date?: string;
   estimated_hours?: number;
   actual_hours: number;
@@ -21,6 +26,7 @@ export interface MonthlyTaskCreate {
   description?: string;
   priority?: TaskPriority;
   status?: TaskStatus;
+  context?: TaskContext;
   due_date?: string;
   estimated_hours?: number;
 }
@@ -30,6 +36,7 @@ export interface MonthlyTaskUpdate {
   description?: string;
   priority?: TaskPriority;
   status?: TaskStatus;
+  context?: TaskContext;
   due_date?: string;
   estimated_hours?: number;
   actual_hours?: number;

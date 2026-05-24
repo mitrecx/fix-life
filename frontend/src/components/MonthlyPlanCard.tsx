@@ -1,8 +1,9 @@
 import { useState } from "react";
 import { Edit, Trash2, Plus, CheckCircle, Circle, Clock, ChevronDown, ChevronUp } from "lucide-react";
 import { Modal, message } from "antd";
-import type { MonthlyPlan, MonthlyTask, TaskStatus, TaskPriority } from "@/types/monthlyPlan";
+import type { MonthlyPlan, MonthlyTask, TaskStatus, TaskPriority, TaskContext } from "@/types/monthlyPlan";
 import { TASK_PRIORITY } from "@/types/monthlyPlan";
+import { TASK_CONTEXT, DEFAULT_TASK_CONTEXT, getTaskContextConfig } from "@/types/taskContext";
 import { monthlyPlanService } from "@/services/monthlyPlanService";
 
 interface MonthlyPlanCardProps {
@@ -69,6 +70,7 @@ export function MonthlyPlanCard({ plan, onUpdate, onEdit, onDelete }: MonthlyPla
   const [showTaskForm, setShowTaskForm] = useState(false);
   const [newTaskTitle, setNewTaskTitle] = useState("");
   const [newTaskPriority, setNewTaskPriority] = useState<TaskPriority>("medium");
+  const [newTaskContext, setNewTaskContext] = useState<TaskContext>(DEFAULT_TASK_CONTEXT);
   const [isTaskSectionCollapsed, setIsTaskSectionCollapsed] = useState(false);
   const [isSubmittingTask, setIsSubmittingTask] = useState(false);
 
@@ -85,10 +87,12 @@ export function MonthlyPlanCard({ plan, onUpdate, onEdit, onDelete }: MonthlyPla
       await monthlyPlanService.createTask(plan.id, {
         title: newTaskTitle,
         priority: newTaskPriority,
+        context: newTaskContext,
         status: "todo",
       });
       setNewTaskTitle("");
       setNewTaskPriority("medium");
+      setNewTaskContext(DEFAULT_TASK_CONTEXT);
       setShowTaskForm(false);
       onUpdate();
     } catch (error) {
@@ -220,6 +224,27 @@ export function MonthlyPlanCard({ plan, onUpdate, onEdit, onDelete }: MonthlyPla
                 />
               </div>
               <div className="flex items-center gap-2 mb-2">
+                <span className="text-xs text-gray-500">标签:</span>
+                {TASK_CONTEXT.map((c) => (
+                  <button
+                    key={c.value}
+                    type="button"
+                    onClick={() => setNewTaskContext(c.value)}
+                    className={`px-2.5 py-1 text-xs rounded-lg border-2 transition-all ${
+                      newTaskContext === c.value
+                        ? "border-current"
+                        : "border-gray-200 hover:border-gray-300"
+                    }`}
+                    style={{
+                      backgroundColor: newTaskContext === c.value ? `${c.color}15` : "white",
+                      color: newTaskContext === c.value ? c.color : "gray",
+                    }}
+                  >
+                    {c.label}
+                  </button>
+                ))}
+              </div>
+              <div className="flex items-center gap-2 mb-2">
                 <span className="text-xs text-gray-500">优先级:</span>
                 {TASK_PRIORITY.map((p) => (
                   <button
@@ -257,6 +282,7 @@ export function MonthlyPlanCard({ plan, onUpdate, onEdit, onDelete }: MonthlyPla
             {sortTasks(plan.monthly_tasks).map((task) => {
               const StatusIcon = STATUS_ICONS[task.status];
               const priorityConfig = TASK_PRIORITY.find((p) => p.value === task.priority);
+              const contextConfig = getTaskContextConfig(task.context ?? DEFAULT_TASK_CONTEXT);
 
               return (
                 <div
@@ -282,6 +308,18 @@ export function MonthlyPlanCard({ plan, onUpdate, onEdit, onDelete }: MonthlyPla
                   >
                     {task.title}
                   </span>
+                  {contextConfig && (
+                    <span
+                      className="text-xs px-2 py-0.5 rounded font-medium"
+                      style={{
+                        backgroundColor: `${contextConfig.color}15`,
+                        color: contextConfig.color,
+                        border: `1px solid ${contextConfig.color}30`,
+                      }}
+                    >
+                      {contextConfig.label}
+                    </span>
+                  )}
                   {priorityConfig && (
                     <span
                       className="text-xs px-2 py-0.5 rounded font-medium"
