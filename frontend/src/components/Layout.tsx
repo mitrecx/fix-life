@@ -1,34 +1,78 @@
-import { Suspense, useMemo } from "react";
+import { Suspense, useMemo, useState, useEffect, type MouseEvent } from "react";
 import { Outlet, NavLink, useNavigate } from "react-router-dom";
-import { LogOut, Settings } from "lucide-react";
+import {
+  LogOut,
+  Settings,
+  ListTodo,
+  CalendarDays,
+  Calendar,
+  Target,
+  BookOpen,
+  BarChart3,
+  Activity,
+  Users,
+  type LucideIcon,
+} from "lucide-react";
 import { message } from "antd";
 import { useAuthStore } from "@/store/authStore";
 import PageLoader from "@/components/PageLoader";
 
 const SYSTEM_STATUS_READ = "system_status:read";
 const USERS_MANAGE = "users:manage";
+const SIDEBAR_COLLAPSED_KEY = "fix-life-sidebar-collapsed";
+
+type NavItem = {
+  path: string;
+  label: string;
+  icon: LucideIcon;
+};
+
+function readCollapsedPreference(): boolean {
+  try {
+    return localStorage.getItem(SIDEBAR_COLLAPSED_KEY) === "1";
+  } catch {
+    return false;
+  }
+}
 
 export default function Layout() {
   const { user, clearAuth } = useAuthStore();
   const navigate = useNavigate();
+  const [collapsed, setCollapsed] = useState(readCollapsedPreference);
+
+  useEffect(() => {
+    try {
+      localStorage.setItem(SIDEBAR_COLLAPSED_KEY, collapsed ? "1" : "0");
+    } catch {
+      // ignore storage errors
+    }
+  }, [collapsed]);
 
   const navItems = useMemo(() => {
-    const items = [
-      { path: "/todos", label: "待办", shortLabel: "待" },
-      { path: "/daily-plans", label: "每日计划", shortLabel: "日" },
-      { path: "/monthly-plans", label: "月度计划", shortLabel: "月" },
-      { path: "/yearly-goals", label: "年度目标", shortLabel: "年" },
-      { path: "/weekly-summaries", label: "周总结", shortLabel: "周" },
-      { path: "/analytics", label: "数据统计", shortLabel: "统" },
+    const items: NavItem[] = [
+      { path: "/todos", label: "待办", icon: ListTodo },
+      { path: "/daily-plans", label: "每日计划", icon: CalendarDays },
+      { path: "/monthly-plans", label: "月度计划", icon: Calendar },
+      { path: "/yearly-goals", label: "年度目标", icon: Target },
+      { path: "/weekly-summaries", label: "周总结", icon: BookOpen },
+      { path: "/analytics", label: "数据统计", icon: BarChart3 },
     ];
     if (user?.permissions?.includes(SYSTEM_STATUS_READ)) {
-      items.push({ path: "/system-status", label: "系统状态", shortLabel: "况" });
+      items.push({ path: "/system-status", label: "系统状态", icon: Activity });
     }
     if (user?.permissions?.includes(USERS_MANAGE)) {
-      items.push({ path: "/admin/users", label: "用户管理", shortLabel: "管" });
+      items.push({ path: "/admin/users", label: "用户管理", icon: Users });
     }
     return items;
   }, [user]);
+
+  const toggleCollapsed = () => setCollapsed((value) => !value);
+
+  const handleToggleDoubleClick = (e: MouseEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    toggleCollapsed();
+  };
 
   const handleLogout = () => {
     clearAuth();
@@ -36,101 +80,109 @@ export default function Layout() {
     navigate("/login");
   };
 
+  const collapseHint = collapsed ? "双击展开侧边栏" : "双击收起侧边栏";
+
+  const navLinkClass = ({ isActive }: { isActive: boolean }) =>
+    `flex items-center rounded-lg py-2.5 text-sm font-medium transition-all ${
+      collapsed ? "justify-center px-2" : "gap-3 px-3"
+    } ${
+      isActive
+        ? "bg-indigo-50 text-indigo-700"
+        : "text-gray-600 hover:bg-gray-100 hover:text-gray-900"
+    }`;
+
+  const sidebarWidth = collapsed ? "w-16" : "w-56";
+  const mainPadding = collapsed ? "pl-16" : "pl-56";
+
   return (
-    <div className="min-h-screen bg-gray-50">
-      {/* Header */}
-      <header className="sticky top-0 z-50 bg-white shadow-sm border-b border-gray-200">
-        <div className="w-full mx-auto px-1 sm:px-2 md:px-4">
-          <div className="flex items-center justify-between h-12 sm:h-14 md:h-16">
-            {/* Logo - 隐藏在窄屏 */}
-            <h1 className="hidden sm:block text-lg sm:text-xl md:text-2xl font-bold bg-gradient-to-r from-indigo-600 via-purple-600 to-pink-600 bg-clip-text text-transparent">
-              FixLife
-            </h1>
-
-            {/* Navigation */}
-            <nav className="flex flex-1 justify-center gap-0.5 sm:gap-0 md:space-x-1 mx-1 sm:mx-2">
-              {navItems.map((item) => (
-                <NavLink
-                  key={item.path}
-                  to={item.path}
-                  className={({ isActive }) =>
-                    `px-1.5 sm:px-3 md:px-4 py-1.5 sm:py-2 rounded-lg text-xs sm:text-sm font-medium transition-all whitespace-nowrap ${
-                      isActive
-                        ? "bg-gradient-to-r from-indigo-500 to-purple-500 text-white shadow-md"
-                        : "text-gray-600 hover:bg-gray-100 hover:text-gray-900"
-                    }`
-                  }
-                >
-                  <span className="hidden sm:inline">{item.label}</span>
-                  <span className="sm:hidden">{item.shortLabel}</span>
-                </NavLink>
-              ))}
-            </nav>
-
-            {/* User Menu */}
-            <div className="flex items-center gap-1 sm:gap-2 md:gap-3 pl-1 sm:pl-2 border-l border-gray-200">
-              {/* System Settings Button */}
-              <NavLink
-                to="/settings"
-                className={({ isActive }) =>
-                  `p-1.5 sm:p-2 rounded-lg transition-all ${
-                    isActive
-                      ? "text-indigo-600 bg-indigo-50"
-                      : "text-gray-500 hover:text-indigo-500 hover:bg-indigo-50"
-                  }`
-                }
-                title="系统设置"
-              >
-                <Settings size={16} />
-              </NavLink>
-
-              {/* Avatar Only - 窄屏只显示头像 */}
-              <NavLink
-                to="/profile"
-                className={({ isActive }) =>
-                  `flex items-center gap-1 sm:gap-2 text-sm px-1 sm:px-2 py-1 rounded-lg transition-all ${
-                    isActive
-                      ? "bg-indigo-50 text-indigo-600"
-                      : "text-gray-700 hover:bg-gray-100"
-                  }`
-                }
-                title="个人中心"
-              >
-                {user?.avatar_url ? (
-                  <img
-                    src={user.avatar_url}
-                    alt={user.username}
-                    className="w-7 h-7 sm:w-8 sm:h-8 rounded-full object-cover border-2 border-gray-200"
-                  />
-                ) : (
-                  <div className="w-7 h-7 sm:w-8 sm:h-8 rounded-full bg-gradient-to-br from-blue-500 to-purple-600 flex items-center justify-center text-white text-xs sm:text-sm font-semibold">
-                    {user?.username.charAt(0).toUpperCase()}
-                  </div>
-                )}
-                <span className="hidden sm:inline font-medium text-xs sm:text-sm">
-                  {user?.full_name || user?.username}
-                </span>
-              </NavLink>
-
-              {/* Logout Button */}
-              <button
-                onClick={handleLogout}
-                className="p-1.5 sm:p-2 text-gray-500 hover:text-red-500 hover:bg-red-50 rounded-lg transition-all"
-                title="退出登录"
-              >
-                <LogOut size={16} />
-              </button>
-            </div>
-          </div>
+    <div className="min-h-screen bg-gray-50 flex">
+      <aside
+        className={`fixed inset-y-0 left-0 z-50 flex ${sidebarWidth} flex-col border-r border-gray-200 bg-white transition-[width] duration-200 ease-in-out`}
+      >
+        <div
+          onDoubleClick={handleToggleDoubleClick}
+          title={collapseHint}
+          className={`flex h-14 w-full items-center border-b border-gray-200 cursor-default select-none ${
+            collapsed ? "justify-center px-2" : "px-4"
+          }`}
+        >
+          <h1 className="text-lg font-bold bg-gradient-to-r from-indigo-600 via-purple-600 to-pink-600 bg-clip-text text-transparent truncate">
+            {collapsed ? "FL" : "FixLife"}
+          </h1>
         </div>
-      </header>
 
-      {/* Main Content */}
-      <main className="w-full mx-auto px-2 sm:px-4 md:px-6 py-4 sm:py-6">
-        <Suspense fallback={<PageLoader />}>
-          <Outlet />
-        </Suspense>
-      </main>
+        <nav className={`flex-1 overflow-y-auto py-4 space-y-1 ${collapsed ? "px-2" : "px-3"}`}>
+          {navItems.map((item) => {
+            const Icon = item.icon;
+            return (
+              <NavLink
+                key={item.path}
+                to={item.path}
+                onDoubleClick={handleToggleDoubleClick}
+                title={collapsed ? `${item.label} · ${collapseHint}` : `${item.label} · ${collapseHint}`}
+                className={navLinkClass}
+              >
+                <Icon size={18} className="flex-shrink-0 pointer-events-none" />
+                {!collapsed && <span className="truncate pointer-events-none">{item.label}</span>}
+              </NavLink>
+            );
+          })}
+        </nav>
+
+        <div className={`border-t border-gray-200 space-y-1 ${collapsed ? "p-2" : "p-3"}`}>
+          <NavLink
+            to="/settings"
+            onDoubleClick={handleToggleDoubleClick}
+            title={`系统设置 · ${collapseHint}`}
+            className={navLinkClass}
+          >
+            <Settings size={18} className="flex-shrink-0 pointer-events-none" />
+            {!collapsed && <span className="pointer-events-none">系统设置</span>}
+          </NavLink>
+
+          <NavLink
+            to="/profile"
+            onDoubleClick={handleToggleDoubleClick}
+            title={`个人中心 · ${collapseHint}`}
+            className={navLinkClass}
+          >
+            {user?.avatar_url ? (
+              <img
+                src={user.avatar_url}
+                alt={user.username}
+                className="w-[18px] h-[18px] rounded-full object-cover flex-shrink-0 pointer-events-none"
+              />
+            ) : (
+              <div className="w-[18px] h-[18px] rounded-full bg-gradient-to-br from-blue-500 to-purple-600 flex items-center justify-center text-white text-[10px] font-semibold flex-shrink-0 pointer-events-none">
+                {user?.username.charAt(0).toUpperCase()}
+              </div>
+            )}
+            {!collapsed && (
+              <span className="truncate pointer-events-none">{user?.full_name || user?.username}</span>
+            )}
+          </NavLink>
+
+          <button
+            type="button"
+            onClick={handleLogout}
+            title="退出登录"
+            className={`flex w-full items-center rounded-lg py-2.5 text-sm font-medium text-gray-600 hover:bg-red-50 hover:text-red-600 transition-all ${
+              collapsed ? "justify-center px-2" : "gap-3 px-3"
+            }`}
+          >
+            <LogOut size={18} className="flex-shrink-0 pointer-events-none" />
+            {!collapsed && <span className="pointer-events-none">退出登录</span>}
+          </button>
+        </div>
+      </aside>
+
+      <div className={`flex flex-1 flex-col min-w-0 transition-[padding] duration-200 ease-in-out ${mainPadding}`}>
+        <main className="flex-1 overflow-auto px-3 sm:px-5 md:px-8 py-4 sm:py-6">
+          <Suspense fallback={<PageLoader />}>
+            <Outlet />
+          </Suspense>
+        </main>
+      </div>
     </div>
   );
 }
