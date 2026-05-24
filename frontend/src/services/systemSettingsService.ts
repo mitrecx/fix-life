@@ -1,5 +1,6 @@
 import api from ".//api";
 import type { SystemSettings } from "@/types/systemSettings";
+import type { McpApiKey, McpApiKeyCreateResponse } from "@/types/mcpApiKey";
 import { DEFAULT_SYSTEM_SETTINGS } from "@/types/systemSettings";
 
 class SystemSettingsService {
@@ -53,6 +54,19 @@ class SystemSettingsService {
   async shouldShowDailySummary(): Promise<boolean> {
     const settings = await this.getSettings();
     return settings.show_daily_summary;
+  }
+
+  async listMcpKeys(): Promise<McpApiKey[]> {
+    const data = await api.get<{ items: McpApiKey[] }>("/system-settings/mcp-keys");
+    return data.items;
+  }
+
+  async createMcpKey(name: string): Promise<McpApiKeyCreateResponse> {
+    return api.post<McpApiKeyCreateResponse>("/system-settings/mcp-keys", { name });
+  }
+
+  async revokeMcpKey(keyId: string): Promise<void> {
+    await api.delete(`/system-settings/mcp-keys/${keyId}`);
   }
 }
 

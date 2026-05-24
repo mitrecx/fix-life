@@ -1,11 +1,20 @@
 """System settings endpoints."""
+from uuid import UUID
+
 from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.orm import Session
 
 from app.api.v1.deps import get_db, get_current_user
-from app.schemas.systemSettings import SystemSettingsResponse, SystemSettingsUpdate
 from app.models.user import User
 from app.models.systemSettings import SystemSettings
+from app.schemas.mcp_api_key import (
+    McpApiKeyCreate,
+    McpApiKeyCreateResponse,
+    McpApiKeyListItem,
+    McpApiKeyListResponse,
+)
+from app.schemas.systemSettings import SystemSettingsResponse, SystemSettingsUpdate
+from app.services.mcp_api_key_service import McpApiKeyService
 
 router = APIRouter()
 
@@ -102,3 +111,53 @@ def update_system_settings(
         created_at=settings.created_at,
         updated_at=settings.updated_at,
     )
+
+
+def _to_mcp_key_item(record, *, api_key: str | None = None):
+    suffix = McpApiKeyService.mask_suffix(api_key) if api_key else record.key_prefix[-4:]
+    item = McpApiKeyListItem(
+        id=str(record.id),
+        name=record.name,
+        key_prefix=record.key_prefix,
+        key_suffix=suffix,
+        created_at=record.created_at,
+        last_used_at=record.last_used_at,
+    )
+    if api_key:
+        return McpApiKeyCreateResponse(**item.model_dump(), api_key=api_key)
+    return item
+
+
+@router.get("/mcp-keys", response_model=McpApiKeyListResponse)
+def list_mcp_api_keys(
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db),
+) -> McpApiKeyListResponse:
+    service = McpApiKeyService(db)
+    items = [_to_mcp_key_item(record) for record in service.list_active_keys(current_user.id)]
+    return McpApiKeyListResponse(items=items)
+
+
+@router.post("/mcp-keys", response_model=McpApiKeyCreateResponse, status_code=status.HTTP_201_CREATED)
+def create_mcp_api_key(
+    body: McpApiKeyCreate,
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db),
+) -> McpApiKeyCreateResponse:
+    service = McpApiKeyService(db)
+    try:
+        record, api_key = service.create_key(current_user.id, body.name)
+    except ValueError as exc:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(exc)) from exc
+    return _to_mcp_key_item(record, api_key=api_key)
+
+
+@router.delete("/mcp-keys/{key_id}", status_code=status.HTTP_204_NO_CONTENT)
+def revoke_mcp_api_key(
+    key_id: UUID,
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db),
+) -> None:
+    service = McpApiKeyService(db)
+    if not service.revoke_key(current_user.id, key_id):
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="MCP API key not found")
