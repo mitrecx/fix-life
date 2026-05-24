@@ -57,6 +57,9 @@ class Settings(BaseSettings):
     CELERY_BROKER_URL: str = "redis://localhost:6379/0"
     CELERY_RESULT_BACKEND: str = "redis://localhost:6379/1"
 
+    # GitHub (optional, for MCP GitHub issue todo skill)
+    GITHUB_TOKEN: str = ""
+
     # Frontend
     FRONTEND_URL: str = "http://localhost:5277"
 

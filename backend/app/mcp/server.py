@@ -34,7 +34,9 @@ def create_mcp_server() -> FastMCP:
             "Fix Life MCP server for todos, daily progress, planning, reflections, "
             "account settings, and admin operations. Each tool accepts a JSON payload "
             "with an `action` field plus action-specific parameters. "
-            "Todo category uses field `context`: work (工作), learning (学习), life (生活)."
+            "Todo category uses field `context`: work (工作), learning (学习), life (生活). "
+            "GitHub issue skill: when create title or description is a github.com/.../issues/N URL, "
+            "the server fetches the issue title, stores the URL as description, and sets context=work."
         ),
         auth=FixLifeApiKeyVerifier(),
     )
@@ -47,6 +49,8 @@ def create_mcp_server() -> FastMCP:
             "Use context=work for job/project tasks, context=life for chores/errands, context=learning for study/skills. "
             "priority: high | medium | low. "
             "create/update fields: title (required on create), description, context, priority, progress (0-100). "
+            "GitHub issue skill on create: pass a github.com/owner/repo/issues/N URL as title or description; "
+            "server sets title from GitHub, description to the URL, context=work. "
             "list filters: tab (pending|in_progress|done), context, priority, q, time_field, date_from, date_to, limit, offset. "
             "delete/get/update/complete require task_id: copy tasks[].id from a fresh list response exactly; never guess UUIDs. "
             "delete also accepts title when exactly one task matches. After delete, call list again to verify."

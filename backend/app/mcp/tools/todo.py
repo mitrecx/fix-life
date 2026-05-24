@@ -4,6 +4,7 @@ from datetime import date
 from typing import Any
 
 from app.mcp.helpers import db_session, dump, get_user_id, tool_error
+from app.mcp.skills.github_issue_todo import enrich_todo_from_github_issue
 from app.models.backlog_task import BacklogTask
 from app.schemas.backlog_task import BacklogTaskCreate, BacklogTaskSchedule, BacklogTaskUpdate
 from app.services.backlog_task_service import BacklogTaskService
@@ -53,7 +54,9 @@ def handle_todo(payload: dict[str, Any]) -> dict[str, Any]:
             return dump(service.to_detail(task))
 
         if action == "create":
-            body = BacklogTaskCreate.model_validate(payload.get("data") or payload)
+            raw = dict(payload.get("data") or payload)
+            raw = enrich_todo_from_github_issue(raw)
+            body = BacklogTaskCreate.model_validate(raw)
             task = service.create_task(user_id, body)
             return dump(service.to_response(task))
 

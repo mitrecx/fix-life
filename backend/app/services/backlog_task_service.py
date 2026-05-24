@@ -238,7 +238,10 @@ class BacklogTaskService:
         prev_after: int,
         backlog_progress: int,
     ) -> Tuple[int, int]:
-        if link.progress_after is not None:
+        today = date.today()
+        if link.plan_date >= today:
+            after = backlog_progress
+        elif link.progress_after is not None:
             after = link.progress_after
         else:
             after = backlog_progress
@@ -380,10 +383,16 @@ class BacklogTaskService:
         *,
         plan_date: Optional[date] = None,
     ) -> None:
-        target = plan_date or date.today()
-        link = self.get_link_for_date(str(task.id), target)
-        if link is not None:
-            link.progress_after = new_progress
+        if plan_date is not None:
+            link = self.get_link_for_date(str(task.id), plan_date)
+            if link is not None:
+                link.progress_after = new_progress
+            return
+
+        today = date.today()
+        for link in self.get_links_for_backlog(str(task.id)):
+            if link.plan_date >= today:
+                link.progress_after = new_progress
 
     def _sync_linked_daily_status_for_plan_date(
         self,
@@ -682,6 +691,7 @@ class BacklogTaskService:
         task.status = BacklogTaskStatus.PENDING
         task.progress = 0
         task.completed_at = None
+        self._record_progress_snapshot(task, 0)
         self.db.commit()
         self.db.refresh(task)
         return task

@@ -1,0 +1,76 @@
+"""Tests for backlog vs daily progress consistency."""
+
+from datetime import date, timedelta
+from unittest.mock import MagicMock
+
+from app.models.backlog_daily_link import BacklogDailyLink
+from app.services.backlog_task_service import BacklogTaskService
+
+
+def _make_link(*, plan_date: date, progress_after: int | None) -> BacklogDailyLink:
+    link = BacklogDailyLink(
+        backlog_task_id="backlog-1",
+        daily_task_id="daily-1",
+        plan_date=plan_date,
+    )
+    link.progress_after = progress_after
+    return link
+
+
+def test_resolve_link_progress_prefers_backlog_for_current_and_future_links():
+    service = BacklogTaskService(db=MagicMock())
+    link = _make_link(plan_date=date.today() + timedelta(days=2), progress_after=38)
+
+    after, delta = service._resolve_link_progress(
+        link,
+        prev_after=0,
+        backlog_progress=0,
+    )
+
+    assert after == 0
+    assert delta == 0
+
+
+def test_resolve_link_progress_keeps_historical_snapshot_for_past_links():
+    service = BacklogTaskService(db=MagicMock())
+    link = _make_link(plan_date=date.today() - timedelta(days=3), progress_after=38)
+
+    after, delta = service._resolve_link_progress(
+        link,
+        prev_after=10,
+        backlog_progress=0,
+    )
+
+    assert after == 38
+    assert delta == 28
+
+
+def test_record_progress_snapshot_updates_all_active_links_without_plan_date():
+    service = BacklogTaskService(db=MagicMock())
+    today = date.today()
+    past_link = _make_link(plan_date=today - timedelta(days=1), progress_after=25)
+    future_link = _make_link(plan_date=today + timedelta(days=1), progress_after=38)
+    service.get_links_for_backlog = MagicMock(return_value=[future_link, past_link])
+
+    task = MagicMock()
+    task.id = "backlog-1"
+
+    service._record_progress_snapshot(task, 60)
+
+    assert future_link.progress_after == 60
+    assert past_link.progress_after == 25
+
+
+def test_record_progress_snapshot_with_plan_date_updates_single_link():
+    service = BacklogTaskService(db=MagicMock())
+    target = date.today() - timedelta(days=2)
+    link = _make_link(plan_date=target, progress_after=10)
+    service.get_link_for_date = MagicMock(return_value=link)
+
+    task = MagicMock()
+    task.id = "backlog-1"
+
+    service._record_progress_snapshot(task, 45, plan_date=target)
+
+    assert link.progress_after == 45
+    service.get_link_for_date.assert_called_once_with("backlog-1", target)
