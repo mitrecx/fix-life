@@ -114,10 +114,12 @@ function DailyTaskProgressSlider({
   }, [task.id, task.progress_after, task.progress_delta]);
 
   const minProgress = floorRef.current;
-  const atMax = minProgress >= 100;
+  const isLocked = minProgress >= 100;
+
+  const clampValue = (raw: number) => Math.min(100, Math.max(minProgress, Math.round(raw)));
 
   const commit = async (next: number) => {
-    const clamped = Math.min(100, Math.max(minProgress, Math.round(next)));
+    const clamped = clampValue(next);
     setValue(clamped);
     if (clamped === (task.progress_after ?? 0)) return;
 
@@ -155,28 +157,28 @@ function DailyTaskProgressSlider({
       onClick={(e) => e.stopPropagation()}
       onDragStart={(e) => e.preventDefault()}
       title={
-        atMax
-          ? "进度已满"
+        isLocked
+          ? "进度已满（过往进度 100%）"
           : `过往 ${minProgress}% · 今日 ${Math.max(0, value - minProgress)}% · 拖动不低于 ${minProgress}%`
       }
     >
       <input
         type="range"
-        min={minProgress}
+        min={0}
         max={100}
         step={1}
         value={value}
-        disabled={atMax || updating}
+        disabled={isLocked || updating}
         draggable={false}
         style={trackStyle}
         onDragStart={(e) => e.preventDefault()}
-        onChange={(e) => setValue(Number(e.target.value))}
-        onPointerUp={(e) => endInteraction(e, Number(e.currentTarget.value))}
-        onMouseUp={(e) => endInteraction(e, Number(e.currentTarget.value))}
-        onTouchEnd={(e) => endInteraction(e, Number(e.currentTarget.value))}
+        onChange={(e) => setValue(clampValue(Number(e.target.value)))}
+        onPointerUp={(e) => endInteraction(e, clampValue(Number(e.currentTarget.value)))}
+        onMouseUp={(e) => endInteraction(e, clampValue(Number(e.currentTarget.value)))}
+        onTouchEnd={(e) => endInteraction(e, clampValue(Number(e.currentTarget.value)))}
         onPointerCancel={(e) => endInteraction(e)}
-        onBlur={(e) => endInteraction(e, Number(e.currentTarget.value))}
-        onKeyUp={(e) => endInteraction(e, Number(e.currentTarget.value))}
+        onBlur={(e) => endInteraction(e, clampValue(Number(e.currentTarget.value)))}
+        onKeyUp={(e) => endInteraction(e, clampValue(Number(e.currentTarget.value)))}
         className="kanban-progress-range flex-1 h-1.5 rounded-full appearance-none cursor-pointer disabled:cursor-default disabled:opacity-60
           [&::-webkit-slider-runnable-track]:h-1.5 [&::-webkit-slider-runnable-track]:rounded-full [&::-webkit-slider-runnable-track]:appearance-none
           [&::-webkit-slider-thumb]:appearance-none [&::-webkit-slider-thumb]:h-3 [&::-webkit-slider-thumb]:w-3

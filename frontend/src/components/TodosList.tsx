@@ -339,7 +339,7 @@ function KanbanCard({
         )}
         <div className="flex-1 min-w-0">
           <p
-            className={`text-sm leading-snug break-words ${
+            className={`text-base leading-snug break-words ${
               selectionMode ? "" : "cursor-pointer hover:text-indigo-700"
             } ${column === "done" ? "text-gray-500" : "text-gray-800"}`}
             onClick={(e) => {
@@ -349,7 +349,7 @@ function KanbanCard({
           >
             {task.title}
           </p>
-          <div className="flex items-center flex-wrap gap-1.5 mt-1.5">
+          <div className="flex items-center flex-wrap gap-1.5 mt-3">
             {priorityConfig && column !== "done" && (
               <button
                 type="button"

@@ -14,6 +14,9 @@ const descriptionFieldMinHeight = "min-h-[7rem]";
 const fieldInputClass =
   "w-full px-2 py-1.5 text-sm border border-gray-200 rounded-md bg-white focus:outline-none focus:ring-1 focus:ring-gray-400";
 
+const titleFieldInputClass =
+  "w-full px-2 py-2 text-base border border-gray-200 rounded-md bg-white focus:outline-none focus:ring-1 focus:ring-gray-400";
+
 export type TaskFormPanelMode = "view" | "edit" | "create";
 
 export interface TaskFormTimestamps {
@@ -44,9 +47,17 @@ export interface TaskFormPanelProps {
   hideTimestamps?: boolean;
 }
 
-function DetailRow({ label, children }: { label: string; children: ReactNode }) {
+function DetailRow({
+  label,
+  children,
+  className,
+}: {
+  label: string;
+  children: ReactNode;
+  className?: string;
+}) {
   return (
-    <div className="flex gap-3 py-2.5 border-b border-gray-100 last:border-0">
+    <div className={`flex gap-3 py-2.5 border-b border-gray-100 last:border-0 ${className ?? ""}`}>
       <dt className="text-sm text-gray-500 w-20 shrink-0">{label}</dt>
       <dd className="text-sm text-gray-900 flex-1 break-words min-w-0">{children}</dd>
     </div>
@@ -57,10 +68,12 @@ function ReadOnlyField({
   children,
   multiline = false,
   onClick,
+  className,
 }: {
   children: ReactNode;
   multiline?: boolean;
   onClick?: () => void;
+  className?: string;
 }) {
   const hasContent =
     children !== null &&
@@ -86,7 +99,7 @@ function ReadOnlyField({
         multiline
           ? `${descriptionFieldMinHeight} whitespace-pre-wrap`
           : "min-h-[2.25rem] flex items-center"
-      }${onClick ? " cursor-text hover:border-gray-200" : ""}`}
+      }${onClick ? " cursor-text hover:border-gray-200" : ""}${className ? ` ${className}` : ""}`}
     >
       {hasContent ? children : null}
     </div>
@@ -363,7 +376,7 @@ export function TaskFormPanel({
 
   return (
     <dl className="py-1">
-      <DetailRow label="标题">
+      <DetailRow label="标题" className="pb-4">
         {editing ? (
           <input
             type="text"
@@ -374,10 +387,10 @@ export function TaskFormPanel({
             onKeyDown={(e) => {
               if (e.key === "Enter" && title.trim()) onSubmit?.();
             }}
-            className={fieldInputClass}
+            className={titleFieldInputClass}
           />
         ) : (
-          <ReadOnlyField>{title}</ReadOnlyField>
+          <ReadOnlyField className="text-base text-gray-800 py-2">{title}</ReadOnlyField>
         )}
       </DetailRow>
       <DetailRow label="描述">
