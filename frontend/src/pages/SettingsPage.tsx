@@ -121,6 +121,16 @@ export default function SettingsPage() {
         resolved = await systemSettingsService.revealMcpKeySecret(keyId);
       } catch (error) {
         console.error("Failed to reveal MCP key:", error);
+        try {
+          const rotated = await systemSettingsService.rotateMcpKey(keyId);
+          resolved = rotated.api_key;
+          setImportGuideKeyHint(`${rotated.key_prefix}...${rotated.key_suffix}`);
+          await loadMcpKeys();
+          message.warning("此 Key 无法读取完整内容，已自动重新生成。请更新 MCP 客户端中的配置。");
+        } catch (rotateError) {
+          console.error("Failed to rotate MCP key:", rotateError);
+          message.error("无法获取 API Key");
+        }
       }
     }
 

@@ -68,6 +68,28 @@ class McpApiKeyService:
             return None
         return decrypt_secret(record.key_ciphertext)
 
+    def rotate_key_secret(self, user_id: UUID, key_id: UUID) -> tuple[McpApiKey, str] | None:
+        record = (
+            self.db.query(McpApiKey)
+            .filter(
+                McpApiKey.id == key_id,
+                McpApiKey.user_id == user_id,
+                McpApiKey.revoked_at.is_(None),
+            )
+            .first()
+        )
+        if not record:
+            return None
+
+        raw = secrets.token_urlsafe(32)
+        api_key = f"{API_KEY_PREFIX}{raw}"
+        record.key_prefix = api_key[:16]
+        record.key_hash = _hash_key(api_key)
+        record.key_ciphertext = encrypt_secret(api_key)
+        self.db.commit()
+        self.db.refresh(record)
+        return record, api_key
+
     def revoke_key(self, user_id: UUID, key_id: UUID) -> bool:
         record = (
             self.db.query(McpApiKey)

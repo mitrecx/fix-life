@@ -22,8 +22,14 @@ The URL may appear in `title` or `description`.
 Fix Life MCP applies this skill in `todo` create:
 
 1. **Title** → GitHub issue title (from GitHub API)
-2. **Description** → canonical issue URL (`https://github.com/owner/repo/issues/N`)
+2. **Description** → canonical issue URL only (`https://github.com/owner/repo/issues/N`); any other description text is discarded
 3. **Context** → `work` (工作)
+
+Supported issue references in `title` or `description`:
+
+- `https://github.com/owner/repo/issues/42`
+- `github.com/owner/repo/issues/42`
+- `GitHub: owner/repo#42` or `owner/repo#42` (even inside a longer description)
 
 No extra action field is required; pass the URL in `title` or `description`.
 

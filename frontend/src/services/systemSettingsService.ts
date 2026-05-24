@@ -73,6 +73,10 @@ class SystemSettingsService {
     const data = await api.get<{ api_key: string }>(`/system-settings/mcp-keys/${keyId}/secret`);
     return data.api_key;
   }
+
+  async rotateMcpKey(keyId: string): Promise<McpApiKeyCreateResponse> {
+    return api.post<McpApiKeyCreateResponse>(`/system-settings/mcp-keys/${keyId}/rotate`);
+  }
 }
 
 export const systemSettingsService = new SystemSettingsService();

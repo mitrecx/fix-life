@@ -43,3 +43,9 @@ def test_reveal_mcp_key_requires_auth():
     client = TestClient(app)
     response = client.get(f"/api/v1/system-settings/mcp-keys/{uuid4()}/secret")
     assert response.status_code == 401
+
+
+def test_rotate_mcp_key_requires_auth():
+    client = TestClient(app)
+    response = client.post(f"/api/v1/system-settings/mcp-keys/{uuid4()}/rotate")
+    assert response.status_code == 401

@@ -169,6 +169,20 @@ def reveal_mcp_api_key(
     return McpApiKeySecretResponse(api_key=api_key)
 
 
+@router.post("/mcp-keys/{key_id}/rotate", response_model=McpApiKeyCreateResponse)
+def rotate_mcp_api_key(
+    key_id: UUID,
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db),
+) -> McpApiKeyCreateResponse:
+    service = McpApiKeyService(db)
+    result = service.rotate_key_secret(current_user.id, key_id)
+    if not result:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="MCP API key not found")
+    record, api_key = result
+    return _to_mcp_key_item(record, api_key=api_key)
+
+
 @router.delete("/mcp-keys/{key_id}", status_code=status.HTTP_204_NO_CONTENT)
 def revoke_mcp_api_key(
     key_id: UUID,

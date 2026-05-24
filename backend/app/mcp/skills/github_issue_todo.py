@@ -14,6 +14,10 @@ _GITHUB_ISSUE_URL_RE = re.compile(
     r"(?:https?://)?(?:www\.)?github\.com/(?P<owner>[^/\s?#]+)/(?P<repo>[^/\s?#]+)/issues/(?P<number>\d+)",
     re.IGNORECASE,
 )
+_GITHUB_ISSUE_SHORTHAND_RE = re.compile(
+    r"(?:GitHub:\s*)?(?P<owner>[\w.-]+)/(?P<repo>[\w.-]+)#(?P<number>\d+)",
+    re.IGNORECASE,
+)
 
 
 @dataclass(frozen=True)
@@ -24,13 +28,7 @@ class GitHubIssueRef:
     url: str
 
 
-def parse_github_issue_url(text: str) -> GitHubIssueRef | None:
-    match = _GITHUB_ISSUE_URL_RE.search((text or "").strip())
-    if not match:
-        return None
-    owner = match.group("owner")
-    repo = match.group("repo")
-    number = match.group("number")
+def _issue_ref(owner: str, repo: str, number: str) -> GitHubIssueRef:
     return GitHubIssueRef(
         owner=owner,
         repo=repo,
@@ -39,11 +37,31 @@ def parse_github_issue_url(text: str) -> GitHubIssueRef | None:
     )
 
 
+def parse_github_issue_url(text: str) -> GitHubIssueRef | None:
+    match = _GITHUB_ISSUE_URL_RE.search((text or "").strip())
+    if not match:
+        return None
+    return _issue_ref(match.group("owner"), match.group("repo"), match.group("number"))
+
+
+def parse_github_issue_reference(text: str) -> GitHubIssueRef | None:
+    """Parse full GitHub issue URLs or shorthand like owner/repo#518."""
+    content = text or ""
+    ref = parse_github_issue_url(content)
+    if ref is not None:
+        return ref
+
+    match = _GITHUB_ISSUE_SHORTHAND_RE.search(content)
+    if not match:
+        return None
+    return _issue_ref(match.group("owner"), match.group("repo"), match.group("number"))
+
+
 def find_github_issue_url(*texts: str | None) -> GitHubIssueRef | None:
     for text in texts:
         if not text:
             continue
-        ref = parse_github_issue_url(text)
+        ref = parse_github_issue_reference(text)
         if ref is not None:
             return ref
     return None
@@ -92,7 +110,7 @@ def fetch_github_issue_title(ref: GitHubIssueRef) -> str:
 
 
 def enrich_todo_from_github_issue(data: dict[str, Any]) -> dict[str, Any]:
-    """When todo content is a GitHub issue URL, use issue title and set work context."""
+    """When todo content references a GitHub issue, normalize title/context and URL-only description."""
     ref = find_github_issue_url(data.get("title"), data.get("description"))
     if ref is None:
         return data
