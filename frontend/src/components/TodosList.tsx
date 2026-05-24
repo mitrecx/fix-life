@@ -180,6 +180,98 @@ function progressForColumn(column: KanbanColumnId, from: KanbanColumnId, current
   return progressForDrag(from, column, current);
 }
 
+function KanbanCardProgressSlider({
+  task,
+  onCommit,
+  onInteractStart,
+  onInteractEnd,
+}: {
+  task: BacklogTask;
+  onCommit: (task: BacklogTask, progress: number) => void;
+  onInteractStart: () => void;
+  onInteractEnd: () => void;
+}) {
+  const [value, setValue] = useState(task.progress ?? 0);
+  const draggingRef = useRef(false);
+
+  useEffect(() => {
+    setValue(task.progress ?? 0);
+  }, [task.id, task.progress]);
+
+  const commit = (next: number) => {
+    const clamped = Math.min(100, Math.max(0, Math.round(next)));
+    setValue(clamped);
+    if (clamped !== (task.progress ?? 0)) {
+      onCommit(task, clamped);
+    }
+  };
+
+  const beginInteraction = (event: React.SyntheticEvent) => {
+    event.stopPropagation();
+    if (!draggingRef.current) {
+      draggingRef.current = true;
+      onInteractStart();
+    }
+  };
+
+  const endInteraction = (event: React.SyntheticEvent, nextValue?: number) => {
+    event.stopPropagation();
+    if (draggingRef.current) {
+      draggingRef.current = false;
+      onInteractEnd();
+    }
+    if (nextValue != null) {
+      commit(nextValue);
+    }
+  };
+
+  const trackStyle = {
+    background: `linear-gradient(to right, #f59e0b 0%, #f59e0b ${value}%, #e5e7eb ${value}%, #e5e7eb 100%)`,
+  };
+
+  return (
+    <div
+      data-kanban-progress-slider
+      className="w-full mt-1.5 flex items-center gap-2 touch-none"
+      onMouseDown={beginInteraction}
+      onPointerDown={beginInteraction}
+      onTouchStart={beginInteraction}
+      onClick={(e) => e.stopPropagation()}
+      onDragStart={(e) => e.preventDefault()}
+    >
+      <input
+        type="range"
+        min={0}
+        max={100}
+        step={1}
+        value={value}
+        draggable={false}
+        style={trackStyle}
+        onDragStart={(e) => e.preventDefault()}
+        onChange={(e) => setValue(Number(e.target.value))}
+        onMouseUp={(e) => endInteraction(e, Number(e.currentTarget.value))}
+        onTouchEnd={(e) => endInteraction(e, Number(e.currentTarget.value))}
+        onPointerUp={(e) => endInteraction(e, Number(e.currentTarget.value))}
+        onPointerCancel={(e) => endInteraction(e)}
+        onBlur={(e) => endInteraction(e, Number(e.currentTarget.value))}
+        onKeyUp={(e) => endInteraction(e, Number(e.currentTarget.value))}
+        className="kanban-progress-range flex-1 h-1.5 rounded-full appearance-none cursor-pointer
+          [&::-webkit-slider-runnable-track]:h-1.5 [&::-webkit-slider-runnable-track]:rounded-full [&::-webkit-slider-runnable-track]:appearance-none
+          [&::-webkit-slider-thumb]:appearance-none [&::-webkit-slider-thumb]:h-3 [&::-webkit-slider-thumb]:w-3
+          [&::-webkit-slider-thumb]:rounded-full [&::-webkit-slider-thumb]:bg-amber-500 [&::-webkit-slider-thumb]:border-2 [&::-webkit-slider-thumb]:border-white
+          [&::-webkit-slider-thumb]:shadow-sm [&::-webkit-slider-thumb]:-mt-[3px]
+          [&::-moz-range-track]:h-1.5 [&::-moz-range-track]:rounded-full [&::-moz-range-track]:bg-transparent
+          [&::-moz-range-progress]:h-1.5 [&::-moz-range-progress]:rounded-full [&::-moz-range-progress]:bg-amber-500
+          [&::-moz-range-thumb]:h-3 [&::-moz-range-thumb]:w-3 [&::-moz-range-thumb]:rounded-full [&::-moz-range-thumb]:border-2 [&::-moz-range-thumb]:border-white [&::-moz-range-thumb]:bg-amber-500"
+        aria-label={`${task.title} 进度`}
+      />
+      <span className="text-sm text-amber-600 font-medium tabular-nums shrink-0 w-10 text-right">
+        {value}%
+      </span>
+    </div>
+  );
+}
+
 interface KanbanCardProps {
   task: BacklogTask;
   column: KanbanColumnId;
@@ -191,6 +283,7 @@ interface KanbanCardProps {
   onDragStart: (task: BacklogTask, from: KanbanColumnId) => void;
   onPriorityChange: (task: BacklogTask, priority: TaskPriority) => void;
   onOpenDetail: (task: BacklogTask) => void;
+  onProgressCommit?: (task: BacklogTask, progress: number) => void;
 }
 
 function KanbanCard({
@@ -204,21 +297,32 @@ function KanbanCard({
   onDragStart,
   onPriorityChange,
   onOpenDetail,
+  onProgressCommit,
 }: KanbanCardProps) {
   const contextConfig = getTaskContextConfig(task.context);
   const priorityConfig = getTaskPriorityConfig(task.priority);
   const isScheduled = task.is_scheduled ?? false;
+  const [progressDragLocked, setProgressDragLocked] = useState(false);
+  const cardDraggable = draggable && !selectionMode && !progressDragLocked;
 
   return (
     <div
-      draggable={draggable && !selectionMode}
+      draggable={cardDraggable}
       onDragStart={(e) => {
-        if (selectionMode) return;
+        if (selectionMode || progressDragLocked) {
+          e.preventDefault();
+          return;
+        }
+        const target = e.target as HTMLElement;
+        if (target.closest("[data-kanban-progress-slider]")) {
+          e.preventDefault();
+          return;
+        }
         e.dataTransfer.effectAllowed = "move";
         onDragStart(task, column);
       }}
       className={`group bg-white rounded-md border p-2 hover:border-gray-300 transition-all ${
-        selectionMode ? "cursor-pointer" : draggable ? "cursor-grab active:cursor-grabbing" : ""
+        selectionMode ? "cursor-pointer" : cardDraggable ? "cursor-grab active:cursor-grabbing" : ""
       } ${selected ? "border-indigo-400 bg-indigo-50/40 ring-1 ring-indigo-200" : highlighted ? "border-indigo-300 ring-1 ring-indigo-100" : "border-gray-200"}`}
       onClick={() => {
         if (selectionMode) onToggleSelect(task);
@@ -245,7 +349,7 @@ function KanbanCard({
           >
             {task.title}
           </p>
-          <div className="flex items-center flex-wrap gap-1 mt-1">
+          <div className="flex items-center flex-wrap gap-1.5 mt-1.5">
             {priorityConfig && column !== "done" && (
               <button
                 type="button"
@@ -256,7 +360,7 @@ function KanbanCard({
                   const next = TASK_PRIORITY[(idx + 1) % TASK_PRIORITY.length].value;
                   onPriorityChange(task, next);
                 }}
-                className="text-[10px] px-1 py-0.5 rounded font-medium hover:opacity-80"
+                className="text-sm px-1.5 py-0.5 rounded font-medium hover:opacity-80"
                 style={{
                   backgroundColor: `${priorityConfig.color}18`,
                   color: priorityConfig.color,
@@ -267,7 +371,7 @@ function KanbanCard({
             )}
             {priorityConfig && column === "done" && (
               <span
-                className="text-[10px] px-1 py-0.5 rounded font-medium opacity-60"
+                className="text-sm px-1.5 py-0.5 rounded font-medium opacity-60"
                 style={{
                   backgroundColor: `${priorityConfig.color}12`,
                   color: priorityConfig.color,
@@ -278,7 +382,7 @@ function KanbanCard({
             )}
             {contextConfig && (
               <span
-                className="text-[10px] px-1 py-0.5 rounded font-medium"
+                className="text-sm px-1.5 py-0.5 rounded font-medium"
                 style={{
                   backgroundColor: `${contextConfig.color}12`,
                   color: contextConfig.color,
@@ -288,32 +392,29 @@ function KanbanCard({
               </span>
             )}
             {isScheduled && task.last_plan_date && column !== "done" && (
-              <span className="text-[10px] text-blue-600 font-medium">
+              <span className="text-sm text-blue-600 font-medium">
                 已安排 {dayjs(task.last_plan_date).format("M月D日")}
               </span>
             )}
             {(task.possible_duplicate_count ?? 0) > 0 && column !== "done" && (
-              <span className="text-[10px] text-rose-600 font-medium">可能重复</span>
+              <span className="text-sm text-rose-600 font-medium">可能重复</span>
             )}
-            {column === "in_progress" && (
-              <>
-                <div className="w-full mt-1.5 h-1.5 bg-gray-100 rounded-full overflow-hidden">
-                  <div
-                    className="h-full rounded-full bg-amber-500 transition-all"
-                    style={{ width: `${task.progress}%` }}
-                  />
-                </div>
-                <span className="text-[10px] text-amber-600 font-medium">{task.progress}%</span>
-              </>
+            {column === "in_progress" && onProgressCommit && (
+              <KanbanCardProgressSlider
+                task={task}
+                onCommit={onProgressCommit}
+                onInteractStart={() => setProgressDragLocked(true)}
+                onInteractEnd={() => setProgressDragLocked(false)}
+              />
             )}
             {(column === "pending" || column === "in_progress") && formatLinkedDates(task) && (
-              <span className="text-[10px] text-gray-400">📅 {formatLinkedDates(task)}</span>
+              <span className="text-sm text-gray-400">📅 {formatLinkedDates(task)}</span>
             )}
             {column === "pending" && !isScheduled && (
-              <span className="text-[10px] text-gray-400">{formatRelativeTime(task.created_at)}</span>
+              <span className="text-sm text-gray-400">{formatRelativeTime(task.created_at)}</span>
             )}
             {column === "done" && task.completed_at && (
-              <span className="text-[10px] text-gray-400">{formatDateTime(task.completed_at)}</span>
+              <span className="text-sm text-gray-400">{formatDateTime(task.completed_at)}</span>
             )}
           </div>
         </div>
@@ -649,7 +750,7 @@ export function TodosList() {
     setDetailContext(task.context);
     setDetailPriority(task.priority);
     setDetailDescription(task.description ?? "");
-    setDetailStatus(progressToFormStatus(task.progress ?? 0));
+    setDetailStatus(progressToFormStatus(task.progress ?? 0, task.status));
     setDetailProgress(task.progress ?? 0);
   }, []);
 
@@ -862,6 +963,12 @@ export function TodosList() {
         priority: detailPriority,
         description: trimmedDescription || undefined,
         progress,
+        status:
+          detailStatus === "done"
+            ? "done"
+            : detailStatus === "in_progress"
+              ? "in_progress"
+              : "pending",
       });
       applyUpdatedTask(updated);
       setDrawerTaskSnapshot(updated);
@@ -904,13 +1011,46 @@ export function TodosList() {
       } else if (targetColumn === "pending") {
         updated = await backlogTaskService.revertToInbox(task.id);
       } else {
-        updated = await backlogTaskService.update(task.id, { progress });
+        updated = await backlogTaskService.update(task.id, {
+          progress,
+          status: "in_progress",
+        });
       }
       applyUpdatedTask(updated);
     } catch (error) {
       applyTaskToColumns(snapshot);
       console.error("Failed to update task progress:", error);
       message.error("操作失败");
+    }
+  };
+
+  const handleCardProgressCommit = async (task: BacklogTask, progress: number) => {
+    if (progress >= 100) {
+      await handleProgressChange(task, "done", "in_progress");
+      return;
+    }
+
+    const snapshot = task;
+    const optimistic = {
+      ...task,
+      progress,
+      status: "in_progress" as BacklogTask["status"],
+    };
+    if (taskMatchesFilters(optimistic, apiFilters)) {
+      applyTaskToColumns(optimistic);
+    } else {
+      removeTaskFromColumns(task.id);
+    }
+    try {
+      const updated = await backlogTaskService.update(task.id, {
+        progress,
+        status: "in_progress",
+      });
+      applyUpdatedTask(updated);
+    } catch (error) {
+      applyTaskToColumns(snapshot);
+      console.error("Failed to update task progress:", error);
+      message.error("更新进度失败");
     }
   };
 
@@ -1098,13 +1238,13 @@ export function TodosList() {
                   handleDrop(col.id);
                 }}
               >
-                <div className="flex items-center gap-2 px-2.5 py-2 border-b border-gray-200/80 bg-white/80 shrink-0">
-                  <h2 className="text-xs font-semibold text-gray-700">{col.title}</h2>
+                <div className="flex items-center gap-2 px-3 py-2.5 border-b border-gray-200/80 bg-white/80 shrink-0">
+                  <h2 className="text-sm font-semibold text-gray-700">{col.title}</h2>
                   {selectionMode && tasks.length > 0 && (
                     <button
                       type="button"
                       onClick={() => toggleColumnSelection(col.id)}
-                      className="px-1.5 py-0.5 text-[10px] font-medium text-indigo-600 bg-indigo-50 rounded hover:bg-indigo-100 transition-all"
+                      className="px-2 py-0.5 text-sm font-medium text-indigo-600 bg-indigo-50 rounded hover:bg-indigo-100 transition-all"
                     >
                       {tasks.every((t) => selectedIds.has(t.id)) ? "取消" : "全选"}
                     </button>
@@ -1113,9 +1253,9 @@ export function TodosList() {
                     <button
                       type="button"
                       onClick={openCreateForm}
-                      className="inline-flex items-center gap-1 px-2 py-1 text-[11px] font-medium text-emerald-700 bg-emerald-50 rounded-md hover:bg-emerald-100 transition-all"
+                      className="inline-flex items-center gap-1 px-2.5 py-1 text-sm font-medium text-emerald-700 bg-emerald-50 rounded-md hover:bg-emerald-100 transition-all"
                     >
-                      <Plus size={14} />
+                      <Plus size={16} />
                       新增待办
                     </button>
                   )}
@@ -1123,14 +1263,14 @@ export function TodosList() {
                     <button
                       type="button"
                       onClick={openCreateCompletedForm}
-                      className="inline-flex items-center gap-1 px-2 py-1 text-[11px] font-medium text-emerald-700 bg-emerald-50 rounded-md hover:bg-emerald-100 transition-all"
+                      className="inline-flex items-center gap-1 px-2.5 py-1 text-sm font-medium text-emerald-700 bg-emerald-50 rounded-md hover:bg-emerald-100 transition-all"
                     >
-                      <Plus size={14} />
+                      <Plus size={16} />
                       新增完成
                     </button>
                   )}
                   <span className="flex-1" />
-                  <span className="text-[10px] font-medium text-gray-500 tabular-nums">
+                  <span className="text-sm font-medium text-gray-500 tabular-nums">
                     {columnTotals[col.id]}
                   </span>
                 </div>
@@ -1161,6 +1301,11 @@ export function TodosList() {
                           onDragStart={(t, from) => setDragging({ task: t, from })}
                           onPriorityChange={handlePriorityChange}
                           onOpenDetail={openTaskDetail}
+                          onProgressCommit={
+                            col.id === "in_progress" && !selectionMode
+                              ? handleCardProgressCommit
+                              : undefined
+                          }
                         />
                       ))}
                       {loadingMoreColumn === col.id && (

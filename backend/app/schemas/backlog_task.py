@@ -47,6 +47,7 @@ class BacklogTaskUpdate(BaseModel):
     context: Optional[TaskContext] = None
     priority: Optional[TaskPriority] = None
     progress: Optional[int] = Field(None, ge=0, le=100)
+    status: Optional[BacklogTaskStatus] = None
 
     class Config:
         from_attributes = True

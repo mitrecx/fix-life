@@ -1,4 +1,5 @@
-import type { ReactNode } from "react";
+import { useState, type ReactNode } from "react";
+import { ChevronDown } from "lucide-react";
 import { DatePicker } from "antd";
 import dayjs from "dayjs";
 import type {
@@ -47,6 +48,14 @@ function FilterGroup({ children }: { children: ReactNode }) {
   return <div className={filterGroupClassName}>{children}</div>;
 }
 
+function hasAdvancedFilters(filters: BacklogListFilters): boolean {
+  return !!(
+    (filters.priority && filters.priority !== "all") ||
+    filters.dateFrom ||
+    filters.dateTo
+  );
+}
+
 export function TodosFilterBar({
   filters,
   matchCount,
@@ -56,63 +65,16 @@ export function TodosFilterBar({
   selectionMode = false,
   onToggleSelectionMode,
 }: TodosFilterBarProps) {
+  const [moreOpen, setMoreOpen] = useState(false);
+
   const keyword = filters.q ?? "";
   const timeField = filters.timeField ?? "created";
   const context = filters.context ?? "all";
   const priority = filters.priority ?? "all";
+  const advancedActive = hasAdvancedFilters(filters);
 
   return (
-    <div className="p-3 sm:p-4 bg-white/80 backdrop-blur-sm rounded-xl shadow-sm border border-gray-100 shrink-0 space-y-3">
-      <div className="flex flex-wrap items-start gap-2 sm:gap-2.5">
-        <FilterGroup>
-          <label className={labelClassName}>关键词:</label>
-          <input
-            type="search"
-            value={keyword}
-            onChange={(e) => onChange({ q: e.target.value })}
-            placeholder="搜索标题…"
-            className={`w-40 sm:w-52 ${selectClassName}`}
-          />
-        </FilterGroup>
-
-        <FilterGroup>
-          <label className={labelClassName}>时间筛选:</label>
-          <select
-            value={timeField}
-            onChange={(e) => onChange({ timeField: e.target.value as BacklogTimeField })}
-            className={selectClassName}
-          >
-            {TIME_FIELD_OPTIONS.map((o) => (
-              <option key={o.value} value={o.value}>
-                {o.label}
-              </option>
-            ))}
-          </select>
-
-          <label className={labelClassName}>开始日期:</label>
-          <DatePicker
-            value={filters.dateFrom ? dayjs(filters.dateFrom) : null}
-            onChange={(date) => onChange({ dateFrom: date?.format("YYYY-MM-DD") })}
-            allowClear
-            format="YYYY-MM-DD"
-            placeholder=""
-            className={datePickerClassName}
-            style={{ width: 148 }}
-          />
-
-          <label className={labelClassName}>结束日期:</label>
-          <DatePicker
-            value={filters.dateTo ? dayjs(filters.dateTo) : null}
-            onChange={(date) => onChange({ dateTo: date?.format("YYYY-MM-DD") })}
-            allowClear
-            format="YYYY-MM-DD"
-            placeholder=""
-            className={datePickerClassName}
-            style={{ width: 148 }}
-          />
-        </FilterGroup>
-      </div>
-
+    <div className="p-3 sm:p-4 bg-white/80 backdrop-blur-sm rounded-xl shadow-sm border border-gray-100 shrink-0">
       <div className="flex flex-wrap items-center gap-2 sm:gap-2.5">
         <FilterGroup>
           <label className={labelClassName}>分类:</label>
@@ -133,38 +95,17 @@ export function TodosFilterBar({
         </FilterGroup>
 
         <FilterGroup>
-          <label className={labelClassName}>优先级:</label>
-          {PRIORITY_FILTERS.map((f) => (
-            <button
-              key={f.value}
-              type="button"
-              onClick={() => onChange({ priority: f.value })}
-              className={`px-3 py-1.5 text-xs font-medium rounded-lg transition-all ${
-                priority === f.value
-                  ? f.value === "all"
-                    ? "text-white shadow-md bg-gradient-to-r from-indigo-500 via-purple-500 to-pink-500 hover:from-indigo-600 hover:via-purple-600 hover:to-pink-600"
-                    : "text-white shadow-sm"
-                  : "text-gray-600 bg-gray-100 hover:bg-gray-200"
-              }`}
-              style={
-                priority === f.value && f.value !== "all" && f.color
-                  ? { backgroundColor: f.color, borderColor: f.color }
-                  : undefined
-              }
-            >
-              {f.label}
-            </button>
-          ))}
+          <label className={labelClassName}>关键词:</label>
+          <input
+            type="search"
+            value={keyword}
+            onChange={(e) => onChange({ q: e.target.value })}
+            placeholder="搜索标题…"
+            className={`w-40 sm:w-52 ${selectClassName}`}
+          />
         </FilterGroup>
 
         <div className="inline-flex flex-wrap items-center gap-2 shrink-0 py-1">
-          <button
-            type="button"
-            onClick={onSearch}
-            className="px-4 py-1.5 text-sm font-medium text-white bg-indigo-600 rounded-lg hover:bg-indigo-700 transition-all"
-          >
-            查询
-          </button>
           <button
             type="button"
             onClick={onReset}
@@ -172,7 +113,14 @@ export function TodosFilterBar({
           >
             重置
           </button>
-          <span className="text-sm text-gray-500">{matchCount} 条匹配</span>
+          <button
+            type="button"
+            onClick={onSearch}
+            className="px-4 py-1.5 text-sm font-medium text-white bg-indigo-600 rounded-lg hover:bg-indigo-700 transition-all"
+          >
+            查询
+          </button>
+          <span className="text-sm text-gray-500 tabular-nums">{matchCount} 条匹配</span>
           {onToggleSelectionMode && (
             <button
               type="button"
@@ -187,7 +135,96 @@ export function TodosFilterBar({
             </button>
           )}
         </div>
+
+        <button
+          type="button"
+          aria-expanded={moreOpen}
+          aria-label={moreOpen ? "收起更多筛选" : "展开更多筛选"}
+          onClick={() => setMoreOpen((open) => !open)}
+          className={`relative ml-auto inline-flex items-center justify-center w-7 h-7 rounded-md transition-all ${
+            moreOpen || advancedActive
+              ? "text-indigo-600 bg-indigo-50 hover:bg-indigo-100"
+              : "text-gray-500 hover:text-gray-700 hover:bg-gray-100"
+          }`}
+        >
+          {advancedActive && !moreOpen && (
+            <span
+              className="absolute top-1 right-1 w-1.5 h-1.5 rounded-full bg-indigo-500"
+              aria-hidden
+            />
+          )}
+          <ChevronDown
+            size={16}
+            className={`transition-transform duration-200 ${moreOpen ? "rotate-180" : ""}`}
+          />
+        </button>
       </div>
+
+      {moreOpen && (
+        <div className="mt-3 pt-3 border-t border-gray-100 flex flex-wrap items-start gap-2 sm:gap-2.5">
+          <FilterGroup>
+            <label className={labelClassName}>优先级:</label>
+            {PRIORITY_FILTERS.map((f) => (
+              <button
+                key={f.value}
+                type="button"
+                onClick={() => onChange({ priority: f.value })}
+                className={`px-3 py-1.5 text-xs font-medium rounded-lg transition-all ${
+                  priority === f.value
+                    ? f.value === "all"
+                      ? "text-white shadow-md bg-gradient-to-r from-indigo-500 via-purple-500 to-pink-500 hover:from-indigo-600 hover:via-purple-600 hover:to-pink-600"
+                      : "text-white shadow-sm"
+                    : "text-gray-600 bg-gray-100 hover:bg-gray-200"
+                }`}
+                style={
+                  priority === f.value && f.value !== "all" && f.color
+                    ? { backgroundColor: f.color, borderColor: f.color }
+                    : undefined
+                }
+              >
+                {f.label}
+              </button>
+            ))}
+          </FilterGroup>
+
+          <FilterGroup>
+            <label className={labelClassName}>时间筛选:</label>
+            <select
+              value={timeField}
+              onChange={(e) => onChange({ timeField: e.target.value as BacklogTimeField })}
+              className={selectClassName}
+            >
+              {TIME_FIELD_OPTIONS.map((o) => (
+                <option key={o.value} value={o.value}>
+                  {o.label}
+                </option>
+              ))}
+            </select>
+
+            <label className={labelClassName}>开始日期:</label>
+            <DatePicker
+              value={filters.dateFrom ? dayjs(filters.dateFrom) : null}
+              onChange={(date) => onChange({ dateFrom: date?.format("YYYY-MM-DD") })}
+              allowClear
+              format="YYYY-MM-DD"
+              placeholder=""
+              className={datePickerClassName}
+              style={{ width: 148 }}
+            />
+
+            <label className={labelClassName}>结束日期:</label>
+            <DatePicker
+              value={filters.dateTo ? dayjs(filters.dateTo) : null}
+              onChange={(date) => onChange({ dateTo: date?.format("YYYY-MM-DD") })}
+              allowClear
+              format="YYYY-MM-DD"
+              placeholder=""
+              className={datePickerClassName}
+              style={{ width: 148 }}
+            />
+          </FilterGroup>
+        </div>
+      )}
     </div>
   );
 }

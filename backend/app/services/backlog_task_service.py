@@ -69,13 +69,17 @@ class BacklogTaskService:
         query = self.db.query(BacklogTask).filter(BacklogTask.user_id == user_id)
 
         if tab == "pending":
-            query = query.filter(BacklogTask.progress == 0)
+            query = query.filter(
+                BacklogTask.status.in_(
+                    (BacklogTaskStatus.PENDING, BacklogTaskStatus.SCHEDULED)
+                )
+            )
         elif tab == "in_progress":
-            query = query.filter(BacklogTask.progress > 0, BacklogTask.progress < 100)
+            query = query.filter(BacklogTask.status == BacklogTaskStatus.IN_PROGRESS)
         elif tab == "done":
-            query = query.filter(BacklogTask.progress == 100)
+            query = query.filter(BacklogTask.status == BacklogTaskStatus.DONE)
         elif tab == "active":
-            query = query.filter(BacklogTask.progress < 100)
+            query = query.filter(BacklogTask.status != BacklogTaskStatus.DONE)
 
         if context is not None:
             query = query.filter(BacklogTask.context == context)
@@ -407,12 +411,32 @@ class BacklogTaskService:
 
         update_data = task_in.model_dump(exclude_unset=True)
         new_progress = update_data.pop("progress", None)
+        new_status = update_data.pop("status", None)
         old_progress = task.progress
 
         for field, value in update_data.items():
             setattr(task, field, value)
 
-        if new_progress is not None and new_progress != old_progress:
+        if new_progress is not None and new_status is not None:
+            task.progress = new_progress
+            task.status = new_status
+            if new_progress == 100 or new_status == BacklogTaskStatus.DONE:
+                task.completed_at = datetime.utcnow()
+                self._sync_completed_daily_task(str(task.user_id), task)
+            else:
+                task.completed_at = None
+        elif new_status is not None:
+            if new_status == BacklogTaskStatus.PENDING:
+                task.status = BacklogTaskStatus.PENDING
+                task.progress = 0
+                task.completed_at = None
+            elif new_status == BacklogTaskStatus.DONE:
+                self.apply_progress(task, 100)
+                self._sync_completed_daily_task(str(task.user_id), task)
+            elif new_status == BacklogTaskStatus.IN_PROGRESS:
+                task.status = BacklogTaskStatus.IN_PROGRESS
+                task.completed_at = None
+        elif new_progress is not None and new_progress != old_progress:
             self.apply_progress(task, new_progress)
             if new_progress == 100:
                 self._sync_completed_daily_task(str(task.user_id), task)
@@ -473,10 +497,12 @@ class BacklogTaskService:
         task = self.get_task(task_id)
         if not task:
             return None
-        if task.progress == 0:
+        if task.status == BacklogTaskStatus.PENDING and task.progress == 0:
             return task
 
-        self.apply_progress(task, 0)
+        task.status = BacklogTaskStatus.PENDING
+        task.progress = 0
+        task.completed_at = None
         self.db.commit()
         self.db.refresh(task)
         return task

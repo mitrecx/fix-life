@@ -69,6 +69,7 @@ export interface BacklogTaskUpdate {
   context?: TaskContext;
   priority?: TaskPriority;
   progress?: number;
+  status?: BacklogTaskStatus;
 }
 
 export type BacklogTab = "pending" | "in_progress" | "done" | "active";
@@ -95,9 +96,13 @@ export function formStatusToProgress(status: TaskFormStatus, progress = 50): num
   return 50;
 }
 
-export function progressToFormStatus(progress: number): TaskFormStatus {
+export function progressToFormStatus(
+  progress: number,
+  status?: BacklogTask["status"]
+): TaskFormStatus {
+  if (status === "done" || progress === 100) return "done";
+  if (status === "in_progress") return "in_progress";
   if (progress === 0) return "pending";
-  if (progress === 100) return "done";
   return "in_progress";
 }
 
@@ -116,13 +121,13 @@ export function progressForDrag(
   if (to === "pending") return 0;
   if (to === "done") return 100;
   if (from === "done") return 50;
-  if (from === "pending") return 25;
+  if (from === "pending") return 0;
   if (currentProgress > 0 && currentProgress < 100) return currentProgress;
-  return 25;
+  return 0;
 }
 
 export function kanbanColumnForTask(task: BacklogTask): KanbanColumnId {
-  return progressToFormStatus(task.progress ?? 0);
+  return progressToFormStatus(task.progress ?? 0, task.status);
 }
 
 export function formStatusLabel(status: TaskFormStatus): string {
