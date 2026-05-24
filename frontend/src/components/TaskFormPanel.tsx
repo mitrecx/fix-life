@@ -1,18 +1,12 @@
 import type { ReactNode } from "react";
+import { useEffect, useState } from "react";
 import dayjs from "dayjs";
 import type { TaskFormStatus } from "@/types/backlogTask";
-import { PROGRESS_PRESETS, formStatusLabel, progressToFormStatus } from "@/types/backlogTask";
-import { applyStatusChange } from "@/types/backlogTask";
+import { formStatusLabel, progressToFormStatus } from "@/types/backlogTask";
 import type { TaskContext } from "@/types/taskContext";
 import { TASK_CONTEXT, getTaskContextConfig } from "@/types/taskContext";
 import { TASK_PRIORITY, getTaskPriorityConfig } from "@/types/taskPriority";
 import type { TaskPriority } from "@/types/taskPriority";
-
-const FORM_STATUS_OPTIONS: { value: TaskFormStatus; label: string }[] = [
-  { value: "pending", label: "待处理" },
-  { value: "in_progress", label: "处理中" },
-  { value: "done", label: "已完成" },
-];
 
 const fieldInputClass =
   "w-full px-2 py-1.5 text-sm border border-gray-200 rounded-md bg-white focus:outline-none focus:ring-1 focus:ring-gray-400";
@@ -44,6 +38,7 @@ export interface TaskFormPanelProps {
   statusLabel?: string | null;
   timestamps?: TaskFormTimestamps;
   hideStatusFields?: boolean;
+  hideTimestamps?: boolean;
 }
 
 function DetailRow({ label, children }: { label: string; children: ReactNode }) {
@@ -114,78 +109,77 @@ function ContextBadge({ context }: { context: TaskContext }) {
   );
 }
 
-function StatusSelector({
-  value,
-  onChange,
-  onProgressChange,
-  currentProgress,
-}: {
-  value: TaskFormStatus;
-  onChange: (value: TaskFormStatus) => void;
-  onProgressChange?: (value: number) => void;
-  currentProgress: number;
-}) {
-  const handleChange = (next: TaskFormStatus) => {
-    onChange(next);
-    onProgressChange?.(applyStatusChange(next, currentProgress));
-  };
-
-  return (
-    <div className="flex items-center flex-wrap gap-1">
-      {FORM_STATUS_OPTIONS.map((s) => (
-        <button
-          key={s.value}
-          type="button"
-          onClick={() => handleChange(s.value)}
-          className={`px-2.5 py-1 text-xs rounded-md border transition-all ${
-            value === s.value
-              ? s.value === "done"
-                ? "border-emerald-600 bg-emerald-600 text-white"
-                : s.value === "in_progress"
-                  ? "border-amber-600 bg-amber-600 text-white"
-                  : "border-indigo-600 bg-indigo-600 text-white"
-              : "border-gray-200 text-gray-600 hover:border-gray-300"
-          }`}
-        >
-          {s.label}
-        </button>
-      ))}
-    </div>
-  );
+function clampProgress(value: number): number {
+  if (!Number.isFinite(value)) return 0;
+  return Math.min(100, Math.max(0, Math.round(value)));
 }
 
-function ProgressPresetSelector({
+function ProgressSliderInput({
   value,
   onChange,
-  onStatusChange,
 }: {
   value: number;
   onChange: (value: number) => void;
-  onStatusChange: (value: TaskFormStatus) => void;
 }) {
+  const [draftText, setDraftText] = useState(String(value));
+
+  useEffect(() => {
+    setDraftText(String(value));
+  }, [value]);
+
+  const applyProgress = (next: number) => {
+    const clamped = clampProgress(next);
+    onChange(clamped);
+    setDraftText(String(clamped));
+  };
+
+  const commitDraftText = () => {
+    const parsed = Number(draftText);
+    if (Number.isFinite(parsed)) {
+      applyProgress(parsed);
+    } else {
+      setDraftText(String(value));
+    }
+  };
+
   return (
-    <div className="flex items-center flex-wrap gap-1 mt-2">
-      {PROGRESS_PRESETS.map((preset) => (
-        <button
-          key={preset}
-          type="button"
-          onClick={() => {
-            onChange(preset);
-            onStatusChange(progressToFormStatus(preset));
-          }}
-          className={`px-2.5 py-1 text-xs rounded-md border transition-all ${
-            value === preset
-              ? preset === 100
-                ? "border-emerald-600 bg-emerald-600 text-white"
-                : preset === 0
-                  ? "border-indigo-600 bg-indigo-600 text-white"
-                  : "border-amber-600 bg-amber-600 text-white"
-              : "border-gray-200 text-gray-600 hover:border-gray-300"
-          }`}
-        >
-          {preset}%
-        </button>
-      ))}
+    <div className="space-y-2 w-full max-w-md">
+      <div className="flex items-center gap-3">
+        <input
+          type="range"
+          min={0}
+          max={100}
+          step={1}
+          value={value}
+          onChange={(e) => applyProgress(Number(e.target.value))}
+          className="flex-1 h-2 accent-indigo-600 cursor-pointer"
+          aria-label="进度"
+        />
+        <div className="flex items-center gap-1 shrink-0">
+          <input
+            type="number"
+            min={0}
+            max={100}
+            step={1}
+            value={draftText}
+            onChange={(e) => setDraftText(e.target.value)}
+            onBlur={commitDraftText}
+            onKeyDown={(e) => {
+              if (e.key === "Enter") {
+                commitDraftText();
+                (e.target as HTMLInputElement).blur();
+              }
+            }}
+            className="w-16 px-2 py-1 text-sm border border-gray-200 rounded-md text-center tabular-nums focus:outline-none focus:ring-1 focus:ring-indigo-500"
+            aria-label="进度百分比"
+          />
+          <span className="text-xs text-gray-500">%</span>
+        </div>
+      </div>
+      <p className="text-xs text-gray-500">
+        {formStatusLabel(progressToFormStatus(value))}
+        {value > 0 && value < 100 ? ` · ${value}%` : ""}
+      </p>
     </div>
   );
 }
@@ -247,6 +241,35 @@ function ContextSelector({
   );
 }
 
+export function TaskFormTimestamps({ timestamps }: { timestamps: TaskFormTimestamps }) {
+  return (
+    <dl className="py-1">
+      <DetailRow label="创建时间">
+        <ReadOnlyField>
+          {timestamps.createdAt ? formatFullDateTime(timestamps.createdAt) : null}
+        </ReadOnlyField>
+      </DetailRow>
+      <DetailRow label="安排日期">
+        <ReadOnlyField>
+          {timestamps.scheduledDate
+            ? dayjs(timestamps.scheduledDate).format("YYYY-MM-DD")
+            : null}
+        </ReadOnlyField>
+      </DetailRow>
+      <DetailRow label="完成时间">
+        <ReadOnlyField>
+          {timestamps.completedAt ? formatFullDateTime(timestamps.completedAt) : null}
+        </ReadOnlyField>
+      </DetailRow>
+      <DetailRow label="更新时间">
+        <ReadOnlyField>
+          {timestamps.updatedAt ? formatFullDateTime(timestamps.updatedAt) : null}
+        </ReadOnlyField>
+      </DetailRow>
+    </dl>
+  );
+}
+
 export function TaskFormPanel({
   mode,
   title,
@@ -259,15 +282,15 @@ export function TaskFormPanel({
   onDescriptionChange,
   onContextChange,
   onPriorityChange,
-  onStatusChange,
   onProgressChange,
   onSubmit,
   statusLabel,
   timestamps,
   hideStatusFields = false,
+  hideTimestamps = false,
 }: TaskFormPanelProps) {
   const editing = mode === "edit" || mode === "create";
-  const showTimestamps = mode !== "create" && timestamps !== undefined;
+  const showTimestamps = mode !== "create" && timestamps !== undefined && !hideTimestamps;
   const showProgressPresets = editing && onProgressChange !== undefined && !hideStatusFields;
 
   return (
@@ -305,21 +328,9 @@ export function TaskFormPanel({
       {!hideStatusFields && (
       <DetailRow label="状态">
         {editing ? (
-          <div>
-            <StatusSelector
-              value={status}
-              onChange={onStatusChange}
-              onProgressChange={onProgressChange}
-              currentProgress={progress}
-            />
-            {showProgressPresets && (
-              <ProgressPresetSelector
-                value={progress}
-                onChange={onProgressChange}
-                onStatusChange={onStatusChange}
-              />
-            )}
-          </div>
+          showProgressPresets && onProgressChange ? (
+            <ProgressSliderInput value={progress} onChange={onProgressChange} />
+          ) : null
         ) : (
           <ReadOnlyField>
             {statusLabel ?? `${formStatusLabel(status)}${progress > 0 && progress < 100 ? ` · ${progress}%` : ""}`}
@@ -345,32 +356,7 @@ export function TaskFormPanel({
           </ReadOnlyField>
         )}
       </DetailRow>
-      {showTimestamps && (
-        <>
-          <DetailRow label="创建时间">
-            <ReadOnlyField>
-              {timestamps.createdAt ? formatFullDateTime(timestamps.createdAt) : null}
-            </ReadOnlyField>
-          </DetailRow>
-          <DetailRow label="安排日期">
-            <ReadOnlyField>
-              {timestamps.scheduledDate
-                ? dayjs(timestamps.scheduledDate).format("YYYY-MM-DD")
-                : null}
-            </ReadOnlyField>
-          </DetailRow>
-          <DetailRow label="完成时间">
-            <ReadOnlyField>
-              {timestamps.completedAt ? formatFullDateTime(timestamps.completedAt) : null}
-            </ReadOnlyField>
-          </DetailRow>
-          <DetailRow label="更新时间">
-            <ReadOnlyField>
-              {timestamps.updatedAt ? formatFullDateTime(timestamps.updatedAt) : null}
-            </ReadOnlyField>
-          </DetailRow>
-        </>
-      )}
+      {showTimestamps && timestamps && <TaskFormTimestamps timestamps={timestamps} />}
     </dl>
   );
 }

@@ -3,9 +3,9 @@ import { Trash2, Calendar as CalendarIcon, X } from "lucide-react";
 import { Calendar, Select } from "antd";
 import type { CalendarProps } from "antd";
 import type { Dayjs } from "dayjs";
-import { TaskFormPanel, taskFormStatusLabel } from "@/components/TaskFormPanel";
+import { TaskFormPanel, taskFormStatusLabel, TaskFormTimestamps } from "@/components/TaskFormPanel";
 import type { BacklogTaskDetail, BacklogOccurrence, TaskFormStatus } from "@/types/backlogTask";
-import { applyStatusChange, progressToFormStatus } from "@/types/backlogTask";
+import { progressToFormStatus } from "@/types/backlogTask";
 import type { TaskContext } from "@/types/taskContext";
 import type { TaskPriority } from "@/types/taskPriority";
 
@@ -95,14 +95,14 @@ function OccurrenceTimeline({
   const selectedOccurrences = occurrences.filter((occ) => selectedIds.has(occ.daily_task_id));
 
   if (occurrences.length === 0) {
-    return <p className="text-xs text-gray-400 py-2">暂无每日进度记录</p>;
+    return <p className="text-sm text-gray-400 py-2">暂无每日进度记录</p>;
   }
 
   return (
     <div className="space-y-2">
       {selectedCount > 0 && (
         <div className="flex flex-wrap items-center gap-2 px-2.5 py-2 bg-red-50 border border-red-100 rounded-lg">
-          <span className="text-xs text-red-900">
+          <span className="text-sm text-red-900">
             已选 <span className="font-semibold tabular-nums">{selectedCount}</span> 条
           </span>
           <span className="flex-1" />
@@ -110,16 +110,16 @@ function OccurrenceTimeline({
             type="button"
             disabled={isDeletingOccurrences}
             onClick={() => onDeleteOccurrences(selectedOccurrences)}
-            className="inline-flex items-center gap-1 px-2 py-1 text-xs font-medium text-white bg-red-500 rounded-md hover:bg-red-600 disabled:opacity-50 disabled:cursor-not-allowed transition-all"
+            className="inline-flex items-center gap-1 px-2.5 py-1 text-sm font-medium text-white bg-red-500 rounded-md hover:bg-red-600 disabled:opacity-50 disabled:cursor-not-allowed transition-all"
           >
-            <Trash2 size={12} />
+            <Trash2 size={13} />
             {isDeletingOccurrences ? "删除中…" : "批量删除"}
           </button>
           <button
             type="button"
             disabled={isDeletingOccurrences}
             onClick={() => setSelectedIds(new Set())}
-            className="px-2 py-1 text-xs font-medium text-gray-600 bg-white border border-gray-200 rounded-md hover:bg-gray-50 disabled:opacity-50 transition-all"
+            className="px-2.5 py-1 text-sm font-medium text-gray-600 bg-white border border-gray-200 rounded-md hover:bg-gray-50 disabled:opacity-50 transition-all"
           >
             取消
           </button>
@@ -127,10 +127,10 @@ function OccurrenceTimeline({
       )}
 
       <div className="border border-gray-100 rounded-lg overflow-hidden">
-        <table className="w-full text-xs">
+        <table className="w-full text-sm">
           <thead className="bg-gray-50 text-gray-500">
             <tr>
-              <th className="w-9 px-2 py-2">
+              <th className="w-9 px-2 py-2.5">
                 <input
                   type="checkbox"
                   checked={allSelected}
@@ -140,9 +140,9 @@ function OccurrenceTimeline({
                   aria-label="全选每日进度记录"
                 />
               </th>
-              <th className="text-left font-medium px-3 py-2">日期</th>
-              <th className="text-left font-medium px-3 py-2">当天状态</th>
-              <th className="text-right font-medium px-3 py-2">操作</th>
+              <th className="text-left font-medium px-3 py-2.5">日期</th>
+              <th className="text-left font-medium px-3 py-2.5">当天状态</th>
+              <th className="text-right font-medium px-3 py-2.5">操作</th>
             </tr>
           </thead>
           <tbody className="divide-y divide-gray-100">
@@ -150,7 +150,7 @@ function OccurrenceTimeline({
               const selected = selectedIds.has(occ.daily_task_id);
               return (
                 <tr key={occ.daily_task_id} className={selected ? "bg-indigo-50/40" : "hover:bg-gray-50"}>
-                  <td className="px-2 py-2 align-middle">
+                  <td className="px-2 py-2.5 align-middle">
                     <input
                       type="checkbox"
                       checked={selected}
@@ -160,11 +160,11 @@ function OccurrenceTimeline({
                       aria-label={`选择 ${occ.plan_date} 的记录`}
                     />
                   </td>
-                  <td className="px-3 py-2 text-gray-800">{occ.plan_date}</td>
-                  <td className="px-3 py-2 text-gray-600">
+                  <td className="px-3 py-2.5 text-gray-800">{occ.plan_date}</td>
+                  <td className="px-3 py-2.5 text-gray-600">
                     {DAILY_STATUS_LABELS[occ.daily_status ?? "todo"] ?? occ.daily_status}
                   </td>
-                  <td className="px-3 py-2 text-right whitespace-nowrap">
+                  <td className="px-3 py-2.5 text-right whitespace-nowrap">
                     <button
                       type="button"
                       onClick={() => onNavigate(occ)}
@@ -304,17 +304,14 @@ export function TaskDetailDrawer({
             onDescriptionChange={onDescriptionChange}
             onContextChange={onContextChange}
             onPriorityChange={onPriorityChange}
-            onStatusChange={(status) => {
-              onStatusChange(status);
-              onProgressChange(applyStatusChange(status, detailProgress));
-            }}
+            onStatusChange={onStatusChange}
             onProgressChange={(progress) => {
               onProgressChange(progress);
               onStatusChange(progressToFormStatus(progress));
             }}
             onSubmit={onConfirm}
             statusLabel={taskFormStatusLabel(progressToFormStatus(taskProgress))}
-            timestamps={timestamps}
+            hideTimestamps
           />
 
           {!isDone && scheduleOpen && (
@@ -342,7 +339,7 @@ export function TaskDetailDrawer({
           <div className="mt-5 pt-4 border-t border-gray-100 pb-2">
             <h3 className="text-sm font-semibold text-gray-700 mb-2">每日进度记录</h3>
             {detailLoading ? (
-              <p className="text-xs text-gray-400">加载中…</p>
+              <p className="text-sm text-gray-400">加载中…</p>
             ) : (
               <OccurrenceTimeline
                 occurrences={taskDetail?.occurrences ?? []}
@@ -351,6 +348,10 @@ export function TaskDetailDrawer({
                 isDeletingOccurrences={isDeletingOccurrences}
               />
             )}
+          </div>
+
+          <div className="mt-5 pt-4 border-t border-gray-100 pb-2">
+            <TaskFormTimestamps timestamps={timestamps} />
           </div>
         </div>
       </div>
