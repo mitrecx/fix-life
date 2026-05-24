@@ -22,3 +22,7 @@ class McpApiKeyListResponse(BaseModel):
 
 class McpApiKeyCreateResponse(McpApiKeyListItem):
     api_key: str
+
+
+class McpApiKeySecretResponse(BaseModel):
+    api_key: str

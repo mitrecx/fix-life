@@ -16,11 +16,7 @@ import { Switch, Input, message, Tabs, Modal, Button } from "antd";
 import type { TabsProps } from "antd";
 import { LoadingSpinner } from "@/components/LoadingSpinner";
 import { McpImportGuideModal, getMcpServerUrl } from "@/components/McpImportGuideModal";
-import {
-  cacheMcpKeySecret,
-  getCachedMcpKeySecret,
-  removeCachedMcpKeySecret,
-} from "@/utils/mcpKeySecrets";
+import { MCP_API_KEY_PLACEHOLDER } from "@/constants/mcpApiKey";
 import { systemSettingsService } from "@/services/systemSettingsService";
 import type { SystemSettings } from "@/types/systemSettings";
 import type { McpApiKey, McpApiKeyCreateResponse } from "@/types/mcpApiKey";
@@ -46,7 +42,10 @@ export default function SettingsPage() {
   const [isCreatingMcpKey, setIsCreatingMcpKey] = useState(false);
   const [createdMcpKey, setCreatedMcpKey] = useState<McpApiKeyCreateResponse | null>(null);
   const [importGuideOpen, setImportGuideOpen] = useState(false);
-  const [importGuideApiKey, setImportGuideApiKey] = useState("");
+  const [importGuideApiKey, setImportGuideApiKey] = useState(MCP_API_KEY_PLACEHOLDER);
+  const [importGuideHasFullApiKey, setImportGuideHasFullApiKey] = useState(false);
+  const [importGuideKeyHint, setImportGuideKeyHint] = useState<string>();
+  const [importGuideLoading, setImportGuideLoading] = useState(false);
 
   useEffect(() => {
     loadSettings();
@@ -86,7 +85,6 @@ export default function SettingsPage() {
     try {
       setIsCreatingMcpKey(true);
       const created = await systemSettingsService.createMcpKey(name);
-      cacheMcpKeySecret(created.id, created.api_key);
       setCreatedMcpKey(created);
       await loadMcpKeys();
       message.success("API Key 已创建");
@@ -101,7 +99,6 @@ export default function SettingsPage() {
   const handleRevokeMcpKey = async (keyId: string) => {
     try {
       await systemSettingsService.revokeMcpKey(keyId);
-      removeCachedMcpKeySecret(keyId);
       await loadMcpKeys();
       message.success("API Key 已撤销");
     } catch (error) {
@@ -110,14 +107,26 @@ export default function SettingsPage() {
     }
   };
 
-  const openImportGuide = (keyId: string, apiKey?: string) => {
-    const resolved = apiKey ?? getCachedMcpKeySecret(keyId);
-    if (!resolved) {
-      message.warning("完整 API Key 仅在创建时可用，请重新生成 Key 后查看导入配置");
-      return;
-    }
-    setImportGuideApiKey(resolved);
+  const openImportGuide = async (keyId: string, apiKey?: string) => {
+    const keyMeta = mcpKeys.find((key) => key.id === keyId);
+    setImportGuideKeyHint(
+      keyMeta ? `${keyMeta.key_prefix}...${keyMeta.key_suffix}` : undefined,
+    );
     setImportGuideOpen(true);
+    setImportGuideLoading(true);
+
+    let resolved = apiKey ?? MCP_API_KEY_PLACEHOLDER;
+    if (!apiKey) {
+      try {
+        resolved = await systemSettingsService.revealMcpKeySecret(keyId);
+      } catch (error) {
+        console.error("Failed to reveal MCP key:", error);
+      }
+    }
+
+    setImportGuideApiKey(resolved);
+    setImportGuideHasFullApiKey(resolved !== MCP_API_KEY_PLACEHOLDER);
+    setImportGuideLoading(false);
   };
 
   const copyCursorConfig = async (apiKey: string) => {
@@ -479,7 +488,7 @@ export default function SettingsPage() {
                       MCP 集成
                     </h2>
                     <p className="text-sm text-gray-500">
-                      通过 Streamable HTTP 连接 Fix Life MCP Server。API Key 明文仅创建时显示一次。
+                      通过 Streamable HTTP 连接 Fix Life MCP Server。
                     </p>
                   </div>
 
@@ -565,7 +574,7 @@ export default function SettingsPage() {
         {createdMcpKey && (
           <div className="space-y-3">
             <p className="text-sm text-gray-600">
-              请立即复制并妥善保存。关闭后将无法再次查看完整 Key。
+              请立即复制并妥善保存。之后仍可在导入说明中查看完整 Key。
             </p>
             <Input.TextArea
               value={createdMcpKey.api_key}
@@ -582,6 +591,9 @@ export default function SettingsPage() {
         onClose={() => setImportGuideOpen(false)}
         mcpUrl={getMcpServerUrl()}
         apiKey={importGuideApiKey}
+        hasFullApiKey={importGuideHasFullApiKey}
+        keyHint={importGuideKeyHint}
+        loading={importGuideLoading}
       />
     </div>
   );

@@ -68,6 +68,11 @@ class SystemSettingsService {
   async revokeMcpKey(keyId: string): Promise<void> {
     await api.delete(`/system-settings/mcp-keys/${keyId}`);
   }
+
+  async revealMcpKeySecret(keyId: string): Promise<string> {
+    const data = await api.get<{ api_key: string }>(`/system-settings/mcp-keys/${keyId}/secret`);
+    return data.api_key;
+  }
 }
 
 export const systemSettingsService = new SystemSettingsService();

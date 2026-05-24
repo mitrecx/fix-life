@@ -7,6 +7,7 @@ from uuid import UUID
 
 from sqlalchemy.orm import Session
 
+from app.core.secret_encryption import decrypt_secret, encrypt_secret
 from app.models.mcp_api_key import McpApiKey
 from app.services.rbac_service import get_permission_codes_for_user
 
@@ -46,11 +47,26 @@ class McpApiKeyService:
             name=name.strip(),
             key_prefix=api_key[:16],
             key_hash=_hash_key(api_key),
+            key_ciphertext=encrypt_secret(api_key),
         )
         self.db.add(record)
         self.db.commit()
         self.db.refresh(record)
         return record, api_key
+
+    def get_key_secret(self, user_id: UUID, key_id: UUID) -> str | None:
+        record = (
+            self.db.query(McpApiKey)
+            .filter(
+                McpApiKey.id == key_id,
+                McpApiKey.user_id == user_id,
+                McpApiKey.revoked_at.is_(None),
+            )
+            .first()
+        )
+        if not record or not record.key_ciphertext:
+            return None
+        return decrypt_secret(record.key_ciphertext)
 
     def revoke_key(self, user_id: UUID, key_id: UUID) -> bool:
         record = (

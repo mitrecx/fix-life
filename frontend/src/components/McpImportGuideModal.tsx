@@ -1,12 +1,16 @@
 import { useMemo } from "react";
 import { Button, Modal, Tabs, message } from "antd";
 import { Copy } from "lucide-react";
+import { MCP_API_KEY_PLACEHOLDER } from "@/constants/mcpApiKey";
 
 type McpImportGuideModalProps = {
   open: boolean;
   onClose: () => void;
   mcpUrl: string;
   apiKey: string;
+  hasFullApiKey: boolean;
+  keyHint?: string;
+  loading?: boolean;
 };
 
 type PlatformGuide = {
@@ -93,7 +97,7 @@ function buildGuides(mcpUrl: string, apiKey: string): PlatformGuide[] {
       label: "Claude Code",
       steps: [
         "在终端执行下方命令，或在项目根目录创建 .mcp.json",
-        "将配置中的 API Key 替换为系统设置里生成的 fl_live_ 密钥",
+        "将配置中的 API Key 替换为你的 fl_live_ 密钥",
         "执行 claude mcp list 验证 fixlife 是否已连接",
       ],
       snippet: `${claudeCli}\n\n# 或使用 .mcp.json：\n${claudeJsonConfig}`,
@@ -127,6 +131,9 @@ export function McpImportGuideModal({
   onClose,
   mcpUrl,
   apiKey,
+  hasFullApiKey,
+  keyHint,
+  loading = false,
 }: McpImportGuideModalProps) {
   const guides = useMemo(() => buildGuides(mcpUrl, apiKey), [mcpUrl, apiKey]);
 
@@ -146,8 +153,26 @@ export function McpImportGuideModal({
       ]}
       width={720}
     >
+      {loading ? (
+        <p className="text-sm text-gray-500 py-8 text-center">正在加载 API Key…</p>
+      ) : (
+        <>
       <p className="text-sm text-gray-600 mb-4">
-        以下配置已填入当前 API Key，可直接复制到对应客户端使用。
+        {hasFullApiKey ? (
+          "以下配置已填入当前 API Key，可直接复制到对应客户端使用。"
+        ) : (
+          <>
+            以下配置可直接复制使用。请将{" "}
+            <code className="text-xs bg-gray-100 px-1 py-0.5 rounded">{MCP_API_KEY_PLACEHOLDER}</code>{" "}
+            替换为你保存的 API Key
+            {keyHint ? (
+              <>
+                （当前 Key：<span className="font-mono">{keyHint}</span>）
+              </>
+            ) : null}
+            。
+          </>
+        )}
       </p>
       <Tabs
         items={guides.map((guide) => ({
@@ -179,6 +204,8 @@ export function McpImportGuideModal({
           ),
         }))}
       />
+        </>
+      )}
     </Modal>
   );
 }
