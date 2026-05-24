@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback, useMemo } from "react";
-import { Trash2, Calendar, GripVertical, Undo2, Plus, SquarePen } from "lucide-react";
+import { Trash2, Calendar, Undo2, Plus, SquarePen } from "lucide-react";
 import { DatePicker, Modal, message } from "antd";
 import type { Dayjs } from "dayjs";
 import dayjs from "dayjs";
@@ -244,16 +244,10 @@ function KanbanCard({
       }`}
     >
       <div className="flex items-start gap-1.5">
-        {draggable && (
-          <GripVertical
-            size={13}
-            className="text-gray-300 mt-0.5 flex-shrink-0 opacity-0 group-hover:opacity-100 transition-opacity"
-          />
-        )}
         <div className="flex-1 min-w-0">
           <p
-            className={`text-sm text-gray-800 leading-snug break-words cursor-pointer hover:text-gray-600 ${
-              column === "done" ? "line-through text-gray-500 hover:text-gray-400" : ""
+            className={`text-sm leading-snug break-words cursor-pointer hover:text-gray-600 ${
+              column === "done" ? "text-gray-500 hover:text-gray-400" : "text-gray-800"
             }`}
             onClick={() => onEdit(task)}
             title="点击编辑"
@@ -317,11 +311,11 @@ function KanbanCard({
       </div>
 
       {column === "active" && (
-        <div className="flex items-center gap-1 mt-1.5 opacity-0 group-hover:opacity-100 transition-opacity">
+        <div className="flex items-center gap-1 mt-1.5 pt-1 border-t border-gray-100">
           <button
             type="button"
             onClick={() => onEdit(task)}
-            className="flex items-center gap-0.5 px-1.5 py-0.5 text-[10px] text-gray-600 hover:bg-gray-100 rounded"
+            className="flex items-center gap-0.5 px-1.5 py-0.5 text-[10px] text-indigo-600 hover:bg-indigo-50 rounded"
           >
             <SquarePen size={11} />
             编辑
@@ -338,7 +332,7 @@ function KanbanCard({
             <button
               type="button"
               onClick={() => onUnschedule(task)}
-              className="flex items-center gap-0.5 px-1.5 py-0.5 text-[10px] text-gray-500 hover:bg-gray-100 rounded"
+              className="flex items-center gap-0.5 px-1.5 py-0.5 text-[10px] text-amber-600 hover:bg-amber-50 rounded"
             >
               <Undo2 size={11} />
               取消安排
@@ -347,7 +341,7 @@ function KanbanCard({
           <button
             type="button"
             onClick={() => onDelete(task)}
-            className="flex items-center gap-0.5 px-1.5 py-0.5 text-[10px] text-gray-400 hover:text-red-500 hover:bg-red-50 rounded ml-auto"
+            className="flex items-center gap-0.5 px-1.5 py-0.5 text-[10px] text-red-500 hover:bg-red-50 rounded ml-auto"
           >
             <Trash2 size={11} />
             删除
@@ -356,11 +350,11 @@ function KanbanCard({
       )}
 
       {column === "done" && (
-        <div className="flex items-center gap-1 mt-1.5 opacity-0 group-hover:opacity-100 transition-opacity">
+        <div className="flex items-center gap-1 mt-1.5 pt-1 border-t border-gray-100">
           <button
             type="button"
             onClick={() => onEdit(task)}
-            className="flex items-center gap-0.5 px-1.5 py-0.5 text-[10px] text-gray-600 hover:bg-gray-100 rounded"
+            className="flex items-center gap-0.5 px-1.5 py-0.5 text-[10px] text-indigo-600 hover:bg-indigo-50 rounded"
           >
             <SquarePen size={11} />
             编辑
@@ -368,7 +362,7 @@ function KanbanCard({
           <button
             type="button"
             onClick={() => onDelete(task)}
-            className="flex items-center gap-0.5 px-1.5 py-0.5 text-[10px] text-gray-400 hover:text-red-500 hover:bg-red-50 rounded ml-auto"
+            className="flex items-center gap-0.5 px-1.5 py-0.5 text-[10px] text-red-500 hover:bg-red-50 rounded ml-auto"
           >
             <Trash2 size={11} />
             删除
