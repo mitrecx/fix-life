@@ -38,6 +38,7 @@ interface TodosFilterBarProps {
   matchCount: number;
   onChange: (patch: Partial<BacklogListFilters>) => void;
   onClear: () => void;
+  onDataRepair?: () => void;
 }
 
 function FilterGroup({ children }: { children: ReactNode }) {
@@ -48,7 +49,13 @@ function hasTimeRange(filters: BacklogListFilters): boolean {
   return !!(filters.dateFrom || filters.dateTo);
 }
 
-export function TodosFilterBar({ filters, matchCount, onChange, onClear }: TodosFilterBarProps) {
+export function TodosFilterBar({
+  filters,
+  matchCount,
+  onChange,
+  onClear,
+  onDataRepair,
+}: TodosFilterBarProps) {
   const keyword = filters.q ?? "";
   const timeField = filters.timeField ?? "created";
   const context = filters.context ?? "all";
@@ -158,6 +165,15 @@ export function TodosFilterBar({ filters, matchCount, onChange, onClear }: Todos
 
         <div className="inline-flex items-center gap-2 shrink-0 py-1">
           <span className="text-sm text-gray-500">{matchCount} 条匹配</span>
+          {onDataRepair && (
+            <button
+              type="button"
+              onClick={onDataRepair}
+              className="px-3 py-1.5 text-xs font-medium text-amber-700 bg-amber-50 rounded-lg hover:bg-amber-100 transition-all"
+            >
+              数据修复
+            </button>
+          )}
           {hasActiveFilters && (
             <button
               type="button"

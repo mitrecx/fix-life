@@ -167,7 +167,9 @@ class DailyPlanService:
         """Get a single task by ID."""
         return self.db.query(DailyTask).filter(DailyTask.id == task_id).first()
 
-    def create_task(self, plan_id: str, task_in: DailyTaskCreate) -> Optional[DailyTask]:
+    def create_task(
+        self, plan_id: str, task_in: DailyTaskCreate, *, backlog_task_id: Optional[str] = None
+    ) -> Optional[DailyTask]:
         """Create a new task for a plan."""
         plan = self.get_plan(plan_id)
         if not plan:
@@ -175,6 +177,8 @@ class DailyPlanService:
 
         task_data = task_in.model_dump(exclude_unset=True)
         task = DailyTask(**task_data, daily_plan_id=plan_id)
+        if backlog_task_id:
+            task.backlog_task_id = backlog_task_id
         self.db.add(task)
         self.db.commit()
         self.db.refresh(task)

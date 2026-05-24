@@ -6,6 +6,7 @@ from app.models.user_role import UserRole
 from app.models.yearly_goal import YearlyGoal, MonthlyMilestone, GoalStatus, GoalCategory
 from app.models.task_context import TaskContext
 from app.models.backlog_task import BacklogTask, BacklogTaskStatus
+from app.models.backlog_daily_link import BacklogDailyLink
 from app.models.monthly_plan import MonthlyPlan, MonthlyTask, TaskPriority, TaskStatus
 from app.models.daily_plan import (
     DailyPlan,
@@ -30,6 +31,7 @@ __all__ = [
     "TaskContext",
     "BacklogTask",
     "BacklogTaskStatus",
+    "BacklogDailyLink",
     "MonthlyPlan",
     "MonthlyTask",
     "TaskPriority",

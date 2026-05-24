@@ -1,6 +1,8 @@
 import type { ReactNode } from "react";
 import dayjs from "dayjs";
 import type { TaskFormStatus } from "@/types/backlogTask";
+import { PROGRESS_PRESETS, formStatusLabel, progressToFormStatus } from "@/types/backlogTask";
+import { applyStatusChange } from "@/types/backlogTask";
 import type { TaskContext } from "@/types/taskContext";
 import { TASK_CONTEXT, getTaskContextConfig } from "@/types/taskContext";
 import { TASK_PRIORITY, getTaskPriorityConfig } from "@/types/taskPriority";
@@ -8,6 +10,7 @@ import type { TaskPriority } from "@/types/taskPriority";
 
 const FORM_STATUS_OPTIONS: { value: TaskFormStatus; label: string }[] = [
   { value: "pending", label: "待处理" },
+  { value: "in_progress", label: "处理中" },
   { value: "done", label: "已完成" },
 ];
 
@@ -30,13 +33,14 @@ export interface TaskFormPanelProps {
   context: TaskContext;
   priority: TaskPriority;
   status: TaskFormStatus;
+  progress?: number;
   onTitleChange: (value: string) => void;
   onDescriptionChange: (value: string) => void;
   onContextChange: (value: TaskContext) => void;
   onPriorityChange: (value: TaskPriority) => void;
   onStatusChange: (value: TaskFormStatus) => void;
+  onProgressChange?: (value: number) => void;
   onSubmit?: () => void;
-  /** View-mode status label override (e.g. backlog "已安排"). */
   statusLabel?: string | null;
   timestamps?: TaskFormTimestamps;
 }
@@ -112,26 +116,73 @@ function ContextBadge({ context }: { context: TaskContext }) {
 function StatusSelector({
   value,
   onChange,
+  onProgressChange,
+  currentProgress,
 }: {
   value: TaskFormStatus;
   onChange: (value: TaskFormStatus) => void;
+  onProgressChange?: (value: number) => void;
+  currentProgress: number;
 }) {
+  const handleChange = (next: TaskFormStatus) => {
+    onChange(next);
+    onProgressChange?.(applyStatusChange(next, currentProgress));
+  };
+
   return (
     <div className="flex items-center flex-wrap gap-1">
       {FORM_STATUS_OPTIONS.map((s) => (
         <button
           key={s.value}
           type="button"
-          onClick={() => onChange(s.value)}
+          onClick={() => handleChange(s.value)}
           className={`px-2.5 py-1 text-xs rounded-md border transition-all ${
             value === s.value
               ? s.value === "done"
                 ? "border-emerald-600 bg-emerald-600 text-white"
-                : "border-indigo-600 bg-indigo-600 text-white"
+                : s.value === "in_progress"
+                  ? "border-amber-600 bg-amber-600 text-white"
+                  : "border-indigo-600 bg-indigo-600 text-white"
               : "border-gray-200 text-gray-600 hover:border-gray-300"
           }`}
         >
           {s.label}
+        </button>
+      ))}
+    </div>
+  );
+}
+
+function ProgressPresetSelector({
+  value,
+  onChange,
+  onStatusChange,
+}: {
+  value: number;
+  onChange: (value: number) => void;
+  onStatusChange: (value: TaskFormStatus) => void;
+}) {
+  return (
+    <div className="flex items-center flex-wrap gap-1 mt-2">
+      {PROGRESS_PRESETS.map((preset) => (
+        <button
+          key={preset}
+          type="button"
+          onClick={() => {
+            onChange(preset);
+            onStatusChange(progressToFormStatus(preset));
+          }}
+          className={`px-2.5 py-1 text-xs rounded-md border transition-all ${
+            value === preset
+              ? preset === 100
+                ? "border-emerald-600 bg-emerald-600 text-white"
+                : preset === 0
+                  ? "border-indigo-600 bg-indigo-600 text-white"
+                  : "border-amber-600 bg-amber-600 text-white"
+              : "border-gray-200 text-gray-600 hover:border-gray-300"
+          }`}
+        >
+          {preset}%
         </button>
       ))}
     </div>
@@ -202,17 +253,20 @@ export function TaskFormPanel({
   context,
   priority,
   status,
+  progress = 0,
   onTitleChange,
   onDescriptionChange,
   onContextChange,
   onPriorityChange,
   onStatusChange,
+  onProgressChange,
   onSubmit,
   statusLabel,
   timestamps,
 }: TaskFormPanelProps) {
   const editing = mode === "edit" || mode === "create";
   const showTimestamps = mode !== "create" && timestamps !== undefined;
+  const showProgressPresets = editing && onProgressChange !== undefined;
 
   return (
     <dl className="py-1">
@@ -248,9 +302,25 @@ export function TaskFormPanel({
       </DetailRow>
       <DetailRow label="状态">
         {editing ? (
-          <StatusSelector value={status} onChange={onStatusChange} />
+          <div>
+            <StatusSelector
+              value={status}
+              onChange={onStatusChange}
+              onProgressChange={onProgressChange}
+              currentProgress={progress}
+            />
+            {showProgressPresets && (
+              <ProgressPresetSelector
+                value={progress}
+                onChange={onProgressChange}
+                onStatusChange={onStatusChange}
+              />
+            )}
+          </div>
         ) : (
-          <ReadOnlyField>{statusLabel ?? null}</ReadOnlyField>
+          <ReadOnlyField>
+            {statusLabel ?? `${formStatusLabel(status)}${progress > 0 && progress < 100 ? ` · ${progress}%` : ""}`}
+          </ReadOnlyField>
         )}
       </DetailRow>
       <DetailRow label="优先级">
@@ -302,5 +372,5 @@ export function TaskFormPanel({
 }
 
 export function taskFormStatusLabel(status: TaskFormStatus): string {
-  return status === "done" ? "已完成" : "待处理";
+  return formStatusLabel(status);
 }

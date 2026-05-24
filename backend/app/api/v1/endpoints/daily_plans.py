@@ -15,6 +15,7 @@ from app.schemas.daily_plan import (
     DailyTaskCreate,
     DailyTaskUpdate,
     DailyTaskResponse,
+    DailyPlanTaskAdd,
 )
 from app.services.daily_plan_service import DailyPlanService
 from app.services.backlog_task_service import BacklogTaskService
@@ -143,19 +144,22 @@ def get_daily_tasks(
 @router.post("/{plan_id}/tasks", response_model=DailyTaskResponse, status_code=201)
 def create_daily_task(
     plan_id: str,
-    task_in: DailyTaskCreate,
+    task_in: DailyPlanTaskAdd,
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ):
-    """Create a new task for a daily plan."""
-    service = DailyPlanService(db)
-    plan = service.get_plan(plan_id)
+    """Link an existing backlog task to this day, or create a new backlog task and link it."""
+    daily_service = DailyPlanService(db)
+    plan = daily_service.get_plan(plan_id)
     if not plan:
         raise HTTPException(status_code=404, detail="Daily plan not found")
     if str(plan.user_id) != str(current_user.id):
         raise HTTPException(status_code=403, detail="Not authorized to modify this plan")
 
-    task = service.create_task(plan_id, task_in)
+    backlog_service = BacklogTaskService(db)
+    task = backlog_service.add_to_daily_plan(str(current_user.id), plan_id, task_in)
+    if not task:
+        raise HTTPException(status_code=400, detail="Unable to add task to daily plan")
     return task
 
 

@@ -1,4 +1,4 @@
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, model_validator
 from datetime import date, datetime
 from typing import Optional, List
 from uuid import UUID
@@ -42,12 +42,32 @@ class DailyTaskUpdate(BaseModel):
 class DailyTaskResponse(DailyTaskBase):
     id: UUID
     daily_plan_id: UUID
+    backlog_task_id: Optional[UUID] = None
     actual_minutes: int
     created_at: datetime
     updated_at: datetime
 
     class Config:
         from_attributes = True
+
+
+class DailyPlanTaskAdd(BaseModel):
+    """Add a backlog task to a daily plan (link existing or create new backlog)."""
+
+    backlog_task_id: Optional[UUID] = None
+    title: Optional[str] = Field(None, min_length=1, max_length=200)
+    description: Optional[str] = Field(None, max_length=1000)
+    priority: DailyTaskPriority = Field(default=DailyTaskPriority.MEDIUM)
+    status: DailyTaskStatus = Field(default=DailyTaskStatus.TODO)
+    context: TaskContext = Field(default=TaskContext.LEARNING)
+    estimated_minutes: Optional[int] = Field(None, gt=0)
+    time_slot: Optional[str] = Field(None, max_length=50)
+
+    @model_validator(mode="after")
+    def require_backlog_or_title(self):
+        if self.backlog_task_id is None and not (self.title and self.title.strip()):
+            raise ValueError("backlog_task_id or title is required")
+        return self
 
 
 class DailyPlanBase(BaseModel):

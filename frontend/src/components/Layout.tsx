@@ -51,7 +51,7 @@ export default function Layout() {
   const navItems = useMemo(() => {
     const items: NavItem[] = [
       { path: "/todos", label: "待办", icon: ListTodo },
-      { path: "/daily-plans", label: "每日计划", icon: CalendarDays },
+      { path: "/daily-plans", label: "每日进度", icon: CalendarDays },
       { path: "/monthly-plans", label: "月度计划", icon: Calendar },
       { path: "/yearly-goals", label: "年度目标", icon: Target },
       { path: "/weekly-summaries", label: "周总结", icon: BookOpen },

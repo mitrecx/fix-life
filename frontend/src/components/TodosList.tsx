@@ -1,18 +1,30 @@
 import { useState, useEffect, useCallback, useMemo } from "react";
-import { Trash2, Calendar, Undo2, SquarePen, Plus } from "lucide-react";
+import { Trash2, Calendar, SquarePen, Plus } from "lucide-react";
 import { DatePicker, Modal, message } from "antd";
 import type { Dayjs } from "dayjs";
 import dayjs from "dayjs";
 import { useSearchParams } from "react-router-dom";
+import { useNavigate } from "react-router-dom";
 import { backlogTaskService } from "@/services/backlogTaskService";
 import { TodosFilterBar } from "@/components/TodosFilterBar";
-import { TaskFormPanel } from "@/components/TaskFormPanel";
+import { TaskFormPanel, taskFormStatusLabel } from "@/components/TaskFormPanel";
+import { DataRepairModal } from "@/components/DataRepairModal";
 import type {
   BacklogTask,
+  BacklogTaskDetail,
+  BacklogOccurrence,
   BacklogListFilters,
   BacklogContextFilter,
   BacklogPriorityFilter,
   TaskFormStatus,
+  KanbanColumnId,
+} from "@/types/backlogTask";
+import {
+  applyStatusChange,
+  progressToFormStatus,
+  kanbanColumnForTask,
+  progressForDrag,
+  formatLinkedDates,
 } from "@/types/backlogTask";
 import type { TaskContext } from "@/types/taskContext";
 import {
@@ -27,10 +39,9 @@ import {
 } from "@/types/taskPriority";
 import type { TaskPriority } from "@/types/taskPriority";
 
-type KanbanColumnId = "active" | "done";
-
 const COLUMNS: { id: KanbanColumnId; title: string; accent: string }[] = [
-  { id: "active", title: "待办", accent: "border-t-blue-500" },
+  { id: "pending", title: "待办", accent: "border-t-blue-500" },
+  { id: "in_progress", title: "处理中", accent: "border-t-amber-500" },
   { id: "done", title: "已完成", accent: "border-t-emerald-500" },
 ];
 
@@ -41,20 +52,23 @@ const DEFAULT_FILTERS: BacklogListFilters = {
   timeField: "created",
 };
 
-function sortActiveTasks(tasks: BacklogTask[]): BacklogTask[] {
-  const pending = tasks.filter((t) => t.status === "pending");
-  const scheduled = tasks.filter((t) => t.status === "scheduled");
-  pending.sort((a, b) => {
+function sortColumnTasks(tasks: BacklogTask[], column: KanbanColumnId): BacklogTask[] {
+  const sorted = [...tasks];
+  sorted.sort((a, b) => {
     const byPriority = compareTaskPriority(a.priority, b.priority);
     if (byPriority !== 0) return byPriority;
+    if (column === "done") {
+      return dayjs(b.completed_at ?? b.updated_at).valueOf() - dayjs(a.completed_at ?? a.updated_at).valueOf();
+    }
+    if (column === "in_progress") {
+      return (b.progress ?? 0) - (a.progress ?? 0);
+    }
+    if (a.is_scheduled && b.is_scheduled && a.last_plan_date && b.last_plan_date) {
+      return dayjs(a.last_plan_date).valueOf() - dayjs(b.last_plan_date).valueOf();
+    }
     return dayjs(b.created_at).valueOf() - dayjs(a.created_at).valueOf();
   });
-  scheduled.sort((a, b) => {
-    const byPriority = compareTaskPriority(a.priority, b.priority);
-    if (byPriority !== 0) return byPriority;
-    return dayjs(a.scheduled_date).valueOf() - dayjs(b.scheduled_date).valueOf();
-  });
-  return [...pending, ...scheduled];
+  return sorted;
 }
 
 function parseFilters(params: URLSearchParams): BacklogListFilters {
@@ -95,7 +109,7 @@ function filtersToSearchParams(filters: BacklogListFilters): URLSearchParams {
 }
 
 function taskDateForField(task: BacklogTask, field: NonNullable<BacklogListFilters["timeField"]>): string | undefined {
-  if (field === "scheduled") return task.scheduled_date;
+  if (field === "scheduled") return task.scheduled_date ?? task.last_plan_date;
   if (field === "completed") return task.completed_at;
   return task.created_at;
 }
@@ -137,15 +151,59 @@ function formatDateTime(dateStr: string) {
   return dayjs(dateStr).format("M/D HH:mm");
 }
 
-const STATUS_LABELS: Record<BacklogTask["status"], string> = {
-  pending: "待处理",
-  scheduled: "已安排",
+function progressForColumn(column: KanbanColumnId, from: KanbanColumnId, current: number): number {
+  return progressForDrag(from, column, current);
+}
+
+const DAILY_STATUS_LABELS: Record<string, string> = {
+  todo: "待办",
+  "in-progress": "进行中",
   done: "已完成",
   cancelled: "已取消",
 };
 
-function taskToFormStatus(task: BacklogTask): TaskFormStatus {
-  return task.status === "done" ? "done" : "pending";
+function OccurrenceTimeline({
+  occurrences,
+  onNavigate,
+}: {
+  occurrences: BacklogOccurrence[];
+  onNavigate: (occ: BacklogOccurrence) => void;
+}) {
+  if (occurrences.length === 0) {
+    return <p className="text-xs text-gray-400 py-2">暂无每日进度记录</p>;
+  }
+  return (
+    <div className="border border-gray-100 rounded-lg overflow-hidden">
+      <table className="w-full text-xs">
+        <thead className="bg-gray-50 text-gray-500">
+          <tr>
+            <th className="text-left font-medium px-3 py-2">日期</th>
+            <th className="text-left font-medium px-3 py-2">当天状态</th>
+            <th className="text-right font-medium px-3 py-2">操作</th>
+          </tr>
+        </thead>
+        <tbody className="divide-y divide-gray-100">
+          {occurrences.map((occ) => (
+            <tr key={occ.daily_task_id} className="hover:bg-gray-50">
+              <td className="px-3 py-2 text-gray-800">{occ.plan_date}</td>
+              <td className="px-3 py-2 text-gray-600">
+                {DAILY_STATUS_LABELS[occ.daily_status ?? "todo"] ?? occ.daily_status}
+              </td>
+              <td className="px-3 py-2 text-right">
+                <button
+                  type="button"
+                  onClick={() => onNavigate(occ)}
+                  className="text-indigo-600 hover:text-indigo-700 font-medium"
+                >
+                  跳转
+                </button>
+              </td>
+            </tr>
+          ))}
+        </tbody>
+      </table>
+    </div>
+  );
 }
 
 interface KanbanCardProps {
@@ -154,7 +212,6 @@ interface KanbanCardProps {
   draggable: boolean;
   onDragStart: (task: BacklogTask, from: KanbanColumnId) => void;
   onSchedule: (task: BacklogTask) => void;
-  onUnschedule: (task: BacklogTask) => void;
   onPriorityChange: (task: BacklogTask, priority: TaskPriority) => void;
   onView: (task: BacklogTask) => void;
   onEdit: (task: BacklogTask) => void;
@@ -167,7 +224,6 @@ function KanbanCard({
   draggable,
   onDragStart,
   onSchedule,
-  onUnschedule,
   onPriorityChange,
   onView,
   onEdit,
@@ -175,7 +231,7 @@ function KanbanCard({
 }: KanbanCardProps) {
   const contextConfig = getTaskContextConfig(task.context);
   const priorityConfig = getTaskPriorityConfig(task.priority);
-  const isScheduled = task.status === "scheduled";
+  const isScheduled = task.is_scheduled ?? false;
 
   return (
     <div
@@ -189,10 +245,7 @@ function KanbanCard({
       }`}
     >
       <div className="flex items-start gap-1.5">
-        <div
-          className="flex-1 min-w-0 cursor-pointer"
-          onClick={() => onView(task)}
-        >
+        <div className="flex-1 min-w-0 cursor-pointer" onClick={() => onView(task)}>
           <p
             className={`text-sm leading-snug break-words hover:text-gray-600 ${
               column === "done" ? "text-gray-500 hover:text-gray-400" : "text-gray-800"
@@ -201,7 +254,7 @@ function KanbanCard({
             {task.title}
           </p>
           <div className="flex items-center flex-wrap gap-1 mt-1.5">
-            {priorityConfig && column === "active" && (
+            {priorityConfig && column !== "done" && (
               <button
                 type="button"
                 title="点击切换优先级"
@@ -242,12 +295,29 @@ function KanbanCard({
                 {contextConfig.label}
               </span>
             )}
-            {column === "active" && isScheduled && task.scheduled_date && (
+            {isScheduled && task.last_plan_date && column !== "done" && (
               <span className="text-[10px] text-blue-600 font-medium">
-                {dayjs(task.scheduled_date).format("M月D日")}
+                已安排 {dayjs(task.last_plan_date).format("M月D日")}
               </span>
             )}
-            {column === "active" && !isScheduled && (
+            {(task.possible_duplicate_count ?? 0) > 0 && column !== "done" && (
+              <span className="text-[10px] text-rose-600 font-medium">可能重复</span>
+            )}
+            {column === "in_progress" && (
+              <>
+                <div className="w-full mt-1.5 h-1.5 bg-gray-100 rounded-full overflow-hidden">
+                  <div
+                    className="h-full rounded-full bg-amber-500 transition-all"
+                    style={{ width: `${task.progress}%` }}
+                  />
+                </div>
+                <span className="text-[10px] text-amber-600 font-medium">{task.progress}%</span>
+              </>
+            )}
+            {(column === "pending" || column === "in_progress") && formatLinkedDates(task) && (
+              <span className="text-[10px] text-gray-400">📅 {formatLinkedDates(task)}</span>
+            )}
+            {column === "pending" && !isScheduled && (
               <span className="text-[10px] text-gray-400">{formatRelativeTime(task.created_at)}</span>
             )}
             {column === "done" && task.completed_at && (
@@ -257,19 +327,19 @@ function KanbanCard({
         </div>
       </div>
 
-      {column === "active" && (
-        <div className="flex items-center gap-1 mt-1.5 pt-1 border-t border-gray-100">
-          <button
-            type="button"
-            onClick={(e) => {
-              e.stopPropagation();
-              onEdit(task);
-            }}
-            className="flex items-center gap-0.5 px-1.5 py-0.5 text-[10px] text-indigo-600 hover:bg-indigo-50 rounded"
-          >
-            <SquarePen size={11} />
-            编辑
-          </button>
+      <div className="flex items-center gap-1 mt-1.5 pt-1 border-t border-gray-100">
+        <button
+          type="button"
+          onClick={(e) => {
+            e.stopPropagation();
+            onEdit(task);
+          }}
+          className="flex items-center gap-0.5 px-1.5 py-0.5 text-[10px] text-indigo-600 hover:bg-indigo-50 rounded"
+        >
+          <SquarePen size={11} />
+          编辑
+        </button>
+        {column !== "done" && (
           <button
             type="button"
             onClick={(e) => {
@@ -279,71 +349,33 @@ function KanbanCard({
             className="flex items-center gap-0.5 px-1.5 py-0.5 text-[10px] text-blue-600 hover:bg-blue-50 rounded"
           >
             <Calendar size={11} />
-            {isScheduled ? "改期" : "安排"}
+            安排
           </button>
-          {isScheduled && (
-            <button
-              type="button"
-              onClick={(e) => {
-                e.stopPropagation();
-                onUnschedule(task);
-              }}
-              className="flex items-center gap-0.5 px-1.5 py-0.5 text-[10px] text-amber-600 hover:bg-amber-50 rounded"
-            >
-              <Undo2 size={11} />
-              取消安排
-            </button>
-          )}
-          <button
-            type="button"
-            onClick={(e) => {
-              e.stopPropagation();
-              onDelete(task);
-            }}
-            className="flex items-center gap-0.5 px-1.5 py-0.5 text-[10px] text-red-500 hover:bg-red-50 rounded ml-auto"
-          >
-            <Trash2 size={11} />
-            删除
-          </button>
-        </div>
-      )}
-
-      {column === "done" && (
-        <div className="flex items-center gap-1 mt-1.5 pt-1 border-t border-gray-100">
-          <button
-            type="button"
-            onClick={(e) => {
-              e.stopPropagation();
-              onEdit(task);
-            }}
-            className="flex items-center gap-0.5 px-1.5 py-0.5 text-[10px] text-indigo-600 hover:bg-indigo-50 rounded"
-          >
-            <SquarePen size={11} />
-            编辑
-          </button>
-          <button
-            type="button"
-            onClick={(e) => {
-              e.stopPropagation();
-              onDelete(task);
-            }}
-            className="flex items-center gap-0.5 px-1.5 py-0.5 text-[10px] text-red-500 hover:bg-red-50 rounded ml-auto"
-          >
-            <Trash2 size={11} />
-            删除
-          </button>
-        </div>
-      )}
+        )}
+        <button
+          type="button"
+          onClick={(e) => {
+            e.stopPropagation();
+            onDelete(task);
+          }}
+          className="flex items-center gap-0.5 px-1.5 py-0.5 text-[10px] text-red-500 hover:bg-red-50 rounded ml-auto"
+        >
+          <Trash2 size={11} />
+          删除
+        </button>
+      </div>
     </div>
   );
 }
 
 export function TodosList() {
+  const navigate = useNavigate();
   const [searchParams, setSearchParams] = useSearchParams();
   const filters = useMemo(() => parseFilters(searchParams), [searchParams]);
   const [debouncedQ, setDebouncedQ] = useState(filters.q ?? "");
 
-  const [activeTasks, setActiveTasks] = useState<BacklogTask[]>([]);
+  const [pendingTasks, setPendingTasks] = useState<BacklogTask[]>([]);
+  const [inProgressTasks, setInProgressTasks] = useState<BacklogTask[]>([]);
   const [doneTasks, setDoneTasks] = useState<BacklogTask[]>([]);
   const [loading, setLoading] = useState(true);
   const [formOpen, setFormOpen] = useState(false);
@@ -352,6 +384,7 @@ export function TodosList() {
   const [formContext, setFormContext] = useState<TaskContext>(DEFAULT_TASK_CONTEXT);
   const [formPriority, setFormPriority] = useState<TaskPriority>(DEFAULT_TASK_PRIORITY);
   const [formStatus, setFormStatus] = useState<TaskFormStatus>("pending");
+  const [formProgress, setFormProgress] = useState(0);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [schedulingTask, setSchedulingTask] = useState<BacklogTask | null>(null);
   const [viewingTask, setViewingTask] = useState<BacklogTask | null>(null);
@@ -361,9 +394,13 @@ export function TodosList() {
   const [detailPriority, setDetailPriority] = useState<TaskPriority>(DEFAULT_TASK_PRIORITY);
   const [detailDescription, setDetailDescription] = useState("");
   const [detailStatus, setDetailStatus] = useState<TaskFormStatus>("pending");
+  const [detailProgress, setDetailProgress] = useState(0);
+  const [taskDetail, setTaskDetail] = useState<BacklogTaskDetail | null>(null);
+  const [detailLoading, setDetailLoading] = useState(false);
   const [scheduleDate, setScheduleDate] = useState<Dayjs>(dayjs());
   const [dragging, setDragging] = useState<{ task: BacklogTask; from: KanbanColumnId } | null>(null);
   const [dropTarget, setDropTarget] = useState<KanbanColumnId | null>(null);
+  const [repairOpen, setRepairOpen] = useState(false);
 
   useEffect(() => {
     const timer = window.setTimeout(() => setDebouncedQ(filters.q ?? ""), 300);
@@ -376,11 +413,15 @@ export function TodosList() {
   );
 
   const columnTasks = useMemo(
-    () => ({ active: activeTasks, done: doneTasks }),
-    [activeTasks, doneTasks]
+    () => ({
+      pending: pendingTasks,
+      in_progress: inProgressTasks,
+      done: doneTasks,
+    }),
+    [pendingTasks, inProgressTasks, doneTasks]
   );
 
-  const matchCount = activeTasks.length + doneTasks.length;
+  const matchCount = pendingTasks.length + inProgressTasks.length + doneTasks.length;
 
   const updateFilters = useCallback(
     (patch: Partial<BacklogListFilters>) => {
@@ -394,35 +435,46 @@ export function TodosList() {
     setSearchParams(filtersToSearchParams(DEFAULT_FILTERS), { replace: true });
   }, [setSearchParams]);
 
+  const setColumnState = useCallback(
+    (column: KanbanColumnId, updater: (prev: BacklogTask[]) => BacklogTask[]) => {
+      if (column === "pending") setPendingTasks(updater);
+      else if (column === "in_progress") setInProgressTasks(updater);
+      else setDoneTasks(updater);
+    },
+    []
+  );
+
   const applyTaskToColumns = useCallback((task: BacklogTask) => {
-    setActiveTasks((prev) => {
-      const rest = prev.filter((t) => t.id !== task.id);
-      if (task.status === "pending" || task.status === "scheduled") {
-        return sortActiveTasks([task, ...rest]);
-      }
-      return rest;
+    const target = kanbanColumnForTask(task);
+    (["pending", "in_progress", "done"] as KanbanColumnId[]).forEach((col) => {
+      setColumnState(col, (prev) => {
+        const rest = prev.filter((t) => t.id !== task.id);
+        if (col === target) {
+          return sortColumnTasks([task, ...rest], col);
+        }
+        return rest;
+      });
     });
-    setDoneTasks((prev) => {
-      const rest = prev.filter((t) => t.id !== task.id);
-      return task.status === "done" ? [task, ...rest] : rest;
-    });
-  }, []);
+  }, [setColumnState]);
 
   const removeTaskFromColumns = useCallback((taskId: string) => {
-    setActiveTasks((prev) => prev.filter((t) => t.id !== taskId));
-    setDoneTasks((prev) => prev.filter((t) => t.id !== taskId));
-  }, []);
+    (["pending", "in_progress", "done"] as KanbanColumnId[]).forEach((col) => {
+      setColumnState(col, (prev) => prev.filter((t) => t.id !== taskId));
+    });
+  }, [setColumnState]);
 
   const loadTasks = useCallback(async (options?: { silent?: boolean }) => {
     const silent = options?.silent ?? false;
     if (!silent) setLoading(true);
     try {
-      const [active, done] = await Promise.all([
-        backlogTaskService.list("active", apiFilters),
+      const [pending, inProgress, done] = await Promise.all([
+        backlogTaskService.list("pending", apiFilters),
+        backlogTaskService.list("in_progress", apiFilters),
         backlogTaskService.list("done", apiFilters),
       ]);
-      setActiveTasks(sortActiveTasks(active));
-      setDoneTasks(done);
+      setPendingTasks(sortColumnTasks(pending, "pending"));
+      setInProgressTasks(sortColumnTasks(inProgress, "in_progress"));
+      setDoneTasks(sortColumnTasks(done, "done"));
     } catch (error) {
       console.error("Failed to load backlog tasks:", error);
       if (!silent) message.error("加载待办失败");
@@ -441,6 +493,7 @@ export function TodosList() {
     setFormContext(DEFAULT_TASK_CONTEXT);
     setFormPriority(DEFAULT_TASK_PRIORITY);
     setFormStatus("pending");
+    setFormProgress(0);
   }, []);
 
   const resetDetailDraft = useCallback(() => {
@@ -450,6 +503,8 @@ export function TodosList() {
     setDetailPriority(DEFAULT_TASK_PRIORITY);
     setDetailDescription("");
     setDetailStatus("pending");
+    setDetailProgress(0);
+    setTaskDetail(null);
   }, []);
 
   const populateDetailDraft = useCallback((task: BacklogTask) => {
@@ -457,7 +512,20 @@ export function TodosList() {
     setDetailContext(task.context);
     setDetailPriority(task.priority);
     setDetailDescription(task.description ?? "");
-    setDetailStatus(taskToFormStatus(task));
+    setDetailStatus(progressToFormStatus(task.progress ?? 0));
+    setDetailProgress(task.progress ?? 0);
+  }, []);
+
+  const loadTaskDetail = useCallback(async (taskId: string) => {
+    setDetailLoading(true);
+    try {
+      const detail = await backlogTaskService.get(taskId);
+      setTaskDetail(detail);
+    } catch (error) {
+      console.error("Failed to load task detail:", error);
+    } finally {
+      setDetailLoading(false);
+    }
   }, []);
 
   const openCreateForm = useCallback(() => {
@@ -470,8 +538,9 @@ export function TodosList() {
       setViewingTask(task);
       populateDetailDraft(task);
       setDetailEditing(editing);
+      void loadTaskDetail(task.id);
     },
-    [populateDetailDraft]
+    [populateDetailDraft, loadTaskDetail]
   );
 
   const closeTaskDetail = useCallback(() => {
@@ -492,13 +561,15 @@ export function TodosList() {
 
   useEffect(() => {
     if (!viewingTask || detailEditing) return;
-    const latest = [...activeTasks, ...doneTasks].find((t) => t.id === viewingTask.id);
+    const latest = [...pendingTasks, ...inProgressTasks, ...doneTasks].find(
+      (t) => t.id === viewingTask.id
+    );
     if (latest) {
       setViewingTask(latest);
     } else {
       closeTaskDetail();
     }
-  }, [activeTasks, doneTasks, viewingTask, detailEditing, closeTaskDetail]);
+  }, [pendingTasks, inProgressTasks, doneTasks, viewingTask, detailEditing, closeTaskDetail]);
 
   const applyUpdatedTask = useCallback(
     (updated: BacklogTask) => {
@@ -522,7 +593,7 @@ export function TodosList() {
         context: formContext,
         priority: formPriority,
         description: trimmedDescription || undefined,
-        status: formStatus,
+        progress: formProgress,
       });
       closeCreateForm();
       applyUpdatedTask(created);
@@ -540,6 +611,7 @@ export function TodosList() {
     setIsSubmitting(true);
     const snapshot = viewingTask;
     const trimmedDescription = detailDescription.trim();
+    const progress = detailProgress;
     try {
       applyUpdatedTask({
         ...viewingTask,
@@ -547,7 +619,8 @@ export function TodosList() {
         context: detailContext,
         priority: detailPriority,
         description: trimmedDescription || undefined,
-        status: detailStatus,
+        progress,
+        status: detailStatus === "done" ? "done" : detailStatus === "in_progress" ? "in_progress" : "pending",
         completed_at:
           detailStatus === "done"
             ? viewingTask.completed_at ?? new Date().toISOString()
@@ -558,7 +631,7 @@ export function TodosList() {
         context: detailContext,
         priority: detailPriority,
         description: trimmedDescription || undefined,
-        status: detailStatus,
+        progress,
       });
       applyUpdatedTask(updated);
       closeTaskDetail();
@@ -571,12 +644,22 @@ export function TodosList() {
     }
   };
 
-  const handleComplete = async (task: BacklogTask) => {
+  const handleProgressChange = async (
+    task: BacklogTask,
+    targetColumn: KanbanColumnId,
+    fromColumn: KanbanColumnId
+  ) => {
     const snapshot = task;
+    const progress = progressForColumn(targetColumn, fromColumn, task.progress ?? 0);
     const optimistic = {
       ...task,
-      status: "done" as const,
-      completed_at: new Date().toISOString(),
+      progress,
+      status: (targetColumn === "done"
+        ? "done"
+        : targetColumn === "in_progress"
+          ? "in_progress"
+          : "pending") as BacklogTask["status"],
+      completed_at: targetColumn === "done" ? new Date().toISOString() : undefined,
     };
     if (taskMatchesFilters(optimistic, apiFilters)) {
       applyTaskToColumns(optimistic);
@@ -584,15 +667,18 @@ export function TodosList() {
       removeTaskFromColumns(task.id);
     }
     try {
-      const updated = await backlogTaskService.complete(task.id);
-      if (taskMatchesFilters(updated, apiFilters)) {
-        applyTaskToColumns(updated);
+      let updated: BacklogTask;
+      if (targetColumn === "done") {
+        updated = await backlogTaskService.complete(task.id);
+      } else if (targetColumn === "pending") {
+        updated = await backlogTaskService.revertToInbox(task.id);
       } else {
-        removeTaskFromColumns(updated.id);
+        updated = await backlogTaskService.update(task.id, { progress });
       }
+      applyUpdatedTask(updated);
     } catch (error) {
       applyTaskToColumns(snapshot);
-      console.error("Failed to complete task:", error);
+      console.error("Failed to update task progress:", error);
       message.error("操作失败");
     }
   };
@@ -619,7 +705,7 @@ export function TodosList() {
 
   const openSchedule = (task: BacklogTask) => {
     setSchedulingTask(task);
-    setScheduleDate(task.scheduled_date ? dayjs(task.scheduled_date) : dayjs());
+    setScheduleDate(task.last_plan_date ? dayjs(task.last_plan_date) : dayjs());
   };
 
   const handleSchedule = async () => {
@@ -630,11 +716,7 @@ export function TodosList() {
         schedulingTask.id,
         scheduleDate.format("YYYY-MM-DD")
       );
-      if (taskMatchesFilters(updated, apiFilters)) {
-        applyTaskToColumns(updated);
-      } else {
-        removeTaskFromColumns(updated.id);
-      }
+      applyUpdatedTask(updated);
       setSchedulingTask(null);
     } catch (error) {
       applyTaskToColumns(snapshot);
@@ -657,34 +739,6 @@ export function TodosList() {
     }
   };
 
-  const handleRevertToInbox = async (task: BacklogTask) => {
-    const snapshot = task;
-    const optimistic = {
-      ...task,
-      status: "pending" as const,
-      completed_at: undefined,
-      scheduled_date: undefined,
-      daily_task_id: undefined,
-    };
-    if (taskMatchesFilters(optimistic, apiFilters)) {
-      applyTaskToColumns(optimistic);
-    } else {
-      removeTaskFromColumns(task.id);
-    }
-    try {
-      const updated = await backlogTaskService.revertToInbox(task.id);
-      if (taskMatchesFilters(updated, apiFilters)) {
-        applyTaskToColumns(updated);
-      } else {
-        removeTaskFromColumns(updated.id);
-      }
-    } catch (error) {
-      applyTaskToColumns(snapshot);
-      console.error("Failed to revert task:", error);
-      message.error("操作失败");
-    }
-  };
-
   const handleDrop = async (target: KanbanColumnId) => {
     if (!dragging) return;
     const { task, from } = dragging;
@@ -692,15 +746,7 @@ export function TodosList() {
     setDropTarget(null);
 
     if (target === from) return;
-
-    if (target === "done" && from === "active") {
-      await handleComplete(task);
-      return;
-    }
-
-    if (target === "active" && from === "done") {
-      await handleRevertToInbox(task);
-    }
+    await handleProgressChange(task, target, from);
   };
 
   return (
@@ -710,6 +756,7 @@ export function TodosList() {
         matchCount={matchCount}
         onChange={updateFilters}
         onClear={clearFilters}
+        onDataRepair={() => setRepairOpen(true)}
       />
 
       {loading ? (
@@ -737,7 +784,7 @@ export function TodosList() {
               >
                 <div className="flex items-center gap-2 px-2.5 py-2 border-b border-gray-200/80 bg-white/80 shrink-0">
                   <h2 className="text-xs font-semibold text-gray-700">{col.title}</h2>
-                  {col.id === "active" && (
+                  {col.id === "pending" && (
                     <button
                       type="button"
                       onClick={openCreateForm}
@@ -757,9 +804,7 @@ export function TodosList() {
                   }`}
                 >
                   {tasks.length === 0 ? (
-                    <div className="flex items-center justify-center py-8 text-[11px] text-gray-400">
-                      {col.id === "active" ? "无匹配" : "无匹配"}
-                    </div>
+                    <div className="flex items-center justify-center py-8 text-[11px] text-gray-400">无匹配</div>
                   ) : (
                     tasks.map((task) => (
                       <KanbanCard
@@ -769,7 +814,6 @@ export function TodosList() {
                         draggable
                         onDragStart={(t, from) => setDragging({ task: t, from })}
                         onSchedule={openSchedule}
-                        onUnschedule={handleRevertToInbox}
                         onPriorityChange={handlePriorityChange}
                         onView={(task) => openTaskDetail(task)}
                         onEdit={(task) => openTaskDetail(task, true)}
@@ -833,27 +877,50 @@ export function TodosList() {
         }
       >
         {viewingTask && (
-          <TaskFormPanel
-            mode={detailEditing ? "edit" : "view"}
-            title={detailTitle}
-            description={detailDescription}
-            context={detailContext}
-            priority={detailPriority}
-            status={detailStatus}
-            onTitleChange={setDetailTitle}
-            onDescriptionChange={setDetailDescription}
-            onContextChange={setDetailContext}
-            onPriorityChange={setDetailPriority}
-            onStatusChange={setDetailStatus}
-            onSubmit={handleDetailSave}
-            statusLabel={STATUS_LABELS[viewingTask.status]}
-            timestamps={{
-              createdAt: viewingTask.created_at,
-              scheduledDate: viewingTask.scheduled_date,
-              completedAt: viewingTask.completed_at,
-              updatedAt: viewingTask.updated_at,
-            }}
-          />
+          <>
+            <TaskFormPanel
+              mode={detailEditing ? "edit" : "view"}
+              title={detailTitle}
+              description={detailDescription}
+              context={detailContext}
+              priority={detailPriority}
+              status={detailStatus}
+              progress={detailProgress}
+              onTitleChange={setDetailTitle}
+              onDescriptionChange={setDetailDescription}
+              onContextChange={setDetailContext}
+              onPriorityChange={setDetailPriority}
+              onStatusChange={(status) => {
+                setDetailStatus(status);
+                setDetailProgress(applyStatusChange(status, detailProgress));
+              }}
+              onProgressChange={(progress) => {
+                setDetailProgress(progress);
+                setDetailStatus(progressToFormStatus(progress));
+              }}
+              onSubmit={handleDetailSave}
+              statusLabel={taskFormStatusLabel(progressToFormStatus(viewingTask.progress ?? 0))}
+              timestamps={{
+                createdAt: viewingTask.created_at,
+                scheduledDate: viewingTask.last_plan_date ?? viewingTask.scheduled_date,
+                completedAt: viewingTask.completed_at,
+                updatedAt: viewingTask.updated_at,
+              }}
+            />
+            {!detailEditing && (
+              <div className="mt-4 pt-3 border-t border-gray-100">
+                <h3 className="text-sm font-semibold text-gray-700 mb-2">每日进度记录</h3>
+                {detailLoading ? (
+                  <p className="text-xs text-gray-400">加载中…</p>
+                ) : (
+                  <OccurrenceTimeline
+                    occurrences={taskDetail?.occurrences ?? []}
+                    onNavigate={(occ) => navigate(`/daily-plans?focus=${occ.plan_date}`)}
+                  />
+                )}
+              </div>
+            )}
+          </>
         )}
       </Modal>
 
@@ -874,11 +941,19 @@ export function TodosList() {
           context={formContext}
           priority={formPriority}
           status={formStatus}
+          progress={formProgress}
           onTitleChange={setFormTitle}
           onDescriptionChange={setFormDescription}
           onContextChange={setFormContext}
           onPriorityChange={setFormPriority}
-          onStatusChange={setFormStatus}
+          onStatusChange={(status) => {
+            setFormStatus(status);
+            setFormProgress(applyStatusChange(status, formProgress));
+          }}
+          onProgressChange={(progress) => {
+            setFormProgress(progress);
+            setFormStatus(progressToFormStatus(progress));
+          }}
           onSubmit={handleCreateSubmit}
         />
       </Modal>
@@ -894,7 +969,7 @@ export function TodosList() {
         {schedulingTask && (
           <div className="py-2">
             <p className="text-sm text-gray-600 mb-3">
-              将「{schedulingTask.title}」添加到日计划：
+              将「{schedulingTask.title}」添加到每日进度：
             </p>
             <DatePicker
               value={scheduleDate}
@@ -905,6 +980,12 @@ export function TodosList() {
           </div>
         )}
       </Modal>
+
+      <DataRepairModal
+        open={repairOpen}
+        onClose={() => setRepairOpen(false)}
+        onComplete={() => loadTasks({ silent: true })}
+      />
     </div>
   );
 }

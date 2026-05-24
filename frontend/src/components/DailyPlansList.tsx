@@ -9,7 +9,7 @@ import { DailyPlanCard } from "./DailyPlanCard";
 import { DailyPlanForm } from "./DailyPlanForm";
 import { BatchCreateTasksModal } from "./BatchCreateTasksModal";
 
-export function DailyPlansList() {
+export function DailyPlansList({ focusDate }: { focusDate?: string | null }) {
   const [plans, setPlans] = useState<DailyPlan[]>([]);
   const [loading, setLoading] = useState(true);
   const [showForm, setShowForm] = useState(false);
@@ -17,6 +17,25 @@ export function DailyPlansList() {
   const [showExportModal, setShowExportModal] = useState(false);
   const [showBatchCreateModal, setShowBatchCreateModal] = useState(false);
   const [planSummaries, setPlanSummaries] = useState<Record<string, DailySummary>>({});
+
+  useEffect(() => {
+    if (!focusDate || !/^\d{4}-\d{2}-\d{2}$/.test(focusDate)) return;
+    const target = new Date(`${focusDate}T12:00:00`);
+    const day = target.getDay();
+    const diff = day === 0 ? -6 : 1 - day;
+    const monday = new Date(target);
+    monday.setDate(target.getDate() + diff);
+    const sunday = new Date(monday);
+    sunday.setDate(monday.getDate() + 6);
+    const fmt = (d: Date) => {
+      const y = d.getFullYear();
+      const m = String(d.getMonth() + 1).padStart(2, "0");
+      const dd = String(d.getDate()).padStart(2, "0");
+      return `${y}-${m}-${dd}`;
+    };
+    setStartDate(fmt(monday));
+    setEndDate(fmt(sunday));
+  }, [focusDate]);
 
   const formatLocalYMD = (date: Date) => {
     const y = date.getFullYear();
@@ -309,7 +328,7 @@ export function DailyPlansList() {
       large: "大总结",
     };
 
-    let markdown = `# 每日计划导出\n\n`;
+    let markdown = `# 每日进度导出\n\n`;
     markdown += `**日期范围**: ${startDate} ~ ${endDate}\n\n`;
     markdown += `---\n\n`;
 
@@ -383,7 +402,7 @@ export function DailyPlansList() {
     const url = URL.createObjectURL(blob);
     const link = document.createElement("a");
     link.href = url;
-    link.download = `每日计划_${startDate}_to_${endDate}.md`;
+    link.download = `每日进度_${startDate}_to_${endDate}.md`;
     document.body.appendChild(link);
     link.click();
     document.body.removeChild(link);
@@ -584,7 +603,7 @@ export function DailyPlansList() {
                   <Download className="text-white" size={16} />
                 </div>
                 <div>
-                  <h2 className="text-base sm:text-xl font-semibold text-gray-800">导出每日计划</h2>
+                  <h2 className="text-base sm:text-xl font-semibold text-gray-800">导出每日进度</h2>
                   <p className="text-xs sm:text-sm text-gray-500">{startDate} ~ {endDate}</p>
                 </div>
               </div>

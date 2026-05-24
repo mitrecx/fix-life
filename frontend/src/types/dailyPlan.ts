@@ -9,6 +9,7 @@ export type { TaskContext };
 export interface DailyTask {
   id: string;
   daily_plan_id: string;
+  backlog_task_id?: string;
   title: string;
   description?: string;
   priority: DailyTaskPriority;
@@ -21,6 +22,18 @@ export interface DailyTask {
   updated_at: string;
 }
 
+export interface DailyPlanTaskAdd {
+  backlog_task_id?: string;
+  title?: string;
+  description?: string;
+  priority?: DailyTaskPriority;
+  status?: DailyTaskStatus;
+  context?: TaskContext;
+  estimated_minutes?: number;
+  time_slot?: string;
+}
+
+/** @deprecated Prefer DailyPlanTaskAdd for daily plan endpoints */
 export interface DailyTaskCreate {
   title: string;
   description?: string;

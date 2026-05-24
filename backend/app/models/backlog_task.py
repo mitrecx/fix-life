@@ -1,6 +1,6 @@
 import enum
 from datetime import datetime, date
-from sqlalchemy import Column, String, Enum, ForeignKey, Text, DateTime, Date
+from sqlalchemy import Column, String, Integer, Enum, ForeignKey, Text, DateTime, Date
 from sqlalchemy.dialects.postgresql import UUID
 from sqlalchemy.orm import relationship
 import uuid
@@ -12,7 +12,8 @@ from app.models.task_priority import TaskPriority
 
 class BacklogTaskStatus(str, enum.Enum):
     PENDING = "pending"
-    SCHEDULED = "scheduled"
+    IN_PROGRESS = "in_progress"
+    SCHEDULED = "scheduled"  # legacy read-only
     DONE = "done"
     CANCELLED = "cancelled"
 
@@ -39,6 +40,8 @@ class BacklogTask(Base):
         default=BacklogTaskStatus.PENDING,
         nullable=False,
     )
+    progress = Column(Integer, default=0, nullable=False)
+    origin = Column(String(20), default="inbox", nullable=False)
     scheduled_date = Column(Date)
     daily_task_id = Column(UUID(as_uuid=True), ForeignKey("daily_tasks.id", ondelete="SET NULL"))
     completed_at = Column(DateTime)
@@ -47,6 +50,11 @@ class BacklogTask(Base):
 
     user = relationship("User", back_populates="backlog_tasks")
     daily_task = relationship("DailyTask", foreign_keys=[daily_task_id])
+    daily_links = relationship(
+        "BacklogDailyLink",
+        back_populates="backlog_task",
+        cascade="all, delete-orphan",
+    )
 
     def __repr__(self):
         return f"<BacklogTask {self.title} - {self.status}>"

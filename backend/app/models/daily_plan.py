@@ -69,6 +69,11 @@ class DailyTask(Base):
 
     id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
     daily_plan_id = Column(UUID(as_uuid=True), ForeignKey("daily_plans.id", ondelete="CASCADE"), nullable=False)
+    backlog_task_id = Column(
+        UUID(as_uuid=True),
+        ForeignKey("backlog_tasks.id", ondelete="SET NULL"),
+        nullable=True,
+    )
     title = Column(String(200), nullable=False)
     description = Column(Text)
     priority = Column(Enum(DailyTaskPriority, values_callable=lambda x: [e.value for e in x]), default=DailyTaskPriority.MEDIUM)
@@ -82,6 +87,11 @@ class DailyTask(Base):
 
     # Relationships
     daily_plan = relationship("DailyPlan", back_populates="daily_tasks")
+    backlog_link = relationship(
+        "BacklogDailyLink",
+        back_populates="daily_task",
+        uselist=False,
+    )
 
     def __repr__(self):
         return f"<DailyTask {self.title} - {self.status}>"

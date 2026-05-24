@@ -4,7 +4,7 @@ import type {
   DailyPlanCreate,
   DailyPlanUpdate,
   DailyTask,
-  DailyTaskCreate,
+  DailyPlanTaskAdd,
   DailyTaskUpdate,
   DailyTaskStatus,
   DailyPlanHead,
@@ -62,7 +62,7 @@ class DailyPlanService {
     return await api.get<DailyTask[]>(`${this.baseUrl}/${planId}/tasks`);
   }
 
-  async createTask(planId: string, data: DailyTaskCreate): Promise<DailyTask> {
+  async createTask(planId: string, data: DailyPlanTaskAdd): Promise<DailyTask> {
     return await api.post<DailyTask>(`${this.baseUrl}/${planId}/tasks`, data);
   }
 

@@ -1,6 +1,7 @@
 import api from "./api";
 import type {
   BacklogTask,
+  BacklogTaskDetail,
   BacklogTaskCreate,
   BacklogTaskUpdate,
   BacklogTab,
@@ -45,12 +46,16 @@ class BacklogTaskService {
     return params;
   }
 
-  async list(tab: BacklogTab = "active", filters: BacklogListFilters = {}): Promise<BacklogTask[]> {
+  async list(tab: BacklogTab = "pending", filters: BacklogListFilters = {}): Promise<BacklogTask[]> {
     const params = this.buildListParams(tab, filters);
     const response = await api.get<BacklogTaskListResponse>(
       `${this.baseUrl}/?${params.toString()}`
     );
     return response.tasks;
+  }
+
+  async get(id: string): Promise<BacklogTaskDetail> {
+    return await api.get<BacklogTaskDetail>(`${this.baseUrl}/${id}`);
   }
 
   async create(data: BacklogTaskCreate): Promise<BacklogTask> {

@@ -1,17 +1,16 @@
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect, useMemo } from "react";
 import { Edit, Trash2, Plus, CheckCircle, Circle, Clock, ChevronDown, ChevronUp, BookOpen } from "lucide-react";
 import { Modal, message } from "antd";
 import type { DailyPlan, DailyTask, DailyTaskStatus } from "@/types/dailyPlan";
 import { DAILY_TASK_PRIORITY } from "@/types/dailyPlan";
 import { DEFAULT_TASK_CONTEXT, getTaskContextConfig } from "@/types/taskContext";
-import type { TaskContext } from "@/types/taskContext";
-import { DEFAULT_TASK_PRIORITY } from "@/types/taskPriority";
-import type { TaskPriority } from "@/types/taskPriority";
-import type { TaskFormStatus } from "@/types/backlogTask";
 import { dailyPlanService } from "@/services/dailyPlanService";
+import { backlogTaskService } from "@/services/backlogTaskService";
 import { DailySummaryModal } from "@/components/DailySummaryModal";
-import { TaskFormPanel } from "@/components/TaskFormPanel";
+import { AddToTodayModal } from "@/components/AddToTodayModal";
+import { DailyTaskProgressModal } from "@/components/DailyTaskProgressModal";
 import { systemSettingsService } from "@/services/systemSettingsService";
+import type { DailyProgressChoice } from "@/types/backlogTask";
 
 interface DailyPlanCardProps {
   plan: DailyPlan;
@@ -27,7 +26,6 @@ const STATUS_ICONS = {
   cancelled: Circle,
 };
 
-// 星期配置 - 每天（周一到周日）使用不同颜色
 const WEEKDAY_CONFIG = [
   { day: 1, label: "周一", color: "from-blue-50 to-blue-100", borderColor: "border-blue-200", textColor: "text-blue-700", tagBg: "bg-blue-100" },
   { day: 2, label: "周二", color: "from-purple-50 to-purple-100", borderColor: "border-purple-200", textColor: "text-purple-700", tagBg: "bg-purple-100" },
@@ -38,14 +36,12 @@ const WEEKDAY_CONFIG = [
   { day: 0, label: "周日", color: "from-rose-50 to-rose-100", borderColor: "border-rose-200", textColor: "text-rose-700", tagBg: "bg-rose-100" },
 ];
 
-// 获取星期几配置
 const getWeekdayConfig = (dateStr: string) => {
   const date = new Date(dateStr);
   const day = date.getDay();
-  return WEEKDAY_CONFIG.find((w) => w.day === day) || WEEKDAY_CONFIG[6]; // 默认周日
+  return WEEKDAY_CONFIG.find((w) => w.day === day) || WEEKDAY_CONFIG[6];
 };
 
-// 动态进度条颜色
 const getProgressColor = (rate: number) => {
   if (rate === 100) return "linear-gradient(to right, rgb(52 211 153), rgb(34 197 94))";
   if (rate >= 50) return "linear-gradient(to right, rgb(96 165 250), rgb(99 102 241))";
@@ -53,21 +49,15 @@ const getProgressColor = (rate: number) => {
   return "linear-gradient(to right, rgb(156 163 175), rgb(100 116 139))";
 };
 
-// 排序任务：按优先级（高→中→低），然后按创建时间（早→晚）
 const sortTasks = (tasks: DailyTask[]) => {
   const priorityOrder = { high: 3, medium: 2, low: 1 };
-
   return [...tasks].sort((a, b) => {
-    // 先按优先级排序
     const priorityDiff = priorityOrder[b.priority] - priorityOrder[a.priority];
     if (priorityDiff !== 0) return priorityDiff;
-
-    // 优先级相同时，按创建时间排序（早的在前）
     return new Date(a.created_at).getTime() - new Date(b.created_at).getTime();
   });
 };
 
-// 格式化日期
 const formatDate = (dateStr: string) => {
   const date = new Date(dateStr);
   const today = new Date();
@@ -82,25 +72,17 @@ const formatDate = (dateStr: string) => {
   return `${date.getMonth() + 1}月${date.getDate()}日`;
 };
 
-function formStatusToDailyStatus(status: TaskFormStatus): DailyTaskStatus {
-  return status === "done" ? "done" : "todo";
-}
-
 export function DailyPlanCard({ plan, onUpdate, onEdit, onDelete }: DailyPlanCardProps) {
-  const [taskFormOpen, setTaskFormOpen] = useState(false);
-  const [formTitle, setFormTitle] = useState("");
-  const [formDescription, setFormDescription] = useState("");
-  const [formPriority, setFormPriority] = useState<TaskPriority>(DEFAULT_TASK_PRIORITY);
-  const [formContext, setFormContext] = useState<TaskContext>(DEFAULT_TASK_CONTEXT);
-  const [formStatus, setFormStatus] = useState<TaskFormStatus>("pending");
+  const [addModalOpen, setAddModalOpen] = useState(false);
   const [isTaskSectionCollapsed, setIsTaskSectionCollapsed] = useState(false);
   const [showSummaryModal, setShowSummaryModal] = useState(false);
-  const [isSubmittingTask, setIsSubmittingTask] = useState(false);
   const [showDailySummary, setShowDailySummary] = useState(false);
   const [expandedSummary, setExpandedSummary] = useState(false);
+  const [progressModalTask, setProgressModalTask] = useState<DailyTask | null>(null);
+  const [backlogProgress, setBacklogProgress] = useState(0);
+  const [progressModalLoading, setProgressModalLoading] = useState(false);
 
   useEffect(() => {
-    // Load system settings to check if we should show daily summary
     const loadSettings = async () => {
       const settings = await systemSettingsService.getSettings();
       setShowDailySummary(settings.show_daily_summary);
@@ -111,63 +93,65 @@ export function DailyPlanCard({ plan, onUpdate, onEdit, onDelete }: DailyPlanCar
   const weekdayConfig = getWeekdayConfig(plan.plan_date);
   const progressColor = getProgressColor(plan.completion_rate);
 
-  const resetTaskForm = useCallback(() => {
-    setFormTitle("");
-    setFormDescription("");
-    setFormPriority(DEFAULT_TASK_PRIORITY);
-    setFormContext(DEFAULT_TASK_CONTEXT);
-    setFormStatus("pending");
-  }, []);
-
-  const openTaskForm = () => {
-    resetTaskForm();
-    setTaskFormOpen(true);
-  };
-
-  const closeTaskForm = () => {
-    setTaskFormOpen(false);
-    resetTaskForm();
-  };
-
-  const handleAddTask = async () => {
-    if (!formTitle.trim() || isSubmittingTask) return;
-
-    setIsSubmittingTask(true);
-    const trimmedDescription = formDescription.trim();
-    try {
-      await dailyPlanService.createTask(plan.id, {
-        title: formTitle.trim(),
-        description: trimmedDescription || undefined,
-        priority: formPriority,
-        context: formContext,
-        status: formStatusToDailyStatus(formStatus),
-      });
-      closeTaskForm();
-      onUpdate();
-    } catch (error) {
-      console.error("Failed to create task:", error);
-      message.error("添加失败");
-    } finally {
-      setIsSubmittingTask(false);
+  const existingBacklogIds = useMemo(() => {
+    const ids = new Set<string>();
+    for (const task of plan.daily_tasks) {
+      if (task.backlog_task_id) ids.add(task.backlog_task_id);
     }
+    return ids;
+  }, [plan.daily_tasks]);
+
+  const updateDailyStatus = async (task: DailyTask, newStatus: DailyTaskStatus) => {
+    await dailyPlanService.updateTaskStatus(task.id, newStatus);
+    onUpdate();
   };
 
   const handleToggleTaskStatus = async (task: DailyTask) => {
-    const newStatus: DailyTaskStatus =
-      task.status === "done" ? "todo" : "done";
+    const newStatus: DailyTaskStatus = task.status === "done" ? "todo" : "done";
+
+    if (newStatus === "done" && task.backlog_task_id) {
+      try {
+        const backlog = await backlogTaskService.get(task.backlog_task_id);
+        if (backlog.progress < 100) {
+          setBacklogProgress(backlog.progress);
+          setProgressModalTask(task);
+          return;
+        }
+      } catch (error) {
+        console.error("Failed to load backlog task:", error);
+      }
+    }
 
     try {
-      await dailyPlanService.updateTaskStatus(task.id, newStatus);
-      onUpdate();
+      await updateDailyStatus(task, newStatus);
     } catch (error) {
       console.error("Failed to update task status:", error);
+      message.error("更新失败");
+    }
+  };
+
+  const handleProgressModalConfirm = async (choice: DailyProgressChoice) => {
+    if (!progressModalTask) return;
+    setProgressModalLoading(true);
+    try {
+      await dailyPlanService.updateTaskStatus(progressModalTask.id, "done");
+      if (choice !== "keep" && progressModalTask.backlog_task_id) {
+        await backlogTaskService.update(progressModalTask.backlog_task_id, { progress: choice });
+      }
+      setProgressModalTask(null);
+      onUpdate();
+    } catch (error) {
+      console.error("Failed to complete task:", error);
+      message.error("更新失败");
+    } finally {
+      setProgressModalLoading(false);
     }
   };
 
   const handleDeleteTask = async (taskId: string) => {
     Modal.confirm({
       title: "确认删除",
-      content: "确定要删除这个任务吗？",
+      content: "确定要删除这个任务吗？待办本身会保留。",
       okText: "删除",
       okType: "danger",
       cancelText: "取消",
@@ -186,7 +170,6 @@ export function DailyPlanCard({ plan, onUpdate, onEdit, onDelete }: DailyPlanCar
 
   return (
     <div className={`rounded-xl shadow-md border-2 overflow-hidden mb-3 hover:shadow-lg transition-all duration-300 bg-gradient-to-br ${weekdayConfig.color} ${weekdayConfig.borderColor}`}>
-      {/* Card Header */}
       <div className="px-4 py-3 bg-white/50 backdrop-blur-sm">
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-2 flex-1 min-w-0">
@@ -238,14 +221,13 @@ export function DailyPlanCard({ plan, onUpdate, onEdit, onDelete }: DailyPlanCar
         </div>
       </div>
 
-      {/* Progress Section - Only show when not collapsed */}
       {plan.total_tasks > 0 && !isTaskSectionCollapsed && (
         <div className="px-4 py-2 bg-white">
           <div className="flex items-center justify-between text-xs mb-1.5">
             <span className="text-gray-600">
               {plan.completed_tasks}/{plan.total_tasks}
             </span>
-            <span className={`font-semibold ${plan.completion_rate === 100 ? 'text-emerald-600' : 'text-indigo-600'}`}>
+            <span className={`font-semibold ${plan.completion_rate === 100 ? "text-emerald-600" : "text-indigo-600"}`}>
               {plan.completion_rate.toFixed(0)}%
             </span>
           </div>
@@ -258,20 +240,19 @@ export function DailyPlanCard({ plan, onUpdate, onEdit, onDelete }: DailyPlanCar
         </div>
       )}
 
-      {/* Tasks Section - Collapsible */}
       {!isTaskSectionCollapsed && (
         <div
           className="px-4 py-3"
-          style={{ background: 'linear-gradient(to bottom, rgb(249 250 251), rgb(255 255 255))' }}
+          style={{ background: "linear-gradient(to bottom, rgb(249 250 251), rgb(255 255 255))" }}
         >
           <div className="flex items-center justify-between mb-2">
             <h4 className="text-xs font-semibold text-gray-700">任务清单</h4>
             <button
-              onClick={openTaskForm}
+              onClick={() => setAddModalOpen(true)}
               className="flex items-center gap-1 text-xs text-indigo-600 hover:text-indigo-700 font-medium transition-colors"
             >
               <Plus size={14} />
-              添加任务
+              添到今日
             </button>
           </div>
 
@@ -298,9 +279,7 @@ export function DailyPlanCard({ plan, onUpdate, onEdit, onDelete }: DailyPlanCar
                   </button>
                   <span
                     className={`flex-1 text-sm break-words min-w-0 ${
-                      task.status === "done"
-                        ? "text-gray-400"
-                        : "text-gray-700"
+                      task.status === "done" ? "text-gray-400" : "text-gray-700"
                     }`}
                   >
                     {task.title}
@@ -352,7 +331,6 @@ export function DailyPlanCard({ plan, onUpdate, onEdit, onDelete }: DailyPlanCar
             )}
           </div>
 
-          {/* Daily Summary Section - Show based on system settings */}
           {showDailySummary && plan.daily_summary && (
             <div className="mt-3 p-3 bg-gradient-to-r from-amber-50 to-orange-50 rounded-xl border border-amber-200">
               <div className="flex items-start gap-2">
@@ -363,7 +341,7 @@ export function DailyPlanCard({ plan, onUpdate, onEdit, onDelete }: DailyPlanCar
                 </div>
                 <div className="flex-1 min-w-0">
                   <h5 className="text-xs font-semibold text-amber-800 mb-1">每日总结</h5>
-                  <p className={`text-sm text-amber-900 whitespace-pre-wrap ${expandedSummary ? '' : 'line-clamp-6'}`}>
+                  <p className={`text-sm text-amber-900 whitespace-pre-wrap ${expandedSummary ? "" : "line-clamp-6"}`}>
                     {plan.daily_summary.content}
                   </p>
                   {!expandedSummary && plan.daily_summary.content && plan.daily_summary.content.length > 150 && (
@@ -389,33 +367,24 @@ export function DailyPlanCard({ plan, onUpdate, onEdit, onDelete }: DailyPlanCar
         </div>
       )}
 
-      <Modal
-        title="添加任务"
-        open={taskFormOpen}
-        onOk={handleAddTask}
-        onCancel={closeTaskForm}
-        okText="添加"
-        cancelText="取消"
-        confirmLoading={isSubmittingTask}
-        okButtonProps={{ disabled: !formTitle.trim() }}
-      >
-        <TaskFormPanel
-          mode="create"
-          title={formTitle}
-          description={formDescription}
-          context={formContext}
-          priority={formPriority}
-          status={formStatus}
-          onTitleChange={setFormTitle}
-          onDescriptionChange={setFormDescription}
-          onContextChange={setFormContext}
-          onPriorityChange={setFormPriority}
-          onStatusChange={setFormStatus}
-          onSubmit={handleAddTask}
-        />
-      </Modal>
+      <AddToTodayModal
+        open={addModalOpen}
+        planId={plan.id}
+        planDate={plan.plan_date}
+        existingBacklogIds={existingBacklogIds}
+        onClose={() => setAddModalOpen(false)}
+        onSuccess={onUpdate}
+      />
 
-      {/* Summary Modal */}
+      <DailyTaskProgressModal
+        open={!!progressModalTask}
+        taskTitle={progressModalTask?.title ?? ""}
+        currentProgress={backlogProgress}
+        loading={progressModalLoading}
+        onConfirm={handleProgressModalConfirm}
+        onCancel={() => setProgressModalTask(null)}
+      />
+
       {showSummaryModal && (
         <DailySummaryModal
           planId={plan.id}
