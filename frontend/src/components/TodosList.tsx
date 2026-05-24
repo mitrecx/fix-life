@@ -34,7 +34,6 @@ import {
   getTaskContextConfig,
 } from "@/types/taskContext";
 import {
-  TASK_PRIORITY,
   DEFAULT_TASK_PRIORITY,
   getTaskPriorityConfig,
   compareTaskPriority,
@@ -233,7 +232,7 @@ function KanbanCardProgressSlider({
   };
 
   const trackStyle = {
-    background: `linear-gradient(to right, #f59e0b 0%, #f59e0b ${value}%, #e5e7eb ${value}%, #e5e7eb 100%)`,
+    background: `linear-gradient(to right, #6366f1 0%, #6366f1 ${value}%, #e5e7eb ${value}%, #e5e7eb 100%)`,
   };
 
   return (
@@ -265,14 +264,14 @@ function KanbanCardProgressSlider({
         className="kanban-progress-range flex-1 h-1.5 rounded-full appearance-none cursor-pointer
           [&::-webkit-slider-runnable-track]:h-1.5 [&::-webkit-slider-runnable-track]:rounded-full [&::-webkit-slider-runnable-track]:appearance-none
           [&::-webkit-slider-thumb]:appearance-none [&::-webkit-slider-thumb]:h-3 [&::-webkit-slider-thumb]:w-3
-          [&::-webkit-slider-thumb]:rounded-full [&::-webkit-slider-thumb]:bg-amber-500 [&::-webkit-slider-thumb]:border-2 [&::-webkit-slider-thumb]:border-white
+          [&::-webkit-slider-thumb]:rounded-full [&::-webkit-slider-thumb]:bg-indigo-500 [&::-webkit-slider-thumb]:border-2 [&::-webkit-slider-thumb]:border-white
           [&::-webkit-slider-thumb]:shadow-sm [&::-webkit-slider-thumb]:-mt-[3px]
           [&::-moz-range-track]:h-1.5 [&::-moz-range-track]:rounded-full [&::-moz-range-track]:bg-transparent
-          [&::-moz-range-progress]:h-1.5 [&::-moz-range-progress]:rounded-full [&::-moz-range-progress]:bg-amber-500
-          [&::-moz-range-thumb]:h-3 [&::-moz-range-thumb]:w-3 [&::-moz-range-thumb]:rounded-full [&::-moz-range-thumb]:border-2 [&::-moz-range-thumb]:border-white [&::-moz-range-thumb]:bg-amber-500"
+          [&::-moz-range-progress]:h-1.5 [&::-moz-range-progress]:rounded-full [&::-moz-range-progress]:bg-indigo-500
+          [&::-moz-range-thumb]:h-3 [&::-moz-range-thumb]:w-3 [&::-moz-range-thumb]:rounded-full [&::-moz-range-thumb]:border-2 [&::-moz-range-thumb]:border-white [&::-moz-range-thumb]:bg-indigo-500"
         aria-label={`${task.title} 进度`}
       />
-      <span className="text-sm text-amber-600 font-medium tabular-nums shrink-0 w-10 text-right">
+      <span className="text-sm text-indigo-600 font-medium tabular-nums shrink-0 w-10 text-right">
         {value}%
       </span>
     </div>
@@ -288,7 +287,6 @@ interface KanbanCardProps {
   highlighted: boolean;
   onToggleSelect: (task: BacklogTask) => void;
   onDragStart: (task: BacklogTask, from: KanbanColumnId) => void;
-  onPriorityChange: (task: BacklogTask, priority: TaskPriority) => void;
   onOpenDetail: (task: BacklogTask) => void;
   onProgressCommit?: (task: BacklogTask, progress: number) => void;
 }
@@ -302,7 +300,6 @@ function KanbanCard({
   highlighted,
   onToggleSelect,
   onDragStart,
-  onPriorityChange,
   onOpenDetail,
   onProgressCommit,
 }: KanbanCardProps) {
@@ -357,30 +354,11 @@ function KanbanCard({
             {task.title}
           </p>
           <div className="flex items-center flex-wrap gap-1.5 mt-3">
-            {priorityConfig && column !== "done" && (
-              <button
-                type="button"
-                title="点击切换优先级"
-                onClick={(e) => {
-                  e.stopPropagation();
-                  const idx = TASK_PRIORITY.findIndex((p) => p.value === task.priority);
-                  const next = TASK_PRIORITY[(idx + 1) % TASK_PRIORITY.length].value;
-                  onPriorityChange(task, next);
-                }}
-                className="text-sm px-1.5 py-0.5 rounded font-medium hover:opacity-80"
-                style={{
-                  backgroundColor: `${priorityConfig.color}18`,
-                  color: priorityConfig.color,
-                }}
-              >
-                {priorityConfig.label}
-              </button>
-            )}
-            {priorityConfig && column === "done" && (
+            {priorityConfig && (
               <span
-                className="text-sm px-1.5 py-0.5 rounded font-medium opacity-60"
+                className={`text-sm px-1.5 py-0.5 rounded font-medium ${column === "done" ? "opacity-60" : ""}`}
                 style={{
-                  backgroundColor: `${priorityConfig.color}12`,
+                  backgroundColor: `${priorityConfig.color}${column === "done" ? "12" : "18"}`,
                   color: priorityConfig.color,
                 }}
               >
@@ -1194,20 +1172,6 @@ export function TodosList() {
     }
   };
 
-  const handlePriorityChange = async (task: BacklogTask, priority: TaskPriority) => {
-    if (task.priority === priority) return;
-    const snapshot = task;
-    applyUpdatedTask({ ...task, priority });
-    try {
-      const updated = await backlogTaskService.update(task.id, { priority });
-      applyUpdatedTask(updated);
-    } catch (error) {
-      applyTaskToColumns(snapshot);
-      console.error("Failed to update priority:", error);
-      message.error("更新优先级失败");
-    }
-  };
-
   const handleDrop = async (target: KanbanColumnId) => {
     if (!dragging) return;
     const { task, from } = dragging;
@@ -1358,7 +1322,6 @@ export function TodosList() {
                           highlighted={taskId === task.id}
                           onToggleSelect={toggleTaskSelection}
                           onDragStart={(t, from) => setDragging({ task: t, from })}
-                          onPriorityChange={handlePriorityChange}
                           onOpenDetail={openTaskDetail}
                           onProgressCommit={
                             col.id === "in_progress" && !selectionMode

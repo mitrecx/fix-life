@@ -80,7 +80,7 @@ const getTaskProgressSegments = (task: DailyTask) => {
 const buildThreeSegmentTrackStyle = (past: number, current: number) => ({
   background: `linear-gradient(to right,
     rgb(148 163 184) 0%, rgb(148 163 184) ${past}%,
-    rgb(245 158 11) ${past}%, rgb(245 158 11) ${current}%,
+    rgb(99 102 241) ${past}%, rgb(99 102 241) ${current}%,
     rgb(229 231 235) ${current}%, rgb(229 231 235) 100%)`,
 });
 
@@ -174,14 +174,14 @@ function DailyTaskProgressSlider({
         className="kanban-progress-range flex-1 h-1.5 rounded-full appearance-none cursor-pointer disabled:cursor-default disabled:opacity-60
           [&::-webkit-slider-runnable-track]:h-1.5 [&::-webkit-slider-runnable-track]:rounded-full [&::-webkit-slider-runnable-track]:appearance-none
           [&::-webkit-slider-thumb]:appearance-none [&::-webkit-slider-thumb]:h-3 [&::-webkit-slider-thumb]:w-3
-          [&::-webkit-slider-thumb]:rounded-full [&::-webkit-slider-thumb]:bg-amber-500 [&::-webkit-slider-thumb]:border-2 [&::-webkit-slider-thumb]:border-white
+          [&::-webkit-slider-thumb]:rounded-full [&::-webkit-slider-thumb]:bg-indigo-500 [&::-webkit-slider-thumb]:border-2 [&::-webkit-slider-thumb]:border-white
           [&::-webkit-slider-thumb]:shadow-sm [&::-webkit-slider-thumb]:-mt-[3px]
           [&::-moz-range-track]:h-1.5 [&::-moz-range-track]:rounded-full [&::-moz-range-track]:bg-transparent
-          [&::-moz-range-progress]:h-1.5 [&::-moz-range-progress]:rounded-full [&::-moz-range-progress]:bg-amber-500
-          [&::-moz-range-thumb]:h-3 [&::-moz-range-thumb]:w-3 [&::-moz-range-thumb]:rounded-full [&::-moz-range-thumb]:border-2 [&::-moz-range-thumb]:border-white [&::-moz-range-thumb]:bg-amber-500"
+          [&::-moz-range-progress]:h-1.5 [&::-moz-range-progress]:rounded-full [&::-moz-range-progress]:bg-indigo-500
+          [&::-moz-range-thumb]:h-3 [&::-moz-range-thumb]:w-3 [&::-moz-range-thumb]:rounded-full [&::-moz-range-thumb]:border-2 [&::-moz-range-thumb]:border-white [&::-moz-range-thumb]:bg-indigo-500"
         aria-label={`${task.title} 进度`}
       />
-      <span className="text-xs text-amber-600 font-medium tabular-nums shrink-0 w-8 text-right">
+      <span className="text-xs text-indigo-600 font-medium tabular-nums shrink-0 w-8 text-right">
         {value}%
       </span>
     </div>
@@ -388,7 +388,7 @@ export function DailyPlanCard({ plan, onUpdate, onTaskUpdate, onDelete }: DailyP
                         <span className="text-xs text-gray-500 tabular-nums">
                           总进度 {formatProgress(task.progress_after)}
                         </span>
-                        <span className="text-xs text-amber-600 font-medium tabular-nums">
+                        <span className="text-xs text-indigo-600 font-medium tabular-nums">
                           当日 {formatProgressDelta(task.progress_delta)}
                         </span>
                       </div>

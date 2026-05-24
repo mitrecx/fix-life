@@ -170,7 +170,7 @@ function OccurrenceTimeline({
                   <td className="px-3 py-2.5 text-right text-gray-700 tabular-nums">
                     {`${occ.progress_after ?? 0}%`}
                   </td>
-                  <td className="px-3 py-2.5 text-right text-amber-600 font-medium tabular-nums">
+                  <td className="px-3 py-2.5 text-right text-indigo-600 font-medium tabular-nums">
                     {(occ.progress_delta ?? 0) > 0
                       ? `+${occ.progress_delta}%`
                       : "0%"}
