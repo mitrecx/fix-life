@@ -7,6 +7,7 @@ import type { TaskContext } from "@/types/taskContext";
 import { TASK_CONTEXT, getTaskContextConfig } from "@/types/taskContext";
 import { TASK_PRIORITY, getTaskPriorityConfig } from "@/types/taskPriority";
 import type { TaskPriority } from "@/types/taskPriority";
+import { linkifyText } from "@/utils/linkifyText";
 
 const fieldInputClass =
   "w-full px-2 py-1.5 text-sm border border-gray-200 rounded-md bg-white focus:outline-none focus:ring-1 focus:ring-gray-400";
@@ -53,9 +54,11 @@ function DetailRow({ label, children }: { label: string; children: ReactNode }) 
 function ReadOnlyField({
   children,
   multiline = false,
+  onClick,
 }: {
   children: ReactNode;
   multiline?: boolean;
+  onClick?: () => void;
 }) {
   const hasContent =
     children !== null &&
@@ -64,12 +67,73 @@ function ReadOnlyField({
     !(typeof children === "string" && children.trim() === "");
   return (
     <div
+      role={onClick ? "button" : undefined}
+      tabIndex={onClick ? 0 : undefined}
+      onClick={onClick}
+      onKeyDown={
+        onClick
+          ? (e) => {
+              if (e.key === "Enter" || e.key === " ") {
+                e.preventDefault();
+                onClick();
+              }
+            }
+          : undefined
+      }
       className={`w-full px-2 py-1.5 text-sm text-gray-600 bg-gray-100 rounded-md border border-gray-100 break-words ${
         multiline ? "min-h-[4.5rem] whitespace-pre-wrap" : "min-h-[2.25rem] flex items-center"
-      }`}
+      }${onClick ? " cursor-text hover:border-gray-200" : ""}`}
     >
       {hasContent ? children : null}
     </div>
+  );
+}
+
+function DescriptionField({
+  value,
+  onChange,
+  editing,
+}: {
+  value: string;
+  onChange: (value: string) => void;
+  editing: boolean;
+}) {
+  const [isEditing, setIsEditing] = useState(false);
+  const trimmed = value.trim();
+
+  useEffect(() => {
+    if (!trimmed) {
+      setIsEditing(false);
+    }
+  }, [trimmed]);
+
+  if (!editing) {
+    return (
+      <ReadOnlyField multiline>
+        {trimmed ? linkifyText(value) : null}
+      </ReadOnlyField>
+    );
+  }
+
+  if (isEditing || !trimmed) {
+    return (
+      <textarea
+        value={value}
+        onChange={(e) => onChange(e.target.value)}
+        onBlur={() => setIsEditing(false)}
+        onFocus={() => setIsEditing(true)}
+        placeholder="可选描述"
+        rows={3}
+        autoFocus={isEditing}
+        className={`${fieldInputClass} resize-y min-h-[4.5rem]`}
+      />
+    );
+  }
+
+  return (
+    <ReadOnlyField multiline onClick={() => setIsEditing(true)}>
+      {linkifyText(value)}
+    </ReadOnlyField>
   );
 }
 
@@ -313,17 +377,11 @@ export function TaskFormPanel({
         )}
       </DetailRow>
       <DetailRow label="描述">
-        {editing ? (
-          <textarea
-            value={description}
-            onChange={(e) => onDescriptionChange(e.target.value)}
-            placeholder="可选描述"
-            rows={3}
-            className={`${fieldInputClass} resize-y min-h-[4.5rem]`}
-          />
-        ) : (
-          <ReadOnlyField multiline>{description.trim() || null}</ReadOnlyField>
-        )}
+        <DescriptionField
+          value={description}
+          onChange={onDescriptionChange}
+          editing={editing}
+        />
       </DetailRow>
       {!hideStatusFields && (
       <DetailRow label="状态">

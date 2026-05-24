@@ -167,14 +167,12 @@ function OccurrenceTimeline({
                     {DAILY_STATUS_LABELS[occ.daily_status ?? "todo"] ?? occ.daily_status}
                   </td>
                   <td className="px-3 py-2.5 text-right text-gray-700 tabular-nums">
-                    {occ.progress_after != null ? `${occ.progress_after}%` : "—"}
+                    {`${occ.progress_after ?? 0}%`}
                   </td>
                   <td className="px-3 py-2.5 text-right text-amber-600 font-medium tabular-nums">
-                    {occ.progress_delta != null && occ.progress_delta > 0
+                    {(occ.progress_delta ?? 0) > 0
                       ? `+${occ.progress_delta}%`
-                      : occ.progress_delta === 0
-                        ? "0%"
-                        : "—"}
+                      : "0%"}
                   </td>
                   <td className="px-3 py-2.5 text-right whitespace-nowrap">
                     <button

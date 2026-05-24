@@ -39,6 +39,7 @@ class DataRepairPreview(BaseModel):
     would_create_backlog: int = 0
     would_merge_backlogs: int = 0
     would_delete_duplicate_dailies: int = 0
+    would_backfill_progress_snapshots: int = 0
 
 
 class DataRepairRunRequest(BaseModel):
@@ -51,6 +52,7 @@ class DataRepairRunResult(BaseModel):
     created_backlog: int = 0
     merged_backlogs: int = 0
     deleted_duplicate_dailies: int = 0
+    backfilled_progress_snapshots: int = 0
     skipped: int = 0
 
 

@@ -72,9 +72,11 @@ const formatDate = (dateStr: string) => {
   return `${date.getMonth() + 1}月${date.getDate()}日`;
 };
 
+const formatProgress = (value: number | null | undefined) => `${value ?? 0}%`;
+
 const formatProgressDelta = (delta: number | null | undefined) => {
-  if (delta == null) return "—";
-  if (delta > 0) return `+${delta}%`;
+  const value = delta ?? 0;
+  if (value > 0) return `+${value}%`;
   return "0%";
 };
 
@@ -328,7 +330,7 @@ export function DailyPlanCard({ plan, onUpdate, onEdit, onDelete }: DailyPlanCar
                     {task.backlog_task_id && (
                       <div className="flex items-center gap-3 mt-1">
                         <span className="text-xs text-gray-500 tabular-nums">
-                          总进度 {task.progress_after != null ? `${task.progress_after}%` : "—"}
+                          总进度 {formatProgress(task.progress_after)}
                         </span>
                         <span className="text-xs text-amber-600 font-medium tabular-nums">
                           当日 {formatProgressDelta(task.progress_delta)}

@@ -49,6 +49,14 @@ class TaskDataRepairService:
             return 50
         return 0
 
+    def _count_missing_progress_snapshots(self, user_id: str) -> int:
+        return (
+            self.db.query(BacklogDailyLink)
+            .join(BacklogTask, BacklogTask.id == BacklogDailyLink.backlog_task_id)
+            .filter(BacklogTask.user_id == user_id, BacklogDailyLink.progress_after.is_(None))
+            .count()
+        )
+
     def _find_matching_backlog(
         self, user_id: str, title: str, plan_date
     ) -> Optional[BacklogTask]:
@@ -207,6 +215,7 @@ class TaskDataRepairService:
             would_create_backlog=would_create,
             would_merge_backlogs=would_merge,
             would_delete_duplicate_dailies=would_delete_dailies,
+            would_backfill_progress_snapshots=self._count_missing_progress_snapshots(user_id),
         )
 
     def _backfill_orphan(self, user_id: str, daily: DailyTask, plan: DailyPlan) -> str:
@@ -271,6 +280,7 @@ class TaskDataRepairService:
                 created_backlog=preview.would_create_backlog,
                 merged_backlogs=preview.would_merge_backlogs,
                 deleted_duplicate_dailies=preview.would_delete_duplicate_dailies,
+                backfilled_progress_snapshots=preview.would_backfill_progress_snapshots,
             )
 
         result = DataRepairRunResult(dry_run=False)
@@ -290,6 +300,10 @@ class TaskDataRepairService:
                 if self.merge_backlogs(user_id, keeper_id, str(backlog_id)):
                     result.merged_backlogs += 1
                     result.deleted_duplicate_dailies += 1
+
+        result.backfilled_progress_snapshots = self.backlog_service.backfill_progress_snapshots(
+            user_id
+        )
 
         self.db.commit()
         return result

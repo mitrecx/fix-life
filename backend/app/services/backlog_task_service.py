@@ -7,7 +7,7 @@ from sqlalchemy.orm import Session
 
 from app.models.backlog_daily_link import BacklogDailyLink
 from app.models.backlog_task import BacklogTask, BacklogTaskStatus
-from app.models.daily_plan import DailyTaskPriority, DailyTaskStatus
+from app.models.daily_plan import DailyTask, DailyTaskPriority, DailyTaskStatus
 from app.models.task_context import TaskContext
 from app.models.task_priority import TaskPriority
 from app.schemas.backlog_task import (
@@ -231,6 +231,20 @@ class BacklogTaskService:
             .first()
         )
 
+    def _resolve_link_progress(
+        self,
+        link: BacklogDailyLink,
+        *,
+        prev_after: int,
+        backlog_progress: int,
+    ) -> Tuple[int, int]:
+        if link.progress_after is not None:
+            after = link.progress_after
+        else:
+            after = backlog_progress
+        delta = max(0, after - prev_after)
+        return after, delta
+
     def batch_daily_task_progress(
         self, daily_task_ids: List[str]
     ) -> Dict[str, Dict[str, Optional[int]]]:
@@ -247,7 +261,7 @@ class BacklogTaskService:
             return {}
 
         backlog_ids = {link.backlog_task_id for link in links}
-        backlog_progress = {
+        backlog_progress_by_id = {
             str(row.id): row.progress
             for row in self.db.query(BacklogTask.id, BacklogTask.progress)
             .filter(BacklogTask.id.in_(backlog_ids))
@@ -278,18 +292,21 @@ class BacklogTaskService:
             prev_after = 0
             for backlog_link in links_by_backlog.get(str(link.backlog_task_id), []):
                 if backlog_link.id == link.id:
-                    if backlog_link.progress_after is not None:
-                        progress_after = backlog_link.progress_after
-                        progress_delta = max(0, backlog_link.progress_after - prev_after)
-                    else:
-                        progress_after = backlog_progress.get(str(link.backlog_task_id))
+                    current_backlog_progress = backlog_progress_by_id.get(
+                        str(link.backlog_task_id), 0
+                    ) or 0
+                    progress_after, progress_delta = self._resolve_link_progress(
+                        backlog_link,
+                        prev_after=prev_after,
+                        backlog_progress=current_backlog_progress,
+                    )
                     break
                 if backlog_link.progress_after is not None:
                     prev_after = backlog_link.progress_after
 
             result[daily_task_id] = {
-                "progress_after": progress_after,
-                "progress_delta": progress_delta,
+                "progress_after": progress_after if progress_after is not None else 0,
+                "progress_delta": progress_delta if progress_delta is not None else 0,
             }
 
         return result
@@ -332,21 +349,27 @@ class BacklogTaskService:
         sorted_asc = sorted(links, key=lambda link: link.plan_date)
         prev_after = 0
         built: List[BacklogOccurrence] = []
+        backlog_progress = 0
+        if sorted_asc:
+            backlog = self.get_task(str(sorted_asc[0].backlog_task_id))
+            backlog_progress = backlog.progress if backlog else 0
+
         for link in sorted_asc:
             occ = self._build_occurrence(link)
-            if link.progress_after is not None:
-                progress_delta = max(0, link.progress_after - prev_after)
-                prev_after = link.progress_after
-                built.append(
-                    occ.model_copy(
-                        update={
-                            "progress_after": link.progress_after,
-                            "progress_delta": progress_delta,
-                        }
-                    )
+            after, delta = self._resolve_link_progress(
+                link,
+                prev_after=prev_after,
+                backlog_progress=backlog_progress,
+            )
+            prev_after = after
+            built.append(
+                occ.model_copy(
+                    update={
+                        "progress_after": after,
+                        "progress_delta": delta,
+                    }
                 )
-            else:
-                built.append(occ)
+            )
         built.reverse()
         return built
 
@@ -561,6 +584,22 @@ class BacklogTaskService:
         if not task:
             return False
 
+        links = self.get_links_for_backlog(task_id)
+        daily_task_ids = {link.daily_task_id for link in links}
+
+        linked_dailies = (
+            self.db.query(DailyTask.id)
+            .filter(DailyTask.backlog_task_id == task.id)
+            .all()
+        )
+        daily_task_ids.update(row.id for row in linked_dailies)
+
+        for daily_task_id in daily_task_ids:
+            daily = self.db.query(DailyTask).filter(DailyTask.id == daily_task_id).first()
+            if daily is not None:
+                self.db.delete(daily)
+
+        self.db.flush()
         self.db.delete(task)
         self.db.commit()
         return True
@@ -675,6 +714,64 @@ class BacklogTaskService:
             self.db.refresh(daily_task)
         return daily_task
 
+    def backfill_progress_snapshots(self, user_id: Optional[str] = None) -> int:
+        """Backfill missing progress_after on daily links from backlog/daily state."""
+        query = self.db.query(BacklogTask)
+        if user_id is not None:
+            query = query.filter(BacklogTask.user_id == user_id)
+
+        updated = 0
+        for backlog in query.all():
+            links = (
+                self.db.query(BacklogDailyLink)
+                .filter(BacklogDailyLink.backlog_task_id == backlog.id)
+                .order_by(BacklogDailyLink.plan_date.asc())
+                .all()
+            )
+            if not links:
+                continue
+
+            last_backfill_link: Optional[BacklogDailyLink] = None
+            for link in reversed(links):
+                if link.progress_after is not None:
+                    break
+                daily = self.db.query(DailyTask).filter(DailyTask.id == link.daily_task_id).first()
+                if daily and daily.status == DailyTaskStatus.DONE:
+                    last_backfill_link = link
+                    break
+            if last_backfill_link is None:
+                for link in reversed(links):
+                    if link.progress_after is None:
+                        last_backfill_link = link
+                        break
+
+            prev_after = 0
+            for link in links:
+                if link.progress_after is not None:
+                    prev_after = link.progress_after
+                    continue
+
+                if last_backfill_link is not None and link.id == last_backfill_link.id:
+                    link.progress_after = max(prev_after, backlog.progress)
+                else:
+                    link.progress_after = prev_after
+                prev_after = link.progress_after
+                updated += 1
+
+        return updated
+
     def sync_from_daily_task(self, daily_task_id: str, *, is_done: bool) -> None:
-        """Legacy hook — backlog progress is updated explicitly by the client."""
-        return
+        """Record progress snapshot on the daily link when a day is marked done."""
+        if not is_done:
+            return
+
+        link = self.get_link_by_daily_task(daily_task_id)
+        if link is None:
+            return
+
+        backlog = self.get_task(str(link.backlog_task_id))
+        if backlog is None:
+            return
+
+        link.progress_after = backlog.progress
+        self.db.commit()
