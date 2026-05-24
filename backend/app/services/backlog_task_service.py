@@ -385,6 +385,28 @@ class BacklogTaskService:
         if link is not None:
             link.progress_after = new_progress
 
+    def _sync_linked_daily_status_for_plan_date(
+        self,
+        backlog: BacklogTask,
+        *,
+        plan_date: date,
+        progress: int,
+    ) -> None:
+        """Keep the linked daily occurrence in sync when progress is edited on daily plan UI."""
+        link = self.get_link_for_date(str(backlog.id), plan_date)
+        if link is None:
+            return
+
+        daily_task = (
+            self.db.query(DailyTask).filter(DailyTask.id == link.daily_task_id).first()
+        )
+        if daily_task is None:
+            return
+
+        new_status = DailyTaskStatus.DONE if progress >= 100 else DailyTaskStatus.TODO
+        if daily_task.status != new_status:
+            daily_task.status = new_status
+
     def to_response(
         self, task: BacklogTask, *, possible_duplicate_count: int = 0
     ) -> BacklogTaskResponse:
@@ -574,6 +596,12 @@ class BacklogTaskService:
                 task.progress,
                 plan_date=progress_plan_date,
             )
+            if progress_plan_date is not None:
+                self._sync_linked_daily_status_for_plan_date(
+                    task,
+                    plan_date=progress_plan_date,
+                    progress=task.progress,
+                )
 
         self.db.commit()
         self.db.refresh(task)

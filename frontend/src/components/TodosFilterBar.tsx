@@ -100,6 +100,9 @@ export function TodosFilterBar({
             type="search"
             value={keyword}
             onChange={(e) => onChange({ q: e.target.value })}
+            onKeyDown={(e) => {
+              if (e.key === "Enter") onSearch();
+            }}
             placeholder="搜索标题…"
             className={`w-40 sm:w-52 ${selectClassName}`}
           />

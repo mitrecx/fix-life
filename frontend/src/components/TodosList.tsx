@@ -558,11 +558,49 @@ export function TodosList() {
     setDraftFilters((prev) => ({ ...prev, ...patch }));
   }, []);
 
+  const filterApplyTimerRef = useRef<ReturnType<typeof setTimeout>>();
+
   const applySearch = useCallback(() => {
+    if (filterApplyTimerRef.current) {
+      clearTimeout(filterApplyTimerRef.current);
+      filterApplyTimerRef.current = undefined;
+    }
     setSearchParams(filtersToSearchParams(draftFilters, searchParams.get("task")), { replace: true });
   }, [draftFilters, searchParams, setSearchParams]);
 
+  useEffect(() => {
+    const appliedKey = filterSearchParamKey(searchParams);
+    const draftKey = filterSearchParamKey(filtersToSearchParams(draftFilters));
+    if (draftKey === appliedKey) return;
+
+    const appliedFilters = parseFilters(searchParams);
+    const onlyKeywordDirty =
+      (draftFilters.q ?? "") !== (appliedFilters.q ?? "") &&
+      draftFilters.context === appliedFilters.context &&
+      draftFilters.priority === appliedFilters.priority &&
+      draftFilters.timeField === appliedFilters.timeField &&
+      draftFilters.dateFrom === appliedFilters.dateFrom &&
+      draftFilters.dateTo === appliedFilters.dateTo;
+    const delay = onlyKeywordDirty ? 350 : 0;
+
+    filterApplyTimerRef.current = setTimeout(() => {
+      filterApplyTimerRef.current = undefined;
+      setSearchParams(filtersToSearchParams(draftFilters, searchParams.get("task")), { replace: true });
+    }, delay);
+
+    return () => {
+      if (filterApplyTimerRef.current) {
+        clearTimeout(filterApplyTimerRef.current);
+        filterApplyTimerRef.current = undefined;
+      }
+    };
+  }, [draftFilters, searchParams, setSearchParams]);
+
   const resetFilters = useCallback(() => {
+    if (filterApplyTimerRef.current) {
+      clearTimeout(filterApplyTimerRef.current);
+      filterApplyTimerRef.current = undefined;
+    }
     setDraftFilters(DEFAULT_FILTERS);
     setSearchParams(filtersToSearchParams(DEFAULT_FILTERS, searchParams.get("task")), { replace: true });
   }, [searchParams, setSearchParams]);

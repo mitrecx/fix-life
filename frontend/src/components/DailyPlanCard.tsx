@@ -13,6 +13,7 @@ import { systemSettingsService } from "@/services/systemSettingsService";
 interface DailyPlanCardProps {
   plan: DailyPlan;
   onUpdate: () => void;
+  onTaskUpdate: (task: DailyTask) => void;
   onEdit: () => void;
   onDelete: () => void;
 }
@@ -196,7 +197,7 @@ function DailyTaskProgressSlider({
   );
 }
 
-export function DailyPlanCard({ plan, onUpdate, onEdit, onDelete }: DailyPlanCardProps) {
+export function DailyPlanCard({ plan, onUpdate, onTaskUpdate, onEdit, onDelete }: DailyPlanCardProps) {
   const [addModalOpen, setAddModalOpen] = useState(false);
   const [isTaskSectionCollapsed, setIsTaskSectionCollapsed] = useState(false);
   const [showSummaryModal, setShowSummaryModal] = useState(false);
@@ -240,19 +241,22 @@ export function DailyPlanCard({ plan, onUpdate, onEdit, onDelete }: DailyPlanCar
   const handleLinkedProgressCommit = async (task: DailyTask, progress: number) => {
     if (!task.backlog_task_id) return;
 
+    const past = Math.max(0, (task.progress_after ?? 0) - (task.progress_delta ?? 0));
+    const progressDelta = Math.max(0, progress - past);
+    const nextStatus: DailyTaskStatus = progress >= 100 ? "done" : "todo";
+
     try {
       await backlogTaskService.update(task.backlog_task_id, {
         progress,
         progress_plan_date: plan.plan_date,
       });
 
-      if (progress >= 100 && task.status !== "done") {
-        await dailyPlanService.updateTaskStatus(task.id, "done");
-      } else if (progress < 100 && task.status === "done") {
-        await dailyPlanService.updateTaskStatus(task.id, "todo");
-      }
-
-      onUpdate();
+      onTaskUpdate({
+        ...task,
+        status: nextStatus,
+        progress_after: progress,
+        progress_delta: progressDelta,
+      });
     } catch (error) {
       console.error("Failed to update task progress:", error);
       message.error("更新进度失败");

@@ -1,7 +1,7 @@
 import { useState, useEffect } from "react";
 import { Plus, Download, X, Copy } from "lucide-react";
 import { Modal, message } from "antd";
-import type { DailyPlan, DailyPlanCreate, DailyPlanUpdate } from "@/types/dailyPlan";
+import type { DailyPlan, DailyPlanCreate, DailyPlanUpdate, DailyTask } from "@/types/dailyPlan";
 import type { DailySummary } from "@/types/dailySummary";
 import { dailyPlanService } from "@/services/dailyPlanService";
 import { dailySummaryService } from "@/services/dailySummaryService";
@@ -263,6 +263,33 @@ export function DailyPlansList({ focusDate }: { focusDate?: string | null }) {
     } finally {
       setLoading(false);
     }
+  };
+
+  const patchDailyTask = (planId: string, updatedTask: DailyTask) => {
+    setPlans((prev) =>
+      sortPlans(
+        prev.map((plan) => {
+          if (plan.id !== planId) return plan;
+
+          const previousTask = plan.daily_tasks.find((t) => t.id === updatedTask.id);
+          const daily_tasks = plan.daily_tasks.map((t) =>
+            t.id === updatedTask.id ? updatedTask : t
+          );
+
+          let completed_tasks = plan.completed_tasks;
+          if (previousTask?.status !== "done" && updatedTask.status === "done") {
+            completed_tasks += 1;
+          } else if (previousTask?.status === "done" && updatedTask.status !== "done") {
+            completed_tasks -= 1;
+          }
+
+          const completion_rate =
+            plan.total_tasks > 0 ? (completed_tasks / plan.total_tasks) * 100 : 0;
+
+          return { ...plan, daily_tasks, completed_tasks, completion_rate };
+        })
+      )
+    );
   };
 
   const handleCreate = async (data: DailyPlanCreate | DailyPlanUpdate) => {
@@ -564,6 +591,7 @@ export function DailyPlansList({ focusDate }: { focusDate?: string | null }) {
                 key={plan.id}
                 plan={plan}
                 onUpdate={loadPlans}
+                onTaskUpdate={(task) => patchDailyTask(plan.id, task)}
                 onEdit={() => setEditingPlan(plan)}
                 onDelete={() => handleDelete(plan.id)}
               />
