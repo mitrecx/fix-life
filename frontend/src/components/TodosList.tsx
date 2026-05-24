@@ -1,5 +1,5 @@
-import { useState, useEffect, useCallback, useMemo } from "react";
-import { Trash2, Calendar, Undo2, Plus, SquarePen } from "lucide-react";
+import { useState, useEffect, useCallback, useMemo, type ReactNode } from "react";
+import { Trash2, Calendar, Undo2, SquarePen } from "lucide-react";
 import { DatePicker, Modal, message } from "antd";
 import type { Dayjs } from "dayjs";
 import dayjs from "dayjs";
@@ -32,7 +32,6 @@ const DEFAULT_FILTERS: BacklogListFilters = {
   q: "",
   context: "all",
   timeField: "created",
-  datePreset: "all",
 };
 
 function sortActiveTasks(tasks: BacklogTask[]): BacklogTask[] {
@@ -62,7 +61,6 @@ function parseFilters(params: URLSearchParams): BacklogListFilters {
     q: params.get("q") ?? "",
     context,
     timeField: backlogTaskService.parseTimeField(params.get("time_field")),
-    datePreset: backlogTaskService.parseDatePreset(params.get("date_preset")),
     dateFrom: params.get("date_from") ?? undefined,
     dateTo: params.get("date_to") ?? undefined,
   };
@@ -73,14 +71,10 @@ function filtersToSearchParams(filters: BacklogListFilters): URLSearchParams {
   const q = filters.q?.trim();
   if (q) params.set("q", q);
   if (filters.context && filters.context !== "all") params.set("context", filters.context);
-  const preset = filters.datePreset ?? "all";
-  if (preset !== "all") {
-    params.set("date_preset", preset);
+  if (backlogTaskService.hasTimeRangeFilter(filters)) {
     params.set("time_field", filters.timeField ?? "created");
-    if (preset === "custom") {
-      if (filters.dateFrom) params.set("date_from", filters.dateFrom);
-      if (filters.dateTo) params.set("date_to", filters.dateTo);
-    }
+    if (filters.dateFrom) params.set("date_from", filters.dateFrom);
+    if (filters.dateTo) params.set("date_to", filters.dateTo);
   }
   return params;
 }
@@ -99,17 +93,15 @@ function taskMatchesFilters(task: BacklogTask, filters: BacklogListFilters): boo
     return false;
   }
 
-  const preset = filters.datePreset ?? "all";
-  if (preset === "all") return true;
+  if (!backlogTaskService.hasTimeRangeFilter(filters)) return true;
 
   const timeField = filters.timeField ?? "created";
   const raw = taskDateForField(task, timeField);
   if (!raw) return false;
 
-  const { dateFrom, dateTo } = backlogTaskService.resolveDateRange(filters);
   const d = dayjs(raw).format("YYYY-MM-DD");
-  if (dateFrom && d < dateFrom) return false;
-  if (dateTo && d > dateTo) return false;
+  if (filters.dateFrom && d < filters.dateFrom) return false;
+  if (filters.dateTo && d > filters.dateTo) return false;
   return true;
 }
 
@@ -126,81 +118,243 @@ function formatDateTime(dateStr: string) {
   return dayjs(dateStr).format("M/D HH:mm");
 }
 
-type TaskFormMode = "create" | "edit";
+function formatFullDateTime(dateStr: string) {
+  return dayjs(dateStr).format("YYYY-MM-DD HH:mm");
+}
 
-interface TodoFormFieldsProps {
+const STATUS_LABELS: Record<BacklogTask["status"], string> = {
+  pending: "待处理",
+  scheduled: "已安排",
+  done: "已完成",
+  cancelled: "已取消",
+};
+
+function DetailRow({ label, children }: { label: string; children: ReactNode }) {
+  return (
+    <div className="flex gap-3 py-2.5 border-b border-gray-100 last:border-0">
+      <dt className="text-sm text-gray-500 w-20 shrink-0">{label}</dt>
+      <dd className="text-sm text-gray-900 flex-1 break-words min-w-0">{children}</dd>
+    </div>
+  );
+}
+
+function ReadOnlyField({
+  children,
+  multiline = false,
+}: {
+  children: ReactNode;
+  multiline?: boolean;
+}) {
+  const hasContent =
+    children !== null &&
+    children !== undefined &&
+    children !== false &&
+    !(typeof children === "string" && children.trim() === "");
+  return (
+    <div
+      className={`w-full px-2 py-1.5 text-sm text-gray-600 bg-gray-100 rounded-md border border-gray-100 break-words ${
+        multiline ? "min-h-[4.5rem] whitespace-pre-wrap" : "min-h-[2.25rem] flex items-center"
+      }`}
+    >
+      {hasContent ? children : null}
+    </div>
+  );
+}
+
+const fieldInputClass =
+  "w-full px-2 py-1.5 text-sm border border-gray-200 rounded-md bg-white focus:outline-none focus:ring-1 focus:ring-gray-400";
+
+type TodoPanelMode = "view" | "edit" | "create";
+
+interface TodoPanelProps {
+  mode: TodoPanelMode;
+  task?: BacklogTask;
   title: string;
+  description: string;
   context: TaskContext;
   priority: TaskPriority;
   onTitleChange: (value: string) => void;
+  onDescriptionChange: (value: string) => void;
   onContextChange: (value: TaskContext) => void;
   onPriorityChange: (value: TaskPriority) => void;
   onSubmit: () => void;
 }
 
-function TodoFormFields({
+function TodoPanel({
+  mode,
+  task,
   title,
+  description,
   context,
   priority,
   onTitleChange,
+  onDescriptionChange,
   onContextChange,
   onPriorityChange,
   onSubmit,
-}: TodoFormFieldsProps) {
+}: TodoPanelProps) {
+  const editing = mode === "edit" || mode === "create";
+
   return (
-    <div className="space-y-4 py-1">
-      <input
-        type="text"
-        value={title}
-        onChange={(e) => onTitleChange(e.target.value)}
-        placeholder="待办标题"
-        autoFocus
-        onKeyDown={(e) => {
-          if (e.key === "Enter" && title.trim()) onSubmit();
-        }}
-        className="w-full px-3 py-2 text-sm border border-gray-200 rounded-md focus:outline-none focus:ring-1 focus:ring-gray-400"
-      />
-      <div>
-        <p className="text-xs text-gray-500 mb-1.5">优先级</p>
-        <div className="flex items-center gap-1">
-          {TASK_PRIORITY.map((p) => (
-            <button
-              key={p.value}
-              type="button"
-              onClick={() => onPriorityChange(p.value)}
-              className={`px-2.5 py-1 text-xs rounded-md border transition-all ${
-                priority === p.value
-                  ? "border-gray-800 text-white"
-                  : "border-gray-200 text-gray-600 hover:border-gray-300"
-              }`}
-              style={
-                priority === p.value ? { backgroundColor: p.color, borderColor: p.color } : undefined
-              }
-            >
-              {p.label}
-            </button>
-          ))}
-        </div>
-      </div>
-      <div>
-        <p className="text-xs text-gray-500 mb-1.5">分类</p>
-        <div className="flex items-center gap-1">
-          {TASK_CONTEXT.map((c) => (
-            <button
-              key={c.value}
-              type="button"
-              onClick={() => onContextChange(c.value)}
-              className={`px-2.5 py-1 text-xs rounded-md border transition-all ${
-                context === c.value
-                  ? "border-gray-800 bg-gray-800 text-white"
-                  : "border-gray-200 text-gray-600 hover:border-gray-300"
-              }`}
-            >
-              {c.label}
-            </button>
-          ))}
-        </div>
-      </div>
+    <dl className="py-1">
+      <DetailRow label="标题">
+        {editing ? (
+          <input
+            type="text"
+            value={title}
+            onChange={(e) => onTitleChange(e.target.value)}
+            placeholder="待办标题"
+            autoFocus={mode === "create" || mode === "edit"}
+            onKeyDown={(e) => {
+              if (e.key === "Enter" && title.trim()) onSubmit();
+            }}
+            className={fieldInputClass}
+          />
+        ) : (
+          <ReadOnlyField>{task?.title}</ReadOnlyField>
+        )}
+      </DetailRow>
+      <DetailRow label="描述">
+        {editing ? (
+          <textarea
+            value={description}
+            onChange={(e) => onDescriptionChange(e.target.value)}
+            placeholder="可选描述"
+            rows={3}
+            className={`${fieldInputClass} resize-y min-h-[4.5rem]`}
+          />
+        ) : (
+          <ReadOnlyField multiline>{task?.description?.trim() || null}</ReadOnlyField>
+        )}
+      </DetailRow>
+      <DetailRow label="状态">
+        <ReadOnlyField>
+          {task ? STATUS_LABELS[task.status] : STATUS_LABELS.pending}
+        </ReadOnlyField>
+      </DetailRow>
+      <DetailRow label="优先级">
+        {editing ? (
+          <PrioritySelector value={priority} onChange={onPriorityChange} />
+        ) : (
+          <ReadOnlyField>{task && <PriorityBadge priority={task.priority} />}</ReadOnlyField>
+        )}
+      </DetailRow>
+      <DetailRow label="分类">
+        {editing ? (
+          <ContextSelector value={context} onChange={onContextChange} />
+        ) : (
+          <ReadOnlyField>{task && <ContextBadge context={task.context} />}</ReadOnlyField>
+        )}
+      </DetailRow>
+      <DetailRow label="创建时间">
+        <ReadOnlyField>
+          {task ? formatFullDateTime(task.created_at) : null}
+        </ReadOnlyField>
+      </DetailRow>
+      <DetailRow label="安排日期">
+        <ReadOnlyField>
+          {task?.scheduled_date ? dayjs(task.scheduled_date).format("YYYY-MM-DD") : null}
+        </ReadOnlyField>
+      </DetailRow>
+      <DetailRow label="完成时间">
+        <ReadOnlyField>
+          {task?.completed_at ? formatFullDateTime(task.completed_at) : null}
+        </ReadOnlyField>
+      </DetailRow>
+      <DetailRow label="更新时间">
+        <ReadOnlyField>
+          {task ? formatFullDateTime(task.updated_at) : null}
+        </ReadOnlyField>
+      </DetailRow>
+    </dl>
+  );
+}
+
+function PriorityBadge({ priority }: { priority: TaskPriority }) {
+  const config = getTaskPriorityConfig(priority);
+  if (!config) return null;
+  return (
+    <span
+      className="inline-block text-xs px-1.5 py-0.5 rounded font-medium"
+      style={{
+        backgroundColor: `${config.color}18`,
+        color: config.color,
+      }}
+    >
+      {config.label}
+    </span>
+  );
+}
+
+function ContextBadge({ context }: { context: TaskContext }) {
+  const config = getTaskContextConfig(context);
+  if (!config) return null;
+  return (
+    <span
+      className="inline-block text-xs px-1.5 py-0.5 rounded font-medium"
+      style={{
+        backgroundColor: `${config.color}12`,
+        color: config.color,
+      }}
+    >
+      {config.label}
+    </span>
+  );
+}
+
+function PrioritySelector({
+  value,
+  onChange,
+}: {
+  value: TaskPriority;
+  onChange: (value: TaskPriority) => void;
+}) {
+  return (
+    <div className="flex items-center flex-wrap gap-1">
+      {TASK_PRIORITY.map((p) => (
+        <button
+          key={p.value}
+          type="button"
+          onClick={() => onChange(p.value)}
+          className={`px-2.5 py-1 text-xs rounded-md border transition-all ${
+            value === p.value
+              ? "border-gray-800 text-white"
+              : "border-gray-200 text-gray-600 hover:border-gray-300"
+          }`}
+          style={
+            value === p.value ? { backgroundColor: p.color, borderColor: p.color } : undefined
+          }
+        >
+          {p.label}
+        </button>
+      ))}
+    </div>
+  );
+}
+
+function ContextSelector({
+  value,
+  onChange,
+}: {
+  value: TaskContext;
+  onChange: (value: TaskContext) => void;
+}) {
+  return (
+    <div className="flex items-center flex-wrap gap-1">
+      {TASK_CONTEXT.map((c) => (
+        <button
+          key={c.value}
+          type="button"
+          onClick={() => onChange(c.value)}
+          className={`px-2.5 py-1 text-xs rounded-md border transition-all ${
+            value === c.value
+              ? "border-gray-800 bg-gray-800 text-white"
+              : "border-gray-200 text-gray-600 hover:border-gray-300"
+          }`}
+        >
+          {c.label}
+        </button>
+      ))}
     </div>
   );
 }
@@ -213,6 +367,7 @@ interface KanbanCardProps {
   onSchedule: (task: BacklogTask) => void;
   onUnschedule: (task: BacklogTask) => void;
   onPriorityChange: (task: BacklogTask, priority: TaskPriority) => void;
+  onView: (task: BacklogTask) => void;
   onEdit: (task: BacklogTask) => void;
   onDelete: (task: BacklogTask) => void;
 }
@@ -225,6 +380,7 @@ function KanbanCard({
   onSchedule,
   onUnschedule,
   onPriorityChange,
+  onView,
   onEdit,
   onDelete,
 }: KanbanCardProps) {
@@ -244,13 +400,14 @@ function KanbanCard({
       }`}
     >
       <div className="flex items-start gap-1.5">
-        <div className="flex-1 min-w-0">
+        <div
+          className="flex-1 min-w-0 cursor-pointer"
+          onClick={() => onView(task)}
+        >
           <p
-            className={`text-sm leading-snug break-words cursor-pointer hover:text-gray-600 ${
+            className={`text-sm leading-snug break-words hover:text-gray-600 ${
               column === "done" ? "text-gray-500 hover:text-gray-400" : "text-gray-800"
             }`}
-            onClick={() => onEdit(task)}
-            title="点击编辑"
           >
             {task.title}
           </p>
@@ -259,7 +416,8 @@ function KanbanCard({
               <button
                 type="button"
                 title="点击切换优先级"
-                onClick={() => {
+                onClick={(e) => {
+                  e.stopPropagation();
                   const idx = TASK_PRIORITY.findIndex((p) => p.value === task.priority);
                   const next = TASK_PRIORITY[(idx + 1) % TASK_PRIORITY.length].value;
                   onPriorityChange(task, next);
@@ -314,7 +472,10 @@ function KanbanCard({
         <div className="flex items-center gap-1 mt-1.5 pt-1 border-t border-gray-100">
           <button
             type="button"
-            onClick={() => onEdit(task)}
+            onClick={(e) => {
+              e.stopPropagation();
+              onEdit(task);
+            }}
             className="flex items-center gap-0.5 px-1.5 py-0.5 text-[10px] text-indigo-600 hover:bg-indigo-50 rounded"
           >
             <SquarePen size={11} />
@@ -322,7 +483,10 @@ function KanbanCard({
           </button>
           <button
             type="button"
-            onClick={() => onSchedule(task)}
+            onClick={(e) => {
+              e.stopPropagation();
+              onSchedule(task);
+            }}
             className="flex items-center gap-0.5 px-1.5 py-0.5 text-[10px] text-blue-600 hover:bg-blue-50 rounded"
           >
             <Calendar size={11} />
@@ -331,7 +495,10 @@ function KanbanCard({
           {isScheduled && (
             <button
               type="button"
-              onClick={() => onUnschedule(task)}
+              onClick={(e) => {
+                e.stopPropagation();
+                onUnschedule(task);
+              }}
               className="flex items-center gap-0.5 px-1.5 py-0.5 text-[10px] text-amber-600 hover:bg-amber-50 rounded"
             >
               <Undo2 size={11} />
@@ -340,7 +507,10 @@ function KanbanCard({
           )}
           <button
             type="button"
-            onClick={() => onDelete(task)}
+            onClick={(e) => {
+              e.stopPropagation();
+              onDelete(task);
+            }}
             className="flex items-center gap-0.5 px-1.5 py-0.5 text-[10px] text-red-500 hover:bg-red-50 rounded ml-auto"
           >
             <Trash2 size={11} />
@@ -353,7 +523,10 @@ function KanbanCard({
         <div className="flex items-center gap-1 mt-1.5 pt-1 border-t border-gray-100">
           <button
             type="button"
-            onClick={() => onEdit(task)}
+            onClick={(e) => {
+              e.stopPropagation();
+              onEdit(task);
+            }}
             className="flex items-center gap-0.5 px-1.5 py-0.5 text-[10px] text-indigo-600 hover:bg-indigo-50 rounded"
           >
             <SquarePen size={11} />
@@ -361,7 +534,10 @@ function KanbanCard({
           </button>
           <button
             type="button"
-            onClick={() => onDelete(task)}
+            onClick={(e) => {
+              e.stopPropagation();
+              onDelete(task);
+            }}
             className="flex items-center gap-0.5 px-1.5 py-0.5 text-[10px] text-red-500 hover:bg-red-50 rounded ml-auto"
           >
             <Trash2 size={11} />
@@ -382,13 +558,18 @@ export function TodosList() {
   const [doneTasks, setDoneTasks] = useState<BacklogTask[]>([]);
   const [loading, setLoading] = useState(true);
   const [formOpen, setFormOpen] = useState(false);
-  const [formMode, setFormMode] = useState<TaskFormMode>("create");
-  const [editingTask, setEditingTask] = useState<BacklogTask | null>(null);
   const [formTitle, setFormTitle] = useState("");
+  const [formDescription, setFormDescription] = useState("");
   const [formContext, setFormContext] = useState<TaskContext>(DEFAULT_TASK_CONTEXT);
   const [formPriority, setFormPriority] = useState<TaskPriority>(DEFAULT_TASK_PRIORITY);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [schedulingTask, setSchedulingTask] = useState<BacklogTask | null>(null);
+  const [viewingTask, setViewingTask] = useState<BacklogTask | null>(null);
+  const [detailEditing, setDetailEditing] = useState(false);
+  const [detailTitle, setDetailTitle] = useState("");
+  const [detailContext, setDetailContext] = useState<TaskContext>(DEFAULT_TASK_CONTEXT);
+  const [detailPriority, setDetailPriority] = useState<TaskPriority>(DEFAULT_TASK_PRIORITY);
+  const [detailDescription, setDetailDescription] = useState("");
   const [scheduleDate, setScheduleDate] = useState<Dayjs>(dayjs());
   const [dragging, setDragging] = useState<{ task: BacklogTask; from: KanbanColumnId } | null>(null);
   const [dropTarget, setDropTarget] = useState<KanbanColumnId | null>(null);
@@ -463,32 +644,67 @@ export function TodosList() {
     loadTasks();
   }, [loadTasks]);
 
-  const resetForm = useCallback(() => {
+  const resetCreateForm = useCallback(() => {
     setFormTitle("");
+    setFormDescription("");
     setFormContext(DEFAULT_TASK_CONTEXT);
     setFormPriority(DEFAULT_TASK_PRIORITY);
-    setEditingTask(null);
-    setFormMode("create");
+  }, []);
+
+  const resetDetailDraft = useCallback(() => {
+    setDetailEditing(false);
+    setDetailTitle("");
+    setDetailContext(DEFAULT_TASK_CONTEXT);
+    setDetailPriority(DEFAULT_TASK_PRIORITY);
+    setDetailDescription("");
+  }, []);
+
+  const populateDetailDraft = useCallback((task: BacklogTask) => {
+    setDetailTitle(task.title);
+    setDetailContext(task.context);
+    setDetailPriority(task.priority);
+    setDetailDescription(task.description ?? "");
   }, []);
 
   const openCreateForm = useCallback(() => {
-    resetForm();
+    resetCreateForm();
     setFormOpen(true);
-  }, [resetForm]);
+  }, [resetCreateForm]);
 
-  const openEditForm = useCallback((task: BacklogTask) => {
-    setFormMode("edit");
-    setEditingTask(task);
-    setFormTitle(task.title);
-    setFormContext(task.context);
-    setFormPriority(task.priority);
-    setFormOpen(true);
-  }, []);
+  const openTaskDetail = useCallback(
+    (task: BacklogTask, editing = false) => {
+      setViewingTask(task);
+      populateDetailDraft(task);
+      setDetailEditing(editing);
+    },
+    [populateDetailDraft]
+  );
 
-  const closeForm = useCallback(() => {
+  const closeTaskDetail = useCallback(() => {
+    setViewingTask(null);
+    resetDetailDraft();
+  }, [resetDetailDraft]);
+
+  const startDetailEdit = useCallback(() => {
+    if (!viewingTask) return;
+    populateDetailDraft(viewingTask);
+    setDetailEditing(true);
+  }, [populateDetailDraft, viewingTask]);
+
+  const closeCreateForm = useCallback(() => {
     setFormOpen(false);
-    resetForm();
-  }, [resetForm]);
+    resetCreateForm();
+  }, [resetCreateForm]);
+
+  useEffect(() => {
+    if (!viewingTask || detailEditing) return;
+    const latest = [...activeTasks, ...doneTasks].find((t) => t.id === viewingTask.id);
+    if (latest) {
+      setViewingTask(latest);
+    } else {
+      closeTaskDetail();
+    }
+  }, [activeTasks, doneTasks, viewingTask, detailEditing, closeTaskDetail]);
 
   const applyUpdatedTask = useCallback(
     (updated: BacklogTask) => {
@@ -501,41 +717,54 @@ export function TodosList() {
     [apiFilters, applyTaskToColumns, removeTaskFromColumns]
   );
 
-  const handleFormSubmit = async () => {
+  const handleCreateSubmit = async () => {
     if (!formTitle.trim() || isSubmitting) return;
 
     setIsSubmitting(true);
-    const snapshot = editingTask;
+    const trimmedDescription = formDescription.trim();
     try {
-      if (formMode === "create") {
-        const created = await backlogTaskService.create({
-          title: formTitle.trim(),
-          context: formContext,
-          priority: formPriority,
-        });
-        closeForm();
-        applyUpdatedTask(created);
-      } else if (editingTask) {
-        applyUpdatedTask({
-          ...editingTask,
-          title: formTitle.trim(),
-          context: formContext,
-          priority: formPriority,
-        });
-        const updated = await backlogTaskService.update(editingTask.id, {
-          title: formTitle.trim(),
-          context: formContext,
-          priority: formPriority,
-        });
-        closeForm();
-        applyUpdatedTask(updated);
-      }
+      const created = await backlogTaskService.create({
+        title: formTitle.trim(),
+        context: formContext,
+        priority: formPriority,
+        description: trimmedDescription || undefined,
+      });
+      closeCreateForm();
+      applyUpdatedTask(created);
     } catch (error) {
-      if (formMode === "edit" && snapshot) {
-        applyTaskToColumns(snapshot);
-      }
       console.error("Failed to save backlog task:", error);
-      message.error(formMode === "create" ? "添加失败" : "保存失败");
+      message.error("添加失败");
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
+
+  const handleDetailSave = async () => {
+    if (!viewingTask || !detailTitle.trim() || isSubmitting) return;
+
+    setIsSubmitting(true);
+    const snapshot = viewingTask;
+    const trimmedDescription = detailDescription.trim();
+    try {
+      applyUpdatedTask({
+        ...viewingTask,
+        title: detailTitle.trim(),
+        context: detailContext,
+        priority: detailPriority,
+        description: trimmedDescription || undefined,
+      });
+      const updated = await backlogTaskService.update(viewingTask.id, {
+        title: detailTitle.trim(),
+        context: detailContext,
+        priority: detailPriority,
+        description: trimmedDescription || undefined,
+      });
+      applyUpdatedTask(updated);
+      closeTaskDetail();
+    } catch (error) {
+      applyTaskToColumns(snapshot);
+      console.error("Failed to save backlog task:", error);
+      message.error("保存失败");
     } finally {
       setIsSubmitting(false);
     }
@@ -680,21 +909,13 @@ export function TodosList() {
         matchCount={matchCount}
         onChange={updateFilters}
         onClear={clearFilters}
+        onAdd={openCreateForm}
       />
-
-      <button
-        type="button"
-        onClick={() => openCreateForm()}
-        className="inline-flex items-center gap-1.5 px-3 py-1.5 mt-2 text-xs font-medium text-white bg-gray-900 rounded-md hover:bg-gray-800 shrink-0 self-start"
-      >
-        <Plus size={14} />
-        新增待办
-      </button>
 
       {loading ? (
         <div className="flex-1 flex items-center justify-center text-gray-400 text-sm">加载中...</div>
       ) : (
-        <div className="flex-1 flex gap-2.5 min-h-0 mt-2.5">
+        <div className="flex-1 flex gap-2.5 min-h-0 mt-4">
           {COLUMNS.map((col) => {
             const tasks = columnTasks[col.id];
             const isDropHighlight = dropTarget === col.id && dragging && dragging.from !== col.id;
@@ -739,7 +960,8 @@ export function TodosList() {
                         onSchedule={openSchedule}
                         onUnschedule={handleRevertToInbox}
                         onPriorityChange={handlePriorityChange}
-                        onEdit={openEditForm}
+                        onView={(task) => openTaskDetail(task)}
+                        onEdit={(task) => openTaskDetail(task, true)}
                         onDelete={handleDelete}
                       />
                     ))
@@ -752,23 +974,91 @@ export function TodosList() {
       )}
 
       <Modal
-        title={formMode === "create" ? "新增待办" : "编辑待办"}
+        title="待办详情"
+        open={!!viewingTask}
+        onCancel={closeTaskDetail}
+        footer={
+          viewingTask
+            ? detailEditing
+              ? [
+                  <button
+                    key="save"
+                    type="button"
+                    disabled={!detailTitle.trim() || isSubmitting}
+                    onClick={handleDetailSave}
+                    className="px-4 py-1.5 text-sm font-medium text-white bg-indigo-600 rounded-lg hover:bg-indigo-700 disabled:opacity-50 disabled:cursor-not-allowed"
+                  >
+                    {isSubmitting ? "保存中…" : "保存"}
+                  </button>,
+                  <button
+                    key="cancel"
+                    type="button"
+                    disabled={isSubmitting}
+                    onClick={closeTaskDetail}
+                    className="px-4 py-1.5 text-sm font-medium text-gray-600 bg-gray-100 rounded-lg hover:bg-gray-200 ml-2 disabled:opacity-50"
+                  >
+                    取消
+                  </button>,
+                ]
+              : [
+                  <button
+                    key="edit"
+                    type="button"
+                    onClick={startDetailEdit}
+                    className="px-4 py-1.5 text-sm font-medium text-white bg-indigo-600 rounded-lg hover:bg-indigo-700"
+                  >
+                    编辑
+                  </button>,
+                  <button
+                    key="close"
+                    type="button"
+                    onClick={closeTaskDetail}
+                    className="px-4 py-1.5 text-sm font-medium text-gray-600 bg-gray-100 rounded-lg hover:bg-gray-200 ml-2"
+                  >
+                    关闭
+                  </button>,
+                ]
+            : null
+        }
+      >
+        {viewingTask && (
+          <TodoPanel
+            mode={detailEditing ? "edit" : "view"}
+            task={viewingTask}
+            title={detailTitle}
+            description={detailDescription}
+            context={detailContext}
+            priority={detailPriority}
+            onTitleChange={setDetailTitle}
+            onDescriptionChange={setDetailDescription}
+            onContextChange={setDetailContext}
+            onPriorityChange={setDetailPriority}
+            onSubmit={handleDetailSave}
+          />
+        )}
+      </Modal>
+
+      <Modal
+        title="新增待办"
         open={formOpen}
-        onOk={handleFormSubmit}
-        onCancel={closeForm}
-        okText={formMode === "create" ? "添加" : "保存"}
+        onOk={handleCreateSubmit}
+        onCancel={closeCreateForm}
+        okText="添加"
         cancelText="取消"
         confirmLoading={isSubmitting}
         okButtonProps={{ disabled: !formTitle.trim() }}
       >
-        <TodoFormFields
+        <TodoPanel
+          mode="create"
           title={formTitle}
+          description={formDescription}
           context={formContext}
           priority={formPriority}
           onTitleChange={setFormTitle}
+          onDescriptionChange={setFormDescription}
           onContextChange={setFormContext}
           onPriorityChange={setFormPriority}
-          onSubmit={handleFormSubmit}
+          onSubmit={handleCreateSubmit}
         />
       </Modal>
 

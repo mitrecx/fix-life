@@ -1,10 +1,6 @@
-import { Search, X } from "lucide-react";
-import { DatePicker } from "antd";
-import type { Dayjs } from "dayjs";
-import dayjs from "dayjs";
+import { Plus } from "lucide-react";
 import type {
   BacklogContextFilter,
-  BacklogDatePreset,
   BacklogListFilters,
   BacklogTimeField,
 } from "@/types/backlogTask";
@@ -21,65 +17,49 @@ const TIME_FIELD_OPTIONS: { value: BacklogTimeField; label: string }[] = [
   { value: "completed", label: "完成时间" },
 ];
 
-const DATE_PRESET_OPTIONS: { value: BacklogDatePreset; label: string }[] = [
-  { value: "all", label: "不限" },
-  { value: "today", label: "今天" },
-  { value: "7d", label: "近 7 天" },
-  { value: "30d", label: "近 30 天" },
-  { value: "custom", label: "自定义" },
-];
+const labelClassName = "text-sm font-semibold text-gray-600 shrink-0";
+const selectClassName =
+  "px-3 py-1.5 text-sm border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent bg-white transition-all";
+const dateInputClassName =
+  "px-3 py-1.5 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-transparent bg-white transition-all";
 
 interface TodosFilterBarProps {
   filters: BacklogListFilters;
   matchCount: number;
   onChange: (patch: Partial<BacklogListFilters>) => void;
   onClear: () => void;
+  onAdd: () => void;
 }
 
-function selectClassName() {
-  return "h-8 px-2 text-xs border border-gray-200 rounded-md bg-white text-gray-700 focus:outline-none focus:ring-1 focus:ring-gray-400";
+function hasTimeRange(filters: BacklogListFilters): boolean {
+  return !!(filters.dateFrom || filters.dateTo);
 }
 
-export function TodosFilterBar({ filters, matchCount, onChange, onClear }: TodosFilterBarProps) {
+export function TodosFilterBar({ filters, matchCount, onChange, onClear, onAdd }: TodosFilterBarProps) {
   const keyword = filters.q ?? "";
   const timeField = filters.timeField ?? "created";
-  const datePreset = filters.datePreset ?? "all";
   const context = filters.context ?? "all";
 
   const hasActiveFilters =
-    keyword.trim().length > 0 || datePreset !== "all" || context !== "all";
-
-  const customFrom = filters.dateFrom ? dayjs(filters.dateFrom) : null;
-  const customTo = filters.dateTo ? dayjs(filters.dateTo) : null;
-
-  const handleCustomFrom = (date: Dayjs | null) => {
-    onChange({ dateFrom: date?.format("YYYY-MM-DD") });
-  };
-
-  const handleCustomTo = (date: Dayjs | null) => {
-    onChange({ dateTo: date?.format("YYYY-MM-DD") });
-  };
+    keyword.trim().length > 0 || hasTimeRange(filters) || context !== "all";
 
   return (
-    <div className="space-y-2 shrink-0">
-      <div className="flex flex-wrap items-center gap-2">
-        <div className="relative flex-1 min-w-[160px]">
-          <Search size={14} className="absolute left-2.5 top-1/2 -translate-y-1/2 text-gray-400" />
-          <input
-            type="search"
-            value={keyword}
-            onChange={(e) => onChange({ q: e.target.value })}
-            placeholder="搜索标题…"
-            className="w-full h-8 pl-8 pr-3 text-sm border border-gray-200 rounded-md focus:outline-none focus:ring-1 focus:ring-gray-400"
-          />
-        </div>
+    <div className="p-3 sm:p-4 bg-white/80 backdrop-blur-sm rounded-xl shadow-sm border border-gray-100 shrink-0 space-y-3">
+      <div className="flex flex-wrap items-center gap-2 sm:gap-3">
+        <label className={labelClassName}>关键词:</label>
+        <input
+          type="search"
+          value={keyword}
+          onChange={(e) => onChange({ q: e.target.value })}
+          placeholder="搜索标题…"
+          className={`w-40 sm:w-52 ${selectClassName}`}
+        />
 
+        <label className={labelClassName}>时间筛选:</label>
         <select
           value={timeField}
           onChange={(e) => onChange({ timeField: e.target.value as BacklogTimeField })}
-          className={selectClassName()}
-          disabled={datePreset === "all"}
-          title="时间维度"
+          className={selectClassName}
         >
           {TIME_FIELD_OPTIONS.map((o) => (
             <option key={o.value} value={o.value}>
@@ -88,72 +68,60 @@ export function TodosFilterBar({ filters, matchCount, onChange, onClear }: Todos
           ))}
         </select>
 
-        <select
-          value={datePreset}
-          onChange={(e) => onChange({ datePreset: e.target.value as BacklogDatePreset })}
-          className={selectClassName()}
-          title="时间范围"
-        >
-          {DATE_PRESET_OPTIONS.map((o) => (
-            <option key={o.value} value={o.value}>
-              {o.label}
-            </option>
-          ))}
-        </select>
+        <label className={labelClassName}>开始日期:</label>
+        <input
+          type="date"
+          value={filters.dateFrom ?? ""}
+          onChange={(e) => onChange({ dateFrom: e.target.value || undefined })}
+          className={dateInputClassName}
+        />
 
-        {datePreset === "custom" && (
-          <>
-            <DatePicker
-              value={customFrom}
-              onChange={handleCustomFrom}
-              format="YYYY-MM-DD"
-              placeholder="开始"
-              className="!h-8 text-xs"
-              allowClear
-            />
-            <span className="text-xs text-gray-400">—</span>
-            <DatePicker
-              value={customTo}
-              onChange={handleCustomTo}
-              format="YYYY-MM-DD"
-              placeholder="结束"
-              className="!h-8 text-xs"
-              allowClear
-            />
-          </>
-        )}
+        <label className={labelClassName}>结束日期:</label>
+        <input
+          type="date"
+          value={filters.dateTo ?? ""}
+          onChange={(e) => onChange({ dateTo: e.target.value || undefined })}
+          className={dateInputClassName}
+        />
       </div>
 
-      <div className="flex flex-wrap items-center gap-2">
-        <div className="flex items-center gap-1">
-          {CONTEXT_FILTERS.map((f) => (
-            <button
-              key={f.value}
-              type="button"
-              onClick={() => onChange({ context: f.value })}
-              className={`px-2 py-1 text-xs rounded-md border transition-all ${
-                context === f.value
-                  ? "bg-gray-900 border-gray-900 text-white"
-                  : "bg-white border-gray-200 text-gray-600 hover:border-gray-300"
-              }`}
-            >
-              {f.label}
-            </button>
-          ))}
-        </div>
+      <div className="flex flex-wrap items-center gap-2 sm:gap-3">
+        <label className={labelClassName}>分类:</label>
+        {CONTEXT_FILTERS.map((f) => (
+          <button
+            key={f.value}
+            type="button"
+            onClick={() => onChange({ context: f.value })}
+            className={`px-3 py-1.5 text-xs font-medium rounded-lg transition-all ${
+              context === f.value
+                ? "text-white shadow-md bg-gradient-to-r from-indigo-500 via-purple-500 to-pink-500 hover:from-indigo-600 hover:via-purple-600 hover:to-pink-600"
+                : "text-gray-600 bg-gray-100 hover:bg-gray-200"
+            }`}
+          >
+            {f.label}
+          </button>
+        ))}
 
-        <span className="text-xs text-gray-400 ml-auto">{matchCount} 条匹配</span>
+        <span className="text-sm text-gray-500">{matchCount} 条匹配</span>
 
         {hasActiveFilters && (
           <button
             type="button"
             onClick={onClear}
-            className="inline-flex items-center gap-1 px-2 py-1 text-xs text-gray-500 hover:text-gray-800"
+            className="px-3 py-1.5 text-xs font-medium text-gray-600 bg-gray-100 rounded-lg hover:bg-gray-200 transition-all"
           >
-            <X size={12} />
             清除筛选
           </button>
         )}
+
+        <button
+          type="button"
+          onClick={onAdd}
+          className="flex items-center gap-2 px-5 py-2.5 text-emerald-700 bg-emerald-50 rounded-xl hover:bg-emerald-100 transition-all ml-auto"
+        >
+          <Plus size={20} />
+          <span className="font-medium">新增待办</span>
+        </button>
       </div>
     </div>
   );

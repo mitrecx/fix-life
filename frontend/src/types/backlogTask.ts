@@ -38,13 +38,10 @@ export type BacklogContextFilter = TaskContext | "all";
 
 export type BacklogTimeField = "created" | "scheduled" | "completed";
 
-export type BacklogDatePreset = "all" | "today" | "7d" | "30d" | "custom";
-
 export interface BacklogListFilters {
   q?: string;
   context?: BacklogContextFilter;
   timeField?: BacklogTimeField;
-  datePreset?: BacklogDatePreset;
   dateFrom?: string;
   dateTo?: string;
 }
