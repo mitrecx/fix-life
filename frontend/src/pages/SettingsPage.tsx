@@ -10,10 +10,17 @@ import {
   Copy,
   Trash2,
   Plus,
+  BookOpen,
 } from "lucide-react";
 import { Switch, Input, message, Tabs, Modal, Button } from "antd";
 import type { TabsProps } from "antd";
 import { LoadingSpinner } from "@/components/LoadingSpinner";
+import { McpImportGuideModal, getMcpServerUrl } from "@/components/McpImportGuideModal";
+import {
+  cacheMcpKeySecret,
+  getCachedMcpKeySecret,
+  removeCachedMcpKeySecret,
+} from "@/utils/mcpKeySecrets";
 import { systemSettingsService } from "@/services/systemSettingsService";
 import type { SystemSettings } from "@/types/systemSettings";
 import type { McpApiKey, McpApiKeyCreateResponse } from "@/types/mcpApiKey";
@@ -38,6 +45,8 @@ export default function SettingsPage() {
   const [mcpKeys, setMcpKeys] = useState<McpApiKey[]>([]);
   const [isCreatingMcpKey, setIsCreatingMcpKey] = useState(false);
   const [createdMcpKey, setCreatedMcpKey] = useState<McpApiKeyCreateResponse | null>(null);
+  const [importGuideOpen, setImportGuideOpen] = useState(false);
+  const [importGuideApiKey, setImportGuideApiKey] = useState("");
 
   useEffect(() => {
     loadSettings();
@@ -77,6 +86,7 @@ export default function SettingsPage() {
     try {
       setIsCreatingMcpKey(true);
       const created = await systemSettingsService.createMcpKey(name);
+      cacheMcpKeySecret(created.id, created.api_key);
       setCreatedMcpKey(created);
       await loadMcpKeys();
       message.success("API Key 已创建");
@@ -91,6 +101,7 @@ export default function SettingsPage() {
   const handleRevokeMcpKey = async (keyId: string) => {
     try {
       await systemSettingsService.revokeMcpKey(keyId);
+      removeCachedMcpKeySecret(keyId);
       await loadMcpKeys();
       message.success("API Key 已撤销");
     } catch (error) {
@@ -99,13 +110,22 @@ export default function SettingsPage() {
     }
   };
 
+  const openImportGuide = (keyId: string, apiKey?: string) => {
+    const resolved = apiKey ?? getCachedMcpKeySecret(keyId);
+    if (!resolved) {
+      message.warning("完整 API Key 仅在创建时可用，请重新生成 Key 后查看导入配置");
+      return;
+    }
+    setImportGuideApiKey(resolved);
+    setImportGuideOpen(true);
+  };
+
   const copyCursorConfig = async (apiKey: string) => {
-    const origin = window.location.origin;
     const config = JSON.stringify(
       {
         mcpServers: {
           fixlife: {
-            url: `${origin}/mcp/`,
+            url: getMcpServerUrl(),
             headers: {
               Authorization: `Bearer ${apiKey}`,
             },
@@ -463,16 +483,14 @@ export default function SettingsPage() {
                     </p>
                   </div>
 
-                  <div className="p-4 bg-gray-50 rounded-xl border border-gray-200">
-                    <Button
-                      type="primary"
-                      icon={<Plus size={16} />}
-                      loading={isCreatingMcpKey}
-                      onClick={handleCreateMcpKey}
-                    >
-                      生成 API Key
-                    </Button>
-                  </div>
+                  <Button
+                    type="primary"
+                    icon={<Plus size={16} />}
+                    loading={isCreatingMcpKey}
+                    onClick={handleCreateMcpKey}
+                  >
+                    生成 API Key
+                  </Button>
 
                   <div className="space-y-3">
                     {mcpKeys.length === 0 ? (
@@ -497,13 +515,22 @@ export default function SettingsPage() {
                                 : ""}
                             </div>
                           </div>
-                          <button
-                            onClick={() => handleRevokeMcpKey(key.id)}
-                            className="p-2 text-red-500 hover:bg-red-50 rounded-lg transition-colors"
-                            title="撤销"
-                          >
-                            <Trash2 size={16} />
-                          </button>
+                          <div className="flex items-center gap-1">
+                            <button
+                              onClick={() => openImportGuide(key.id)}
+                              className="p-2 text-indigo-600 hover:bg-indigo-50 rounded-lg transition-colors"
+                              title="导入说明"
+                            >
+                              <BookOpen size={16} />
+                            </button>
+                            <button
+                              onClick={() => handleRevokeMcpKey(key.id)}
+                              className="p-2 text-red-500 hover:bg-red-50 rounded-lg transition-colors"
+                              title="撤销"
+                            >
+                              <Trash2 size={16} />
+                            </button>
+                          </div>
                         </div>
                       ))
                     )}
@@ -520,6 +547,13 @@ export default function SettingsPage() {
         open={!!createdMcpKey}
         onCancel={() => setCreatedMcpKey(null)}
         footer={[
+          <Button
+            key="import-guide"
+            icon={<BookOpen size={14} />}
+            onClick={() => createdMcpKey && openImportGuide(createdMcpKey.id, createdMcpKey.api_key)}
+          >
+            查看导入说明
+          </Button>,
           <Button key="copy-config" icon={<Copy size={14} />} onClick={() => createdMcpKey && copyCursorConfig(createdMcpKey.api_key)}>
             复制 Cursor 配置
           </Button>,
@@ -542,6 +576,13 @@ export default function SettingsPage() {
           </div>
         )}
       </Modal>
+
+      <McpImportGuideModal
+        open={importGuideOpen}
+        onClose={() => setImportGuideOpen(false)}
+        mcpUrl={getMcpServerUrl()}
+        apiKey={importGuideApiKey}
+      />
     </div>
   );
 }
