@@ -1,4 +1,8 @@
 """Pytest fixtures for Fix Life API tests."""
+import os
+
+os.environ.setdefault("IP_RATE_LIMIT_USE_REDIS", "false")
+
 from unittest.mock import MagicMock
 from uuid import uuid4
 

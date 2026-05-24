@@ -8,6 +8,7 @@ import {
   UserCog,
   UserPlus,
   Trash2,
+  Unlock,
 } from "lucide-react";
 import { LoadingSpinner } from "@/components/LoadingSpinner";
 import {
@@ -48,6 +49,7 @@ export default function AdminUsersPage() {
   const [savingRoles, setSavingRoles] = useState(false);
   const [tempPassword, setTempPassword] = useState<string | null>(null);
   const [activeLoadingId, setActiveLoadingId] = useState<string | null>(null);
+  const [unlockLoadingId, setUnlockLoadingId] = useState<string | null>(null);
   const [createOpen, setCreateOpen] = useState(false);
   const [createSubmitting, setCreateSubmitting] = useState(false);
   const [newUsername, setNewUsername] = useState("");
@@ -228,6 +230,29 @@ export default function AdminUsersPage() {
     });
   };
 
+  const unlockLogin = (u: AdminUserListItem) => {
+    Modal.confirm({
+      title: "解除登录锁定",
+      content: u.is_login_locked
+        ? `确定解除「${u.username}」的登录锁定吗？该用户可立即重新尝试登录。`
+        : `确定清零「${u.username}」的登录失败次数（当前 ${u.failed_login_attempts} 次）吗？`,
+      okText: "解锁",
+      cancelText: "取消",
+      onOk: async () => {
+        setUnlockLoadingId(u.id);
+        try {
+          await adminUserService.unlockLogin(u.id);
+          message.success("已解除登录锁定");
+          loadUsers();
+        } catch (e) {
+          message.error(e instanceof Error ? e.message : "解锁失败");
+        } finally {
+          setUnlockLoadingId(null);
+        }
+      },
+    });
+  };
+
   const columns: ColumnsType<AdminUserListItem> = [
     {
       title: "用户名",
@@ -245,12 +270,17 @@ export default function AdminUsersPage() {
     {
       title: "状态",
       key: "flags",
-      width: 200,
+      width: 240,
       render: (_, u) => (
         <Space size={[0, 4]} wrap>
           <Tag color={u.is_active ? "green" : "default"}>
             {u.is_active ? "正常" : "已停用"}
           </Tag>
+          {u.is_login_locked ? (
+            <Tag color="red">登录锁定</Tag>
+          ) : u.failed_login_attempts > 0 ? (
+            <Tag color="volcano">失败 {u.failed_login_attempts} 次</Tag>
+          ) : null}
           {u.must_change_password ? (
             <Tag color="orange">须改密</Tag>
           ) : null}
@@ -281,7 +311,7 @@ export default function AdminUsersPage() {
     {
       title: "操作",
       key: "actions",
-      width: 360,
+      width: 420,
       render: (_, u) => (
         <Space wrap>
           <Button
@@ -299,6 +329,17 @@ export default function AdminUsersPage() {
             disabled={!u.is_active && u.id === currentUser?.id}
             onChange={(checked) => toggleActive(u, checked)}
           />
+          {(u.is_login_locked || u.failed_login_attempts > 0) && (
+            <Button
+              type="link"
+              size="small"
+              icon={<Unlock size={14} />}
+              loading={unlockLoadingId === u.id}
+              onClick={() => unlockLogin(u)}
+            >
+              解锁
+            </Button>
+          )}
           <Button
             type="link"
             size="small"
@@ -342,7 +383,7 @@ export default function AdminUsersPage() {
           <div>
             <h1 className="text-2xl font-bold text-gray-800">用户管理</h1>
             <p className="text-sm text-gray-500">
-              新增用户、搜索、分配角色、启停账号、临时密码与删除
+              新增用户、搜索、分配角色、启停账号、解锁登录、临时密码与删除
             </p>
           </div>
         </div>

@@ -6,6 +6,7 @@ from fastapi import HTTPException, status
 from sqlalchemy import or_
 from sqlalchemy.orm import Session, selectinload
 
+from app.core.login_lockout import is_login_locked
 from app.core.security import get_password_hash
 from app.models.role import Role
 from app.models.user import User
@@ -25,6 +26,14 @@ class AdminUserService:
                 detail="admin role not configured",
             )
         return role
+
+    def _login_lock_fields(self, user: User) -> dict:
+        locked = is_login_locked(user)
+        return {
+            "failed_login_attempts": user.failed_login_attempts or 0,
+            "locked_until": user.locked_until if locked else None,
+            "is_login_locked": locked,
+        }
 
     def _active_admin_count_after_update(
         self,
@@ -97,6 +106,7 @@ class AdminUserService:
                     must_change_password=u.must_change_password,
                     created_at=u.created_at,
                     roles=roles,
+                    **self._login_lock_fields(u),
                 )
             )
         return items, total
@@ -177,6 +187,7 @@ class AdminUserService:
             must_change_password=u.must_change_password,
             created_at=u.created_at,
             roles=roles,
+            **self._login_lock_fields(u),
         )
 
     def replace_roles(self, user: User, role_ids: list[UUID]) -> None:
@@ -214,4 +225,10 @@ class AdminUserService:
         raw = secrets.token_urlsafe(16)
         user.hashed_password = get_password_hash(raw)
         user.must_change_password = True
+        user.failed_login_attempts = 0
+        user.locked_until = None
         return raw
+
+    def unlock_login(self, user: User) -> None:
+        user.failed_login_attempts = 0
+        user.locked_until = None

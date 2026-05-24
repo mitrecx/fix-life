@@ -6,12 +6,17 @@ from fastapi.middleware.cors import CORSMiddleware
 from app.api.v1.api import api_router
 from app.core.config import settings
 from app.mcp.server import mcp_app
+from app.rate_limit.middleware import IpRateLimitMiddleware, build_ip_rate_limiter
+
+ip_rate_limiter = build_ip_rate_limiter()
 
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
+    app.state.ip_rate_limiter = ip_rate_limiter
     async with mcp_app.lifespan(app):
         yield
+    await ip_rate_limiter.close()
 
 
 app = FastAPI(
@@ -31,6 +36,7 @@ app.add_middleware(
     allow_methods=["*"],
     allow_headers=["*"],
 )
+app.add_middleware(IpRateLimitMiddleware, limiter=ip_rate_limiter)
 
 app.include_router(api_router, prefix="/api/v1")
 app.mount("/mcp", mcp_app)

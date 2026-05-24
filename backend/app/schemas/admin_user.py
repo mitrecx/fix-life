@@ -18,6 +18,9 @@ class AdminUserListItem(BaseModel):
     full_name: Optional[str] = None
     is_active: bool
     must_change_password: bool
+    failed_login_attempts: int = 0
+    locked_until: Optional[datetime] = None
+    is_login_locked: bool = False
     created_at: datetime
     roles: list[RoleBrief] = Field(default_factory=list)
 

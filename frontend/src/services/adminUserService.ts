@@ -47,4 +47,8 @@ export const adminUserService = {
       {}
     );
   },
+
+  async unlockLogin(userId: string): Promise<AdminUserListItem> {
+    return api.post<AdminUserListItem>(`/admin/users/${userId}/unlock-login`, {});
+  },
 };

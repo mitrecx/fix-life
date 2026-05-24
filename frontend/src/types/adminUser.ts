@@ -10,6 +10,9 @@ export interface AdminUserListItem {
   full_name?: string | null;
   is_active: boolean;
   must_change_password: boolean;
+  failed_login_attempts: number;
+  locked_until?: string | null;
+  is_login_locked: boolean;
   created_at: string;
   roles: RoleBrief[];
 }

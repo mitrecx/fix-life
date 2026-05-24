@@ -149,3 +149,49 @@ def test_admin_delete_user_ok(monkeypatch, client_authenticated):
 
     response = client_authenticated.delete(f"/api/v1/admin/users/{uid}")
     assert response.status_code == 204
+
+
+def test_admin_unlock_login_ok(monkeypatch, client_authenticated):
+    monkeypatch.setattr(
+        "app.api.v1.deps.get_permission_codes_for_user",
+        lambda _db, _uid: ["users:manage"],
+    )
+    uid = uuid4()
+
+    class MockAdminUserService:
+        def __init__(self, _db):
+            pass
+
+        def get_user(self, user_id):
+            if user_id != uid:
+                return None
+            m = MagicMock()
+            m.id = uid
+            return m
+
+        def unlock_login(self, user):
+            pass
+
+        def to_list_item(self, user):
+            return AdminUserListItem(
+                id=uid,
+                username="locked",
+                email="locked@example.com",
+                full_name=None,
+                is_active=True,
+                must_change_password=False,
+                failed_login_attempts=0,
+                locked_until=None,
+                is_login_locked=False,
+                created_at=datetime.now(timezone.utc),
+                roles=[],
+            )
+
+    monkeypatch.setattr(
+        "app.api.v1.endpoints.admin_users.AdminUserService",
+        MockAdminUserService,
+    )
+
+    response = client_authenticated.post(f"/api/v1/admin/users/{uid}/unlock-login")
+    assert response.status_code == 200
+    assert response.json()["is_login_locked"] is False

@@ -111,3 +111,23 @@ def admin_reset_temp_password(
     temp = svc.reset_temp_password(user, current_user.id)
     db.commit()
     return TempPasswordResponse(temp_password=temp)
+
+
+@router.post("/users/{user_id}/unlock-login", response_model=AdminUserListItem)
+def admin_unlock_login(
+    user_id: UUID,
+    db: Session = Depends(get_db),
+):
+    svc = AdminUserService(db)
+    user = svc.get_user(user_id)
+    if not user:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="用户不存在")
+    svc.unlock_login(user)
+    db.commit()
+    user = svc.get_user(user_id)
+    if not user:
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail="解锁后加载用户失败",
+        )
+    return svc.to_list_item(user)

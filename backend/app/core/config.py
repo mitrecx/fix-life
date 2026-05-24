@@ -53,6 +53,15 @@ class Settings(BaseSettings):
     REDIS_DB: int = 0
     REDIS_RESULT_DB: int = 1
 
+    # IP rate limit (middleware; decoupled from auth business logic)
+    IP_RATE_LIMIT_ENABLED: bool = True
+    IP_RATE_LIMIT_USE_REDIS: bool = True
+    IP_RATE_LIMIT_MAX_REQUESTS: int = 60
+    IP_RATE_LIMIT_WINDOW_SECONDS: int = 3600
+    IP_RATE_LIMIT_BAN_SECONDS: int = 3600
+    IP_RATE_LIMIT_REDIS_URL: str = ""
+    IP_RATE_LIMIT_REDIS_KEY_PREFIX: str = "fixlife:ip_rl"
+
     # Celery
     CELERY_BROKER_URL: str = "redis://localhost:6379/0"
     CELERY_RESULT_BACKEND: str = "redis://localhost:6379/1"
@@ -69,6 +78,10 @@ class Settings(BaseSettings):
         # Parse CORS_ORIGINS if it's a string
         if isinstance(self.CORS_ORIGINS, str):
             self.CORS_ORIGINS = parse_cors_origins(self.CORS_ORIGINS)
+        if not self.IP_RATE_LIMIT_REDIS_URL:
+            self.IP_RATE_LIMIT_REDIS_URL = (
+                f"redis://{self.REDIS_HOST}:{self.REDIS_PORT}/{self.REDIS_DB}"
+            )
 
 
 settings = Settings()

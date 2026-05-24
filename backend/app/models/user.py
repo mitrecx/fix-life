@@ -1,5 +1,5 @@
 from datetime import datetime
-from sqlalchemy import Column, String, Boolean, DateTime, LargeBinary
+from sqlalchemy import Column, String, Boolean, DateTime, Integer, LargeBinary
 from sqlalchemy.dialects.postgresql import UUID
 from sqlalchemy.orm import relationship
 from sqlalchemy.sql import func
@@ -22,6 +22,8 @@ class User(Base):
     bio = Column(String(500), nullable=True)
     is_active = Column(Boolean, default=True, nullable=False)
     must_change_password = Column(Boolean, default=False, nullable=False)
+    failed_login_attempts = Column(Integer, default=0, nullable=False, server_default="0")
+    locked_until = Column(DateTime(timezone=True), nullable=True)
     created_at = Column(DateTime(timezone=True), server_default=func.now(), nullable=False)
     updated_at = Column(DateTime(timezone=True), server_default=func.now(), onupdate=func.now())
 

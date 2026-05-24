@@ -18,7 +18,13 @@ from app.schemas.user import (
 from app.services.auth_service import AuthService
 from app.services.email_service import EmailService
 from app.services.user_response import build_user_response
-from app.core.security import create_access_token, get_password_hash, authenticate_user
+from app.core.security import create_access_token, get_password_hash
+from app.core.login_lockout import (
+    AccountLockedError,
+    InvalidCredentialsError,
+    attempt_login,
+    reset_login_attempts,
+)
 
 router = APIRouter()
 
@@ -149,14 +155,19 @@ def login(
     Accepts either email or username in login_identifier field.
     Returns JWT token on successful authentication.
     """
-    user = authenticate_user(db, user_in.login_identifier, user_in.password)
-
-    if not user:
+    try:
+        user = attempt_login(db, user_in.login_identifier, user_in.password)
+    except AccountLockedError as exc:
+        raise HTTPException(
+            status_code=status.HTTP_429_TOO_MANY_REQUESTS,
+            detail=f"登录失败次数过多，账号已锁定，请 {exc.minutes_remaining} 分钟后再试",
+        ) from exc
+    except InvalidCredentialsError as exc:
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
-            detail="Incorrect email/username or password",
+            detail="邮箱或用户名/密码错误",
             headers={"WWW-Authenticate": "Bearer"},
-        )
+        ) from exc
 
     # Create access token
     access_token = create_access_token(data={"sub": str(user.id)})
@@ -200,6 +211,7 @@ def reset_password(
     # Update password
     hashed_password = get_password_hash(request.new_password)
     user.hashed_password = hashed_password
+    reset_login_attempts(user, db)
     db.commit()
 
     return {"message": "密码重置成功"}
