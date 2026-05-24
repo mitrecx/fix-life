@@ -1,12 +1,18 @@
 import { useState, useEffect, useCallback, useMemo, type ReactNode } from "react";
-import { Trash2, Calendar, Undo2, SquarePen } from "lucide-react";
+import { Trash2, Calendar, Undo2, SquarePen, Plus } from "lucide-react";
 import { DatePicker, Modal, message } from "antd";
 import type { Dayjs } from "dayjs";
 import dayjs from "dayjs";
 import { useSearchParams } from "react-router-dom";
 import { backlogTaskService } from "@/services/backlogTaskService";
 import { TodosFilterBar } from "@/components/TodosFilterBar";
-import type { BacklogTask, BacklogListFilters, BacklogContextFilter } from "@/types/backlogTask";
+import type {
+  BacklogTask,
+  BacklogListFilters,
+  BacklogContextFilter,
+  BacklogPriorityFilter,
+  TodoFormStatus,
+} from "@/types/backlogTask";
 import type { TaskContext } from "@/types/taskContext";
 import {
   TASK_CONTEXT,
@@ -31,6 +37,7 @@ const COLUMNS: { id: KanbanColumnId; title: string; accent: string }[] = [
 const DEFAULT_FILTERS: BacklogListFilters = {
   q: "",
   context: "all",
+  priority: "all",
   timeField: "created",
 };
 
@@ -57,9 +64,16 @@ function parseFilters(params: URLSearchParams): BacklogListFilters {
       ? rawContext
       : "all";
 
+  const rawPriority = params.get("priority");
+  const priority: BacklogPriorityFilter =
+    rawPriority === "high" || rawPriority === "medium" || rawPriority === "low"
+      ? rawPriority
+      : "all";
+
   return {
     q: params.get("q") ?? "",
     context,
+    priority,
     timeField: backlogTaskService.parseTimeField(params.get("time_field")),
     dateFrom: params.get("date_from") ?? undefined,
     dateTo: params.get("date_to") ?? undefined,
@@ -71,6 +85,7 @@ function filtersToSearchParams(filters: BacklogListFilters): URLSearchParams {
   const q = filters.q?.trim();
   if (q) params.set("q", q);
   if (filters.context && filters.context !== "all") params.set("context", filters.context);
+  if (filters.priority && filters.priority !== "all") params.set("priority", filters.priority);
   if (backlogTaskService.hasTimeRangeFilter(filters)) {
     params.set("time_field", filters.timeField ?? "created");
     if (filters.dateFrom) params.set("date_from", filters.dateFrom);
@@ -90,6 +105,10 @@ function taskMatchesFilters(task: BacklogTask, filters: BacklogListFilters): boo
   if (q && !task.title.toLowerCase().includes(q)) return false;
 
   if (filters.context && filters.context !== "all" && task.context !== filters.context) {
+    return false;
+  }
+
+  if (filters.priority && filters.priority !== "all" && task.priority !== filters.priority) {
     return false;
   }
 
@@ -128,6 +147,15 @@ const STATUS_LABELS: Record<BacklogTask["status"], string> = {
   done: "已完成",
   cancelled: "已取消",
 };
+
+const FORM_STATUS_OPTIONS: { value: TodoFormStatus; label: string }[] = [
+  { value: "pending", label: "待处理" },
+  { value: "done", label: "已完成" },
+];
+
+function taskToFormStatus(task: BacklogTask): TodoFormStatus {
+  return task.status === "done" ? "done" : "pending";
+}
 
 function DetailRow({ label, children }: { label: string; children: ReactNode }) {
   return (
@@ -173,10 +201,12 @@ interface TodoPanelProps {
   description: string;
   context: TaskContext;
   priority: TaskPriority;
+  status: TodoFormStatus;
   onTitleChange: (value: string) => void;
   onDescriptionChange: (value: string) => void;
   onContextChange: (value: TaskContext) => void;
   onPriorityChange: (value: TaskPriority) => void;
+  onStatusChange: (value: TodoFormStatus) => void;
   onSubmit: () => void;
 }
 
@@ -187,10 +217,12 @@ function TodoPanel({
   description,
   context,
   priority,
+  status,
   onTitleChange,
   onDescriptionChange,
   onContextChange,
   onPriorityChange,
+  onStatusChange,
   onSubmit,
 }: TodoPanelProps) {
   const editing = mode === "edit" || mode === "create";
@@ -228,9 +260,11 @@ function TodoPanel({
         )}
       </DetailRow>
       <DetailRow label="状态">
-        <ReadOnlyField>
-          {task ? STATUS_LABELS[task.status] : STATUS_LABELS.pending}
-        </ReadOnlyField>
+        {editing ? (
+          <StatusSelector value={status} onChange={onStatusChange} />
+        ) : (
+          <ReadOnlyField>{task ? STATUS_LABELS[task.status] : null}</ReadOnlyField>
+        )}
       </DetailRow>
       <DetailRow label="优先级">
         {editing ? (
@@ -299,6 +333,35 @@ function ContextBadge({ context }: { context: TaskContext }) {
     >
       {config.label}
     </span>
+  );
+}
+
+function StatusSelector({
+  value,
+  onChange,
+}: {
+  value: TodoFormStatus;
+  onChange: (value: TodoFormStatus) => void;
+}) {
+  return (
+    <div className="flex items-center flex-wrap gap-1">
+      {FORM_STATUS_OPTIONS.map((s) => (
+        <button
+          key={s.value}
+          type="button"
+          onClick={() => onChange(s.value)}
+          className={`px-2.5 py-1 text-xs rounded-md border transition-all ${
+            value === s.value
+              ? s.value === "done"
+                ? "border-emerald-600 bg-emerald-600 text-white"
+                : "border-indigo-600 bg-indigo-600 text-white"
+              : "border-gray-200 text-gray-600 hover:border-gray-300"
+          }`}
+        >
+          {s.label}
+        </button>
+      ))}
+    </div>
   );
 }
 
@@ -562,6 +625,7 @@ export function TodosList() {
   const [formDescription, setFormDescription] = useState("");
   const [formContext, setFormContext] = useState<TaskContext>(DEFAULT_TASK_CONTEXT);
   const [formPriority, setFormPriority] = useState<TaskPriority>(DEFAULT_TASK_PRIORITY);
+  const [formStatus, setFormStatus] = useState<TodoFormStatus>("pending");
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [schedulingTask, setSchedulingTask] = useState<BacklogTask | null>(null);
   const [viewingTask, setViewingTask] = useState<BacklogTask | null>(null);
@@ -570,6 +634,7 @@ export function TodosList() {
   const [detailContext, setDetailContext] = useState<TaskContext>(DEFAULT_TASK_CONTEXT);
   const [detailPriority, setDetailPriority] = useState<TaskPriority>(DEFAULT_TASK_PRIORITY);
   const [detailDescription, setDetailDescription] = useState("");
+  const [detailStatus, setDetailStatus] = useState<TodoFormStatus>("pending");
   const [scheduleDate, setScheduleDate] = useState<Dayjs>(dayjs());
   const [dragging, setDragging] = useState<{ task: BacklogTask; from: KanbanColumnId } | null>(null);
   const [dropTarget, setDropTarget] = useState<KanbanColumnId | null>(null);
@@ -649,6 +714,7 @@ export function TodosList() {
     setFormDescription("");
     setFormContext(DEFAULT_TASK_CONTEXT);
     setFormPriority(DEFAULT_TASK_PRIORITY);
+    setFormStatus("pending");
   }, []);
 
   const resetDetailDraft = useCallback(() => {
@@ -657,6 +723,7 @@ export function TodosList() {
     setDetailContext(DEFAULT_TASK_CONTEXT);
     setDetailPriority(DEFAULT_TASK_PRIORITY);
     setDetailDescription("");
+    setDetailStatus("pending");
   }, []);
 
   const populateDetailDraft = useCallback((task: BacklogTask) => {
@@ -664,6 +731,7 @@ export function TodosList() {
     setDetailContext(task.context);
     setDetailPriority(task.priority);
     setDetailDescription(task.description ?? "");
+    setDetailStatus(taskToFormStatus(task));
   }, []);
 
   const openCreateForm = useCallback(() => {
@@ -728,6 +796,7 @@ export function TodosList() {
         context: formContext,
         priority: formPriority,
         description: trimmedDescription || undefined,
+        status: formStatus,
       });
       closeCreateForm();
       applyUpdatedTask(created);
@@ -752,12 +821,18 @@ export function TodosList() {
         context: detailContext,
         priority: detailPriority,
         description: trimmedDescription || undefined,
+        status: detailStatus,
+        completed_at:
+          detailStatus === "done"
+            ? viewingTask.completed_at ?? new Date().toISOString()
+            : undefined,
       });
       const updated = await backlogTaskService.update(viewingTask.id, {
         title: detailTitle.trim(),
         context: detailContext,
         priority: detailPriority,
         description: trimmedDescription || undefined,
+        status: detailStatus,
       });
       applyUpdatedTask(updated);
       closeTaskDetail();
@@ -909,7 +984,6 @@ export function TodosList() {
         matchCount={matchCount}
         onChange={updateFilters}
         onClear={clearFilters}
-        onAdd={openCreateForm}
       />
 
       {loading ? (
@@ -935,8 +1009,19 @@ export function TodosList() {
                   handleDrop(col.id);
                 }}
               >
-                <div className="flex items-center justify-between px-2.5 py-2 border-b border-gray-200/80 bg-white/80 shrink-0">
+                <div className="flex items-center gap-2 px-2.5 py-2 border-b border-gray-200/80 bg-white/80 shrink-0">
                   <h2 className="text-xs font-semibold text-gray-700">{col.title}</h2>
+                  {col.id === "active" && (
+                    <button
+                      type="button"
+                      onClick={openCreateForm}
+                      className="inline-flex items-center gap-1 px-2 py-1 text-[11px] font-medium text-emerald-700 bg-emerald-50 rounded-md hover:bg-emerald-100 transition-all"
+                    >
+                      <Plus size={14} />
+                      新增待办
+                    </button>
+                  )}
+                  <span className="flex-1" />
                   <span className="text-[10px] font-medium text-gray-500 tabular-nums">{tasks.length}</span>
                 </div>
 
@@ -1029,10 +1114,12 @@ export function TodosList() {
             description={detailDescription}
             context={detailContext}
             priority={detailPriority}
+            status={detailStatus}
             onTitleChange={setDetailTitle}
             onDescriptionChange={setDetailDescription}
             onContextChange={setDetailContext}
             onPriorityChange={setDetailPriority}
+            onStatusChange={setDetailStatus}
             onSubmit={handleDetailSave}
           />
         )}
@@ -1054,10 +1141,12 @@ export function TodosList() {
           description={formDescription}
           context={formContext}
           priority={formPriority}
+          status={formStatus}
           onTitleChange={setFormTitle}
           onDescriptionChange={setFormDescription}
           onContextChange={setFormContext}
           onPriorityChange={setFormPriority}
+          onStatusChange={setFormStatus}
           onSubmit={handleCreateSubmit}
         />
       </Modal>

@@ -3,6 +3,9 @@ import type { TaskPriority } from "./taskPriority";
 
 export type BacklogTaskStatus = "pending" | "scheduled" | "done" | "cancelled";
 
+/** Status selectable in create/edit forms (maps to kanban columns). */
+export type TodoFormStatus = "pending" | "done";
+
 export interface BacklogTask {
   id: string;
   user_id: string;
@@ -23,6 +26,7 @@ export interface BacklogTaskCreate {
   description?: string;
   context?: TaskContext;
   priority?: TaskPriority;
+  status?: TodoFormStatus;
 }
 
 export interface BacklogTaskUpdate {
@@ -30,17 +34,21 @@ export interface BacklogTaskUpdate {
   description?: string;
   context?: TaskContext;
   priority?: TaskPriority;
+  status?: TodoFormStatus;
 }
 
 export type BacklogTab = "active" | "done";
 
 export type BacklogContextFilter = TaskContext | "all";
 
+export type BacklogPriorityFilter = TaskPriority | "all";
+
 export type BacklogTimeField = "created" | "scheduled" | "completed";
 
 export interface BacklogListFilters {
   q?: string;
   context?: BacklogContextFilter;
+  priority?: BacklogPriorityFilter;
   timeField?: BacklogTimeField;
   dateFrom?: string;
   dateTo?: string;

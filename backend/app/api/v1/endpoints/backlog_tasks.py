@@ -7,6 +7,7 @@ from sqlalchemy.orm import Session
 from app.api.v1.deps import get_db, get_current_user
 from app.models.user import User
 from app.models.task_context import TaskContext
+from app.models.task_priority import TaskPriority
 from app.schemas.backlog_task import (
     BacklogTaskCreate,
     BacklogTaskUpdate,
@@ -23,6 +24,7 @@ router = APIRouter()
 def list_backlog_tasks(
     tab: str = Query("active", description="active (pending+scheduled) or done"),
     context: Optional[TaskContext] = Query(None),
+    priority: Optional[TaskPriority] = Query(None),
     q: Optional[str] = Query(None, description="Keyword search in title"),
     time_field: Optional[str] = Query(
         None, description="created, scheduled, or completed — used with date_from/date_to"
@@ -41,6 +43,7 @@ def list_backlog_tasks(
         str(current_user.id),
         active_only=active_only,
         context=context,
+        priority=priority,
         q=q,
         time_field=time_field,  # type: ignore[arg-type]
         date_from=date_from,

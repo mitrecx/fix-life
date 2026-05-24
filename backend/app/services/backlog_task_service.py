@@ -7,6 +7,7 @@ from sqlalchemy.orm import Session
 from app.models.backlog_task import BacklogTask, BacklogTaskStatus
 from app.models.daily_plan import DailyTaskStatus
 from app.models.task_context import TaskContext
+from app.models.task_priority import TaskPriority
 from app.schemas.backlog_task import BacklogTaskCreate, BacklogTaskUpdate, BacklogTaskSchedule
 from app.schemas.daily_plan import DailyPlanCreate, DailyTaskCreate
 from app.services.daily_plan_service import DailyPlanService
@@ -24,6 +25,7 @@ class BacklogTaskService:
         *,
         active_only: bool = True,
         context: Optional[TaskContext] = None,
+        priority: Optional[TaskPriority] = None,
         q: Optional[str] = None,
         time_field: Optional[BacklogTimeField] = None,
         date_from: Optional[date] = None,
@@ -40,6 +42,9 @@ class BacklogTaskService:
 
         if context is not None:
             query = query.filter(BacklogTask.context == context)
+
+        if priority is not None:
+            query = query.filter(BacklogTask.priority == priority)
 
         if q:
             query = query.filter(BacklogTask.title.ilike(f"%{q.strip()}%"))
@@ -72,7 +77,11 @@ class BacklogTaskService:
         return self.db.query(BacklogTask).filter(BacklogTask.id == task_id).first()
 
     def create_task(self, user_id: str, task_in: BacklogTaskCreate) -> BacklogTask:
-        task = BacklogTask(**task_in.model_dump(exclude_unset=True), user_id=user_id)
+        data = task_in.model_dump(exclude_unset=True)
+        status = data.get("status", BacklogTaskStatus.PENDING)
+        if status == BacklogTaskStatus.DONE:
+            data["completed_at"] = datetime.utcnow()
+        task = BacklogTask(**data, user_id=user_id)
         self.db.add(task)
         self.db.commit()
         self.db.refresh(task)
@@ -84,8 +93,22 @@ class BacklogTaskService:
             return None
 
         update_data = task_in.model_dump(exclude_unset=True)
+        new_status = update_data.pop("status", None)
+
         for field, value in update_data.items():
             setattr(task, field, value)
+
+        if new_status is not None and new_status != task.status:
+            if new_status == BacklogTaskStatus.DONE:
+                task.status = BacklogTaskStatus.DONE
+                task.completed_at = datetime.utcnow()
+            elif new_status == BacklogTaskStatus.PENDING:
+                if task.daily_task_id:
+                    DailyPlanService(self.db).delete_task(str(task.daily_task_id))
+                task.status = BacklogTaskStatus.PENDING
+                task.completed_at = None
+                task.scheduled_date = None
+                task.daily_task_id = None
 
         self.db.commit()
         self.db.refresh(task)

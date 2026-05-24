@@ -1,4 +1,4 @@
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, field_validator
 from datetime import date, datetime
 from typing import Optional, List
 from uuid import UUID
@@ -6,6 +6,14 @@ from uuid import UUID
 from app.models.backlog_task import BacklogTaskStatus
 from app.models.task_context import TaskContext
 from app.models.task_priority import TaskPriority
+
+_FORM_STATUSES = {BacklogTaskStatus.PENDING, BacklogTaskStatus.DONE}
+
+
+def _validate_form_status(status: BacklogTaskStatus) -> BacklogTaskStatus:
+    if status not in _FORM_STATUSES:
+        raise ValueError("status must be pending or done")
+    return status
 
 
 class BacklogTaskBase(BaseModel):
@@ -19,7 +27,12 @@ class BacklogTaskBase(BaseModel):
 
 
 class BacklogTaskCreate(BacklogTaskBase):
-    pass
+    status: BacklogTaskStatus = Field(default=BacklogTaskStatus.PENDING)
+
+    @field_validator("status")
+    @classmethod
+    def validate_status(cls, value: BacklogTaskStatus) -> BacklogTaskStatus:
+        return _validate_form_status(value)
 
 
 class BacklogTaskUpdate(BaseModel):
@@ -27,6 +40,14 @@ class BacklogTaskUpdate(BaseModel):
     description: Optional[str] = Field(None, max_length=1000)
     context: Optional[TaskContext] = None
     priority: Optional[TaskPriority] = None
+    status: Optional[BacklogTaskStatus] = None
+
+    @field_validator("status")
+    @classmethod
+    def validate_status(cls, value: Optional[BacklogTaskStatus]) -> Optional[BacklogTaskStatus]:
+        if value is None:
+            return value
+        return _validate_form_status(value)
 
     class Config:
         from_attributes = True

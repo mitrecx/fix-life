@@ -5,10 +5,12 @@ import type {
   BacklogTaskUpdate,
   BacklogTab,
   BacklogContextFilter,
+  BacklogPriorityFilter,
   BacklogListFilters,
   BacklogTimeField,
 } from "@/types/backlogTask";
 import type { TaskContext } from "@/types/taskContext";
+import type { TaskPriority } from "@/types/taskPriority";
 
 interface BacklogTaskListResponse {
   tasks: BacklogTask[];
@@ -30,6 +32,9 @@ class BacklogTaskService {
 
     const q = filters.q?.trim();
     if (q) params.append("q", q);
+
+    const priority = this.priorityFilterToParam(filters.priority ?? "all");
+    if (priority) params.append("priority", priority);
 
     if (this.hasTimeRangeFilter(filters)) {
       params.append("time_field", filters.timeField ?? "created");
@@ -75,6 +80,10 @@ class BacklogTaskService {
   }
 
   contextFilterToParam(filter: BacklogContextFilter): TaskContext | undefined {
+    return filter === "all" ? undefined : filter;
+  }
+
+  priorityFilterToParam(filter: BacklogPriorityFilter): TaskPriority | undefined {
     return filter === "all" ? undefined : filter;
   }
 
