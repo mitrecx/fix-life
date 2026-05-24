@@ -9,6 +9,7 @@ import RequireSystemStatusRead from "@/components/RequireSystemStatusRead";
 import PageLoader from "@/components/PageLoader";
 import LoginPage from "@/pages/LoginPage";
 
+const QuickNotesPage = lazy(() => import("@/pages/QuickNotesPage"));
 const RegisterPage = lazy(() => import("@/pages/RegisterPage"));
 const ForgotPasswordPage = lazy(() => import("@/pages/ForgotPasswordPage"));
 const YearlyGoalsPage = lazy(() => import("@/pages/YearlyGoalsPage"));
@@ -72,6 +73,14 @@ export const router = createBrowserRouter([
       {
         index: true,
         element: <Navigate to="/daily-plans" replace />,
+      },
+      {
+        path: "quick-notes",
+        element: (
+          <Suspense fallback={<PageLoader />}>
+            <QuickNotesPage />
+          </Suspense>
+        ),
       },
       {
         path: "daily-plans",

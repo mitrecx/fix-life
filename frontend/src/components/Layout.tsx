@@ -4,6 +4,7 @@ import {
   LogOut,
   Settings,
   ListTodo,
+  NotebookPen,
   CalendarDays,
   Calendar,
   Target,
@@ -48,6 +49,7 @@ export default function Layout() {
 
   const navItems = useMemo(() => {
     const items: NavItem[] = [
+      { path: "/quick-notes", label: "随手记", icon: NotebookPen },
       { path: "/todos", label: "待办", icon: ListTodo },
       { path: "/daily-plans", label: "每日进度", icon: CalendarDays },
       { path: "/monthly-plans", label: "月度计划", icon: Calendar },
