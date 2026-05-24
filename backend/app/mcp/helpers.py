@@ -1,10 +1,11 @@
 from __future__ import annotations
 
 from contextlib import contextmanager
-from typing import Any, Generator
+from typing import Any, Generator, NoReturn
 from uuid import UUID
 
 from fastapi import HTTPException
+from fastmcp.exceptions import ToolError
 from mcp.server.auth.middleware.auth_context import get_access_token
 from pydantic import BaseModel
 from sqlalchemy.orm import Session
@@ -79,10 +80,10 @@ def dump(value: Any) -> Any:
     return value
 
 
-def tool_error(status_code: int, code: str, message: str, **extra: Any) -> dict[str, Any]:
-    payload: dict[str, Any] = {"isError": True, "code": code, "message": message}
-    payload.update(extra)
-    raise HTTPException(status_code=status_code, detail=payload)
+def tool_error(status_code: int, code: str, message: str, **extra: Any) -> NoReturn:
+    del status_code
+    suffix = f" {extra}" if extra else ""
+    raise ToolError(f"[{code}] {message}{suffix}")
 
 
 def handle_http_exception(exc: HTTPException) -> dict[str, Any]:
