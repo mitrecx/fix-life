@@ -7,7 +7,6 @@ import {
   CalendarDays,
   Calendar,
   Target,
-  BookOpen,
   BarChart3,
   Activity,
   Users,
@@ -54,7 +53,6 @@ export default function Layout() {
       { path: "/daily-plans", label: "每日进度", icon: CalendarDays },
       { path: "/monthly-plans", label: "月度计划", icon: Calendar },
       { path: "/yearly-goals", label: "年度目标", icon: Target },
-      { path: "/weekly-summaries", label: "周总结", icon: BookOpen },
       { path: "/analytics", label: "数据统计", icon: BarChart3 },
     ];
     if (user?.permissions?.includes(SYSTEM_STATUS_READ)) {

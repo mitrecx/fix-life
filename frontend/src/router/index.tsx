@@ -14,7 +14,6 @@ const MonthlyPlansPage = lazy(() => import("@/pages/MonthlyPlansPage"));
 const DailyPlansPage = lazy(() => import("@/pages/DailyPlansPage"));
 const TodosPage = lazy(() => import("@/pages/TodosPage"));
 const AnalyticsPage = lazy(() => import("@/pages/AnalyticsPage"));
-const WeeklySummariesPage = lazy(() => import("@/pages/WeeklySummariesPage"));
 const WeeklySummaryDetailPage = lazy(() => import("@/pages/WeeklySummaryDetailPage"));
 const SettingsPage = lazy(() => import("@/pages/SettingsPage"));
 const ProfilePage = lazy(() => import("@/pages/ProfilePage"));
@@ -87,7 +86,7 @@ export const router = createBrowserRouter([
       },
       {
         path: "weekly-summaries",
-        element: <WeeklySummariesPage />,
+        element: <Navigate to="/daily-plans" replace />,
       },
       {
         path: "weekly-summaries/:summaryId",

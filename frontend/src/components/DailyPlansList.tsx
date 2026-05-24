@@ -6,6 +6,7 @@ import type { DailySummary } from "@/types/dailySummary";
 import { dailyPlanService } from "@/services/dailyPlanService";
 import { dailySummaryService } from "@/services/dailySummaryService";
 import { DailyPlanCard } from "./DailyPlanCard";
+import { GenerateWeeklySummaryButton } from "./GenerateWeeklySummaryButton";
 import { LoadingSpinner } from "@/components/LoadingSpinner";
 
 export function DailyPlansList({ focusDate }: { focusDate?: string | null }) {
@@ -507,8 +508,12 @@ export function DailyPlansList({ focusDate }: { focusDate?: string | null }) {
           </button>
         </div>
 
-        {/* New plan button */}
+        {/* Actions */}
         <div className="flex flex-wrap items-center gap-2 sm:gap-4">
+          <GenerateWeeklySummaryButton
+            defaultYear={selectedYear}
+            defaultWeek={selectedWeek}
+          />
           <button
             onClick={handleOpenExportModal}
             className="flex items-center gap-2 px-5 py-2.5 text-orange-700 bg-orange-50 rounded-xl hover:bg-orange-100 transition-all"

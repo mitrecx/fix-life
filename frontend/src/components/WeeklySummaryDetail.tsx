@@ -177,10 +177,10 @@ export function WeeklySummaryDetail() {
       <div className="mb-8">
         <Button
           icon={<ArrowLeft size={18} />}
-          onClick={() => navigate("/weekly-summaries")}
+          onClick={() => navigate("/daily-plans")}
           className="mb-4"
         >
-          返回列表
+          返回每日进度
         </Button>
         <div className="flex items-center justify-between">
           <div>
