@@ -7,6 +7,7 @@ from fastmcp import FastMCP
 from fastmcp.exceptions import ToolError
 
 from app.mcp.auth import FixLifeApiKeyVerifier
+from app.mcp.prompts.github_issue_todo import register_github_issue_prompts
 from app.mcp.tools.account import handle_account
 from app.mcp.tools.admin import admin_tool_visible, handle_admin
 from app.mcp.tools.daily import handle_daily
@@ -52,6 +53,7 @@ def create_mcp_server() -> FastMCP:
             "GitHub issue skill on create: pass a github.com/owner/repo/issues/N URL, owner/repo#N, "
             "owner/repo issue N, or repo issue N (with GITHUB_DEFAULT_OWNER) in title or description; "
             "server sets title from GitHub, description to the URL only, context=work. "
+            "Prefer prompt create_todo_from_github_issue when the user asks to create a todo from a GitHub issue. "
             "list filters: tab (pending|in_progress|done), context, priority, q, time_field, date_from, date_to, limit, offset. "
             "delete/get/update/complete require task_id: copy tasks[].id from a fresh list response exactly; never guess UUIDs. "
             "delete also accepts title when exactly one task matches. After delete, call list again to verify."
@@ -91,6 +93,8 @@ def create_mcp_server() -> FastMCP:
     )
     def admin(payload: dict[str, Any]) -> dict[str, Any]:
         return _run_tool(handle_admin, payload)
+
+    register_github_issue_prompts(mcp)
 
     return mcp
 

@@ -1007,8 +1007,7 @@ export function TodosList() {
               : "pending",
       });
       applyUpdatedTask(updated);
-      setDrawerTaskSnapshot(updated);
-      void loadTaskDetail(activeTask.id);
+      closeTaskDetail();
     } catch (error) {
       applyTaskToColumns(snapshot);
       console.error("Failed to save backlog task:", error);

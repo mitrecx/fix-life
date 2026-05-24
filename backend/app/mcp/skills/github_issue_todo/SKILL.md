@@ -35,6 +35,14 @@ Supported issue references in `title` or `description`:
 
 No extra action field is required; pass the URL in `title` or `description`.
 
+## MCP prompt (discoverable entry)
+
+Clients that list MCP prompts expose:
+
+- **`create_todo_from_github_issue`** — argument: `issue_reference`
+
+Use this when the user asks to create a todo from a GitHub issue. The prompt instructs the agent to call `todo` create with a minimal payload; the server skill still performs normalization.
+
 ## Example payload
 
 ```json

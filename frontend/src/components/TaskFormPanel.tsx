@@ -311,9 +311,14 @@ function ContextSelector({
           onClick={() => onChange(c.value)}
           className={`px-2.5 py-1 text-xs rounded-md border transition-all ${
             value === c.value
-              ? "border-gray-800 bg-gray-800 text-white"
+              ? "border-current text-white"
               : "border-gray-200 text-gray-600 hover:border-gray-300"
           }`}
+          style={
+            value === c.value
+              ? { backgroundColor: c.color, borderColor: c.color }
+              : undefined
+          }
         >
           {c.label}
         </button>

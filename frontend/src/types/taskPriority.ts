@@ -1,9 +1,9 @@
 export type TaskPriority = "high" | "medium" | "low";
 
 export const TASK_PRIORITY: { value: TaskPriority; label: string; color: string }[] = [
-  { value: "high", label: "高", color: "#EF4444" },
+  { value: "low", label: "低", color: "#10B981" },
   { value: "medium", label: "中", color: "#F59E0B" },
-  { value: "low", label: "低", color: "#9CA3AF" },
+  { value: "high", label: "高", color: "#EF4444" },
 ];
 
 export const DEFAULT_TASK_PRIORITY: TaskPriority = "medium";
