@@ -1,18 +1,17 @@
-import { useState, useEffect, useCallback, useMemo } from "react";
-import { Trash2, Calendar as CalendarIcon, SquarePen, Plus, CheckSquare, X } from "lucide-react";
-import { Calendar, Modal, message, Select } from "antd";
-import type { CalendarProps } from "antd";
+import { useState, useEffect, useCallback, useMemo, useRef } from "react";
+import { Trash2, Plus, CheckSquare, X } from "lucide-react";
+import { Modal, message } from "antd";
 import type { Dayjs } from "dayjs";
 import dayjs from "dayjs";
 import { useSearchParams } from "react-router-dom";
 import { useNavigate } from "react-router-dom";
 import { backlogTaskService } from "@/services/backlogTaskService";
 import { TodosFilterBar } from "@/components/TodosFilterBar";
-import { TaskFormPanel, taskFormStatusLabel } from "@/components/TaskFormPanel";
+import { TaskFormPanel } from "@/components/TaskFormPanel";
+import { TaskDetailDrawer } from "@/components/TaskDetailDrawer";
 import type {
   BacklogTask,
   BacklogTaskDetail,
-  BacklogOccurrence,
   BacklogListFilters,
   BacklogContextFilter,
   BacklogPriorityFilter,
@@ -75,6 +74,17 @@ function sortColumnTasks(tasks: BacklogTask[], column: KanbanColumnId): BacklogT
   return sorted;
 }
 
+function filterSearchParamKey(params: URLSearchParams): string {
+  return [
+    params.get("q") ?? "",
+    params.get("context") ?? "",
+    params.get("priority") ?? "",
+    params.get("time_field") ?? "",
+    params.get("date_from") ?? "",
+    params.get("date_to") ?? "",
+  ].join("\0");
+}
+
 function parseFilters(params: URLSearchParams): BacklogListFilters {
   const rawContext = params.get("context");
   const context: BacklogContextFilter =
@@ -98,7 +108,7 @@ function parseFilters(params: URLSearchParams): BacklogListFilters {
   };
 }
 
-function filtersToSearchParams(filters: BacklogListFilters): URLSearchParams {
+function filtersToSearchParams(filters: BacklogListFilters, taskId?: string | null): URLSearchParams {
   const params = new URLSearchParams();
   const q = filters.q?.trim();
   if (q) params.set("q", q);
@@ -109,6 +119,7 @@ function filtersToSearchParams(filters: BacklogListFilters): URLSearchParams {
     if (filters.dateFrom) params.set("date_from", filters.dateFrom);
     if (filters.dateTo) params.set("date_to", filters.dateTo);
   }
+  if (taskId) params.set("task", taskId);
   return params;
 }
 
@@ -159,70 +170,17 @@ function progressForColumn(column: KanbanColumnId, from: KanbanColumnId, current
   return progressForDrag(from, column, current);
 }
 
-const DAILY_STATUS_LABELS: Record<string, string> = {
-  todo: "待办",
-  "in-progress": "进行中",
-  done: "已完成",
-  cancelled: "已取消",
-};
-
-function OccurrenceTimeline({
-  occurrences,
-  onNavigate,
-}: {
-  occurrences: BacklogOccurrence[];
-  onNavigate: (occ: BacklogOccurrence) => void;
-}) {
-  if (occurrences.length === 0) {
-    return <p className="text-xs text-gray-400 py-2">暂无每日进度记录</p>;
-  }
-  return (
-    <div className="border border-gray-100 rounded-lg overflow-hidden">
-      <table className="w-full text-xs">
-        <thead className="bg-gray-50 text-gray-500">
-          <tr>
-            <th className="text-left font-medium px-3 py-2">日期</th>
-            <th className="text-left font-medium px-3 py-2">当天状态</th>
-            <th className="text-right font-medium px-3 py-2">操作</th>
-          </tr>
-        </thead>
-        <tbody className="divide-y divide-gray-100">
-          {occurrences.map((occ) => (
-            <tr key={occ.daily_task_id} className="hover:bg-gray-50">
-              <td className="px-3 py-2 text-gray-800">{occ.plan_date}</td>
-              <td className="px-3 py-2 text-gray-600">
-                {DAILY_STATUS_LABELS[occ.daily_status ?? "todo"] ?? occ.daily_status}
-              </td>
-              <td className="px-3 py-2 text-right">
-                <button
-                  type="button"
-                  onClick={() => onNavigate(occ)}
-                  className="text-indigo-600 hover:text-indigo-700 font-medium"
-                >
-                  跳转
-                </button>
-              </td>
-            </tr>
-          ))}
-        </tbody>
-      </table>
-    </div>
-  );
-}
-
 interface KanbanCardProps {
   task: BacklogTask;
   column: KanbanColumnId;
   draggable: boolean;
   selectionMode: boolean;
   selected: boolean;
+  highlighted: boolean;
   onToggleSelect: (task: BacklogTask) => void;
   onDragStart: (task: BacklogTask, from: KanbanColumnId) => void;
-  onSchedule: (task: BacklogTask) => void;
   onPriorityChange: (task: BacklogTask, priority: TaskPriority) => void;
-  onView: (task: BacklogTask) => void;
-  onEdit: (task: BacklogTask) => void;
-  onDelete: (task: BacklogTask) => void;
+  onOpenDetail: (task: BacklogTask) => void;
 }
 
 function KanbanCard({
@@ -231,13 +189,11 @@ function KanbanCard({
   draggable,
   selectionMode,
   selected,
+  highlighted,
   onToggleSelect,
   onDragStart,
-  onSchedule,
   onPriorityChange,
-  onView,
-  onEdit,
-  onDelete,
+  onOpenDetail,
 }: KanbanCardProps) {
   const contextConfig = getTaskContextConfig(task.context);
   const priorityConfig = getTaskPriorityConfig(task.priority);
@@ -251,9 +207,9 @@ function KanbanCard({
         e.dataTransfer.effectAllowed = "move";
         onDragStart(task, column);
       }}
-      className={`group bg-white rounded-md border p-2.5 hover:border-gray-300 transition-all ${
+      className={`group bg-white rounded-md border p-2 hover:border-gray-300 transition-all ${
         selectionMode ? "cursor-pointer" : draggable ? "cursor-grab active:cursor-grabbing" : ""
-      } ${selected ? "border-indigo-400 bg-indigo-50/40 ring-1 ring-indigo-200" : "border-gray-200"}`}
+      } ${selected ? "border-indigo-400 bg-indigo-50/40 ring-1 ring-indigo-200" : highlighted ? "border-indigo-300 ring-1 ring-indigo-100" : "border-gray-200"}`}
       onClick={() => {
         if (selectionMode) onToggleSelect(task);
       }}
@@ -267,23 +223,19 @@ function KanbanCard({
             className="mt-0.5 shrink-0 rounded border-gray-300 text-indigo-600 focus:ring-indigo-500 pointer-events-none"
           />
         )}
-        <div
-          className={`flex-1 min-w-0 ${selectionMode ? "" : "cursor-pointer"}`}
-          onClick={(e) => {
-            if (!selectionMode) {
-              e.stopPropagation();
-              onView(task);
-            }
-          }}
-        >
+        <div className="flex-1 min-w-0">
           <p
-            className={`text-sm leading-snug break-words hover:text-gray-600 ${
-              column === "done" ? "text-gray-500 hover:text-gray-400" : "text-gray-800"
-            }`}
+            className={`text-sm leading-snug break-words ${
+              selectionMode ? "" : "cursor-pointer hover:text-indigo-700"
+            } ${column === "done" ? "text-gray-500" : "text-gray-800"}`}
+            onClick={(e) => {
+              e.stopPropagation();
+              if (!selectionMode) onOpenDetail(task);
+            }}
           >
             {task.title}
           </p>
-          <div className="flex items-center flex-wrap gap-1 mt-1.5">
+          <div className="flex items-center flex-wrap gap-1 mt-1">
             {priorityConfig && column !== "done" && (
               <button
                 type="button"
@@ -356,80 +308,6 @@ function KanbanCard({
           </div>
         </div>
       </div>
-
-      <div
-        className={`flex items-center gap-1 mt-1.5 pt-1 border-t border-gray-100 ${selectionMode ? "pointer-events-none opacity-50" : ""}`}
-      >
-        <button
-          type="button"
-          onClick={(e) => {
-            e.stopPropagation();
-            onEdit(task);
-          }}
-          className="flex items-center gap-0.5 px-1.5 py-0.5 text-[10px] text-indigo-600 hover:bg-indigo-50 rounded"
-        >
-          <SquarePen size={11} />
-          编辑
-        </button>
-        {column !== "done" && (
-          <button
-            type="button"
-            onClick={(e) => {
-              e.stopPropagation();
-              onSchedule(task);
-            }}
-            className="flex items-center gap-0.5 px-1.5 py-0.5 text-[10px] text-blue-600 hover:bg-blue-50 rounded"
-          >
-            <CalendarIcon size={11} />
-            安排
-          </button>
-        )}
-        <button
-          type="button"
-          onClick={(e) => {
-            e.stopPropagation();
-            onDelete(task);
-          }}
-          className="flex items-center gap-0.5 px-1.5 py-0.5 text-[10px] text-red-500 hover:bg-red-50 rounded ml-auto"
-        >
-          <Trash2 size={11} />
-          删除
-        </button>
-      </div>
-    </div>
-  );
-}
-
-function scheduleCalendarHeader({ value, onChange }: Parameters<NonNullable<CalendarProps<Dayjs>["headerRender"]>>[0]) {
-  const year = value.year();
-  const month = value.month();
-
-  const yearOptions = Array.from({ length: 11 }, (_, i) => {
-    const y = year - 5 + i;
-    return { label: `${y}年`, value: y };
-  });
-
-  const monthOptions = Array.from({ length: 12 }, (_, i) => ({
-    label: `${i + 1}月`,
-    value: i,
-  }));
-
-  return (
-    <div className="flex items-center justify-center gap-2 py-2">
-      <Select
-        size="small"
-        value={year}
-        options={yearOptions}
-        onChange={(newYear) => onChange(value.year(newYear))}
-        style={{ width: 96 }}
-      />
-      <Select
-        size="small"
-        value={month}
-        options={monthOptions}
-        onChange={(newMonth) => onChange(value.month(newMonth))}
-        style={{ width: 80 }}
-      />
     </div>
   );
 }
@@ -437,8 +315,10 @@ function scheduleCalendarHeader({ value, onChange }: Parameters<NonNullable<Cale
 export function TodosList() {
   const navigate = useNavigate();
   const [searchParams, setSearchParams] = useSearchParams();
-  const filters = useMemo(() => parseFilters(searchParams), [searchParams]);
+  const filterParamKey = filterSearchParamKey(searchParams);
+  const filters = useMemo(() => parseFilters(searchParams), [filterParamKey, searchParams]);
   const [debouncedQ, setDebouncedQ] = useState(filters.q ?? "");
+  const hasLoadedOnceRef = useRef(false);
 
   const [pendingTasks, setPendingTasks] = useState<BacklogTask[]>([]);
   const [inProgressTasks, setInProgressTasks] = useState<BacklogTask[]>([]);
@@ -452,9 +332,6 @@ export function TodosList() {
   const [formStatus, setFormStatus] = useState<TaskFormStatus>("pending");
   const [formProgress, setFormProgress] = useState(0);
   const [isSubmitting, setIsSubmitting] = useState(false);
-  const [schedulingTask, setSchedulingTask] = useState<BacklogTask | null>(null);
-  const [viewingTask, setViewingTask] = useState<BacklogTask | null>(null);
-  const [detailEditing, setDetailEditing] = useState(false);
   const [detailTitle, setDetailTitle] = useState("");
   const [detailContext, setDetailContext] = useState<TaskContext>(DEFAULT_TASK_CONTEXT);
   const [detailPriority, setDetailPriority] = useState<TaskPriority>(DEFAULT_TASK_PRIORITY);
@@ -464,11 +341,39 @@ export function TodosList() {
   const [taskDetail, setTaskDetail] = useState<BacklogTaskDetail | null>(null);
   const [detailLoading, setDetailLoading] = useState(false);
   const [scheduleDate, setScheduleDate] = useState<Dayjs>(dayjs());
+  const [scheduleOpen, setScheduleOpen] = useState(false);
+  const [isScheduling, setIsScheduling] = useState(false);
+  const [drawerTaskSnapshot, setDrawerTaskSnapshot] = useState<BacklogTask | null>(null);
   const [dragging, setDragging] = useState<{ task: BacklogTask; from: KanbanColumnId } | null>(null);
   const [dropTarget, setDropTarget] = useState<KanbanColumnId | null>(null);
   const [selectionMode, setSelectionMode] = useState(false);
   const [selectedIds, setSelectedIds] = useState<Set<string>>(() => new Set());
   const [batchDeleting, setBatchDeleting] = useState(false);
+  const populatedTaskIdRef = useRef<string | null>(null);
+
+  const taskId = searchParams.get("task");
+  const drawerOpen = !!taskId;
+
+  useEffect(() => {
+    const main = document.querySelector("main");
+    if (!main) return;
+    if (!drawerOpen) return;
+    const prevOverflow = main.style.overflow;
+    main.style.overflow = "hidden";
+    return () => {
+      main.style.overflow = prevOverflow;
+    };
+  }, [drawerOpen]);
+
+  const allColumnTasks = useMemo(
+    () => [...pendingTasks, ...inProgressTasks, ...doneTasks],
+    [pendingTasks, inProgressTasks, doneTasks]
+  );
+
+  const activeTask = useMemo(() => {
+    if (!taskId) return null;
+    return allColumnTasks.find((t) => t.id === taskId) ?? drawerTaskSnapshot;
+  }, [taskId, allColumnTasks, drawerTaskSnapshot]);
 
   useEffect(() => {
     const timer = window.setTimeout(() => setDebouncedQ(filters.q ?? ""), 300);
@@ -490,6 +395,7 @@ export function TodosList() {
   );
 
   const matchCount = pendingTasks.length + inProgressTasks.length + doneTasks.length;
+  const showInitialLoading = loading && matchCount === 0;
 
   const visibleTaskIds = useMemo(
     () => [...pendingTasks, ...inProgressTasks, ...doneTasks].map((t) => t.id),
@@ -535,14 +441,14 @@ export function TodosList() {
   const updateFilters = useCallback(
     (patch: Partial<BacklogListFilters>) => {
       const next = { ...filters, ...patch };
-      setSearchParams(filtersToSearchParams(next), { replace: true });
+      setSearchParams(filtersToSearchParams(next, searchParams.get("task")), { replace: true });
     },
-    [filters, setSearchParams]
+    [filters, searchParams, setSearchParams]
   );
 
   const clearFilters = useCallback(() => {
-    setSearchParams(filtersToSearchParams(DEFAULT_FILTERS), { replace: true });
-  }, [setSearchParams]);
+    setSearchParams(filtersToSearchParams(DEFAULT_FILTERS, searchParams.get("task")), { replace: true });
+  }, [searchParams, setSearchParams]);
 
   const setColumnState = useCallback(
     (column: KanbanColumnId, updater: (prev: BacklogTask[]) => BacklogTask[]) => {
@@ -580,7 +486,7 @@ export function TodosList() {
   }, [setColumnState]);
 
   const loadTasks = useCallback(async (options?: { silent?: boolean }) => {
-    const silent = options?.silent ?? false;
+    const silent = options?.silent ?? hasLoadedOnceRef.current;
     if (!silent) setLoading(true);
     try {
       const [pending, inProgress, done] = await Promise.all([
@@ -595,6 +501,7 @@ export function TodosList() {
       console.error("Failed to load backlog tasks:", error);
       if (!silent) message.error("加载待办失败");
     } finally {
+      hasLoadedOnceRef.current = true;
       if (!silent) setLoading(false);
     }
   }, [apiFilters]);
@@ -613,7 +520,6 @@ export function TodosList() {
   }, []);
 
   const resetDetailDraft = useCallback(() => {
-    setDetailEditing(false);
     setDetailTitle("");
     setDetailContext(DEFAULT_TASK_CONTEXT);
     setDetailPriority(DEFAULT_TASK_PRIORITY);
@@ -632,43 +538,50 @@ export function TodosList() {
     setDetailProgress(task.progress ?? 0);
   }, []);
 
-  const loadTaskDetail = useCallback(async (taskId: string) => {
+  const loadTaskDetail = useCallback(async (id: string) => {
     setDetailLoading(true);
     try {
-      const detail = await backlogTaskService.get(taskId);
+      const detail = await backlogTaskService.get(id);
       setTaskDetail(detail);
+      setDrawerTaskSnapshot((prev) => prev ?? detail);
     } catch (error) {
       console.error("Failed to load task detail:", error);
+      setSearchParams((prev) => filtersToSearchParams(parseFilters(prev)), { replace: true });
     } finally {
       setDetailLoading(false);
     }
-  }, []);
+  }, [setSearchParams]);
 
   const openCreateForm = useCallback(() => {
     resetCreateForm();
     setFormOpen(true);
   }, [resetCreateForm]);
 
-  const openTaskDetail = useCallback(
-    (task: BacklogTask, editing = false) => {
-      setViewingTask(task);
-      populateDetailDraft(task);
-      setDetailEditing(editing);
-      void loadTaskDetail(task.id);
-    },
-    [populateDetailDraft, loadTaskDetail]
-  );
-
   const closeTaskDetail = useCallback(() => {
-    setViewingTask(null);
+    populatedTaskIdRef.current = null;
+    setDrawerTaskSnapshot(null);
+    setScheduleOpen(false);
     resetDetailDraft();
-  }, [resetDetailDraft]);
+    setSearchParams((prev) => filtersToSearchParams(parseFilters(prev)), { replace: true });
+  }, [resetDetailDraft, setSearchParams]);
 
-  const startDetailEdit = useCallback(() => {
-    if (!viewingTask) return;
-    populateDetailDraft(viewingTask);
-    setDetailEditing(true);
-  }, [populateDetailDraft, viewingTask]);
+  const handleDetailCancel = useCallback(() => {
+    if (activeTask) {
+      populateDetailDraft(activeTask);
+    }
+    closeTaskDetail();
+  }, [activeTask, populateDetailDraft, closeTaskDetail]);
+
+  const openTaskDetail = useCallback(
+    (task: BacklogTask) => {
+      if (selectionMode) return;
+      populatedTaskIdRef.current = null;
+      setDrawerTaskSnapshot(task);
+      setScheduleOpen(false);
+      setSearchParams((prev) => filtersToSearchParams(parseFilters(prev), task.id), { replace: false });
+    },
+    [selectionMode, setSearchParams]
+  );
 
   const closeCreateForm = useCallback(() => {
     setFormOpen(false);
@@ -676,16 +589,36 @@ export function TodosList() {
   }, [resetCreateForm]);
 
   useEffect(() => {
-    if (!viewingTask || detailEditing) return;
-    const latest = [...pendingTasks, ...inProgressTasks, ...doneTasks].find(
-      (t) => t.id === viewingTask.id
-    );
-    if (latest) {
-      setViewingTask(latest);
-    } else {
+    if (!taskId) {
+      populatedTaskIdRef.current = null;
+      return;
+    }
+    if (populatedTaskIdRef.current === taskId) return;
+    const fromColumns = allColumnTasks.find((t) => t.id === taskId);
+    const fromSnapshot = drawerTaskSnapshot?.id === taskId ? drawerTaskSnapshot : null;
+    const task = fromColumns ?? fromSnapshot;
+    if (!task) return;
+    populateDetailDraft(task);
+    setScheduleDate(task.last_plan_date ? dayjs(task.last_plan_date) : dayjs());
+    populatedTaskIdRef.current = taskId;
+  }, [taskId, allColumnTasks, drawerTaskSnapshot, populateDetailDraft]);
+
+  useEffect(() => {
+    if (!taskId) return;
+    if (taskDetail?.id === taskId) return;
+    void loadTaskDetail(taskId);
+  }, [taskId, loadTaskDetail, taskDetail?.id]);
+
+  useEffect(() => {
+    if (!taskId || !activeTask) return;
+    setDrawerTaskSnapshot(activeTask);
+  }, [taskId, activeTask?.id, activeTask?.updated_at, activeTask?.progress, activeTask?.title]);
+
+  useEffect(() => {
+    if (selectionMode && drawerOpen) {
       closeTaskDetail();
     }
-  }, [pendingTasks, inProgressTasks, doneTasks, viewingTask, detailEditing, closeTaskDetail]);
+  }, [selectionMode, drawerOpen, closeTaskDetail]);
 
   const applyUpdatedTask = useCallback(
     (updated: BacklogTask) => {
@@ -722,15 +655,15 @@ export function TodosList() {
   };
 
   const handleDetailSave = async () => {
-    if (!viewingTask || !detailTitle.trim() || isSubmitting) return;
+    if (!activeTask || !detailTitle.trim() || isSubmitting) return;
 
     setIsSubmitting(true);
-    const snapshot = viewingTask;
+    const snapshot = activeTask;
     const trimmedDescription = detailDescription.trim();
     const progress = detailProgress;
     try {
       applyUpdatedTask({
-        ...viewingTask,
+        ...activeTask,
         title: detailTitle.trim(),
         context: detailContext,
         priority: detailPriority,
@@ -739,10 +672,10 @@ export function TodosList() {
         status: detailStatus === "done" ? "done" : detailStatus === "in_progress" ? "in_progress" : "pending",
         completed_at:
           detailStatus === "done"
-            ? viewingTask.completed_at ?? new Date().toISOString()
+            ? activeTask.completed_at ?? new Date().toISOString()
             : undefined,
       });
-      const updated = await backlogTaskService.update(viewingTask.id, {
+      const updated = await backlogTaskService.update(activeTask.id, {
         title: detailTitle.trim(),
         context: detailContext,
         priority: detailPriority,
@@ -750,7 +683,8 @@ export function TodosList() {
         progress,
       });
       applyUpdatedTask(updated);
-      closeTaskDetail();
+      setDrawerTaskSnapshot(updated);
+      void loadTaskDetail(activeTask.id);
     } catch (error) {
       applyTaskToColumns(snapshot);
       console.error("Failed to save backlog task:", error);
@@ -799,7 +733,8 @@ export function TodosList() {
     }
   };
 
-  const handleDelete = (task: BacklogTask) => {
+  const handleDrawerDelete = () => {
+    if (!activeTask) return;
     Modal.confirm({
       title: "确认删除",
       content: "确定要删除这条待办吗？",
@@ -807,15 +742,17 @@ export function TodosList() {
       okType: "danger",
       cancelText: "取消",
       onOk: async () => {
-        removeTaskFromColumns(task.id);
+        const id = activeTask.id;
+        removeTaskFromColumns(id);
         setSelectedIds((prev) => {
-          if (!prev.has(task.id)) return prev;
+          if (!prev.has(id)) return prev;
           const next = new Set(prev);
-          next.delete(task.id);
+          next.delete(id);
           return next;
         });
+        closeTaskDetail();
         try {
-          await backlogTaskService.delete(task.id);
+          await backlogTaskService.delete(id);
         } catch (error) {
           await loadTasks({ silent: true });
           console.error("Failed to delete task:", error);
@@ -858,25 +795,26 @@ export function TodosList() {
     });
   };
 
-  const openSchedule = (task: BacklogTask) => {
-    setSchedulingTask(task);
-    setScheduleDate(task.last_plan_date ? dayjs(task.last_plan_date) : dayjs());
-  };
-
-  const handleSchedule = async () => {
-    if (!schedulingTask) return;
-    const snapshot = schedulingTask;
+  const handleConfirmSchedule = async () => {
+    if (!activeTask || isScheduling) return;
+    setIsScheduling(true);
+    const snapshot = activeTask;
     try {
       const updated = await backlogTaskService.schedule(
-        schedulingTask.id,
+        activeTask.id,
         scheduleDate.format("YYYY-MM-DD")
       );
       applyUpdatedTask(updated);
-      setSchedulingTask(null);
+      setDrawerTaskSnapshot(updated);
+      setScheduleOpen(false);
+      void loadTaskDetail(activeTask.id);
+      message.success("已安排到每日进度");
     } catch (error) {
       applyTaskToColumns(snapshot);
       console.error("Failed to schedule task:", error);
       message.error("安排失败");
+    } finally {
+      setIsScheduling(false);
     }
   };
 
@@ -905,7 +843,13 @@ export function TodosList() {
   };
 
   return (
-    <div className="flex flex-col min-h-[calc(100dvh-5rem)] h-full">
+    <div
+      className={`relative flex flex-col px-3 py-3 sm:px-4 sm:py-4 ${
+        drawerOpen
+          ? "h-[calc(100dvh-2rem)] max-h-[calc(100dvh-2rem)] overflow-hidden"
+          : "min-h-[calc(100dvh-2rem)] h-full"
+      }`}
+    >
       <TodosFilterBar
         filters={filters}
         matchCount={matchCount}
@@ -914,7 +858,10 @@ export function TodosList() {
         selectionMode={selectionMode}
         onToggleSelectionMode={() => {
           if (selectionMode) exitSelectionMode();
-          else setSelectionMode(true);
+          else {
+            if (drawerOpen) closeTaskDetail();
+            setSelectionMode(true);
+          }
         }}
       />
 
@@ -952,7 +899,7 @@ export function TodosList() {
         </div>
       )}
 
-      {loading ? (
+      {showInitialLoading ? (
         <div className="flex-1 flex items-center justify-center text-gray-400 text-sm">加载中...</div>
       ) : (
         <div className="flex-1 flex gap-2.5 min-h-0 mt-4">
@@ -1016,13 +963,11 @@ export function TodosList() {
                         draggable={!selectionMode}
                         selectionMode={selectionMode}
                         selected={selectedIds.has(task.id)}
+                        highlighted={taskId === task.id}
                         onToggleSelect={toggleTaskSelection}
                         onDragStart={(t, from) => setDragging({ task: t, from })}
-                        onSchedule={openSchedule}
                         onPriorityChange={handlePriorityChange}
-                        onView={(task) => openTaskDetail(task)}
-                        onEdit={(task) => openTaskDetail(task, true)}
-                        onDelete={handleDelete}
+                        onOpenDetail={openTaskDetail}
                       />
                     ))
                   )}
@@ -1033,101 +978,42 @@ export function TodosList() {
         </div>
       )}
 
-      <Modal
-        title="待办详情"
-        open={!!viewingTask}
-        onCancel={closeTaskDetail}
-        footer={
-          viewingTask
-            ? detailEditing
-              ? [
-                  <button
-                    key="save"
-                    type="button"
-                    disabled={!detailTitle.trim() || isSubmitting}
-                    onClick={handleDetailSave}
-                    className="px-4 py-1.5 text-sm font-medium text-white bg-indigo-600 rounded-lg hover:bg-indigo-700 disabled:opacity-50 disabled:cursor-not-allowed"
-                  >
-                    {isSubmitting ? "保存中…" : "保存"}
-                  </button>,
-                  <button
-                    key="cancel"
-                    type="button"
-                    disabled={isSubmitting}
-                    onClick={closeTaskDetail}
-                    className="px-4 py-1.5 text-sm font-medium text-gray-600 bg-gray-100 rounded-lg hover:bg-gray-200 ml-2 disabled:opacity-50"
-                  >
-                    取消
-                  </button>,
-                ]
-              : [
-                  <button
-                    key="edit"
-                    type="button"
-                    onClick={startDetailEdit}
-                    className="px-4 py-1.5 text-sm font-medium text-white bg-indigo-600 rounded-lg hover:bg-indigo-700"
-                  >
-                    编辑
-                  </button>,
-                  <button
-                    key="close"
-                    type="button"
-                    onClick={closeTaskDetail}
-                    className="px-4 py-1.5 text-sm font-medium text-gray-600 bg-gray-100 rounded-lg hover:bg-gray-200 ml-2"
-                  >
-                    关闭
-                  </button>,
-                ]
-            : null
-        }
-      >
-        {viewingTask && (
-          <>
-            <TaskFormPanel
-              mode={detailEditing ? "edit" : "view"}
-              title={detailTitle}
-              description={detailDescription}
-              context={detailContext}
-              priority={detailPriority}
-              status={detailStatus}
-              progress={detailProgress}
-              onTitleChange={setDetailTitle}
-              onDescriptionChange={setDetailDescription}
-              onContextChange={setDetailContext}
-              onPriorityChange={setDetailPriority}
-              onStatusChange={(status) => {
-                setDetailStatus(status);
-                setDetailProgress(applyStatusChange(status, detailProgress));
-              }}
-              onProgressChange={(progress) => {
-                setDetailProgress(progress);
-                setDetailStatus(progressToFormStatus(progress));
-              }}
-              onSubmit={handleDetailSave}
-              statusLabel={taskFormStatusLabel(progressToFormStatus(viewingTask.progress ?? 0))}
-              timestamps={{
-                createdAt: viewingTask.created_at,
-                scheduledDate: viewingTask.last_plan_date ?? viewingTask.scheduled_date,
-                completedAt: viewingTask.completed_at,
-                updatedAt: viewingTask.updated_at,
-              }}
-            />
-            {!detailEditing && (
-              <div className="mt-4 pt-3 border-t border-gray-100">
-                <h3 className="text-sm font-semibold text-gray-700 mb-2">每日进度记录</h3>
-                {detailLoading ? (
-                  <p className="text-xs text-gray-400">加载中…</p>
-                ) : (
-                  <OccurrenceTimeline
-                    occurrences={taskDetail?.occurrences ?? []}
-                    onNavigate={(occ) => navigate(`/daily-plans?focus=${occ.plan_date}`)}
-                  />
-                )}
-              </div>
-            )}
-          </>
-        )}
-      </Modal>
+      <TaskDetailDrawer
+        open={drawerOpen && !!activeTask}
+        taskProgress={activeTask?.progress ?? 0}
+        detailTitle={detailTitle}
+        detailDescription={detailDescription}
+        detailContext={detailContext}
+        detailPriority={detailPriority}
+        detailStatus={detailStatus}
+        detailProgress={detailProgress}
+        detailLoading={detailLoading}
+        taskDetail={taskDetail}
+        isSubmitting={isSubmitting}
+        isDone={activeTask ? kanbanColumnForTask(activeTask) === "done" : false}
+        scheduleDate={scheduleDate}
+        scheduleOpen={scheduleOpen}
+        isScheduling={isScheduling}
+        timestamps={{
+          createdAt: activeTask?.created_at,
+          scheduledDate: activeTask?.last_plan_date ?? activeTask?.scheduled_date,
+          completedAt: activeTask?.completed_at,
+          updatedAt: activeTask?.updated_at,
+        }}
+        onCancel={handleDetailCancel}
+        onTitleChange={setDetailTitle}
+        onDescriptionChange={setDetailDescription}
+        onContextChange={setDetailContext}
+        onPriorityChange={setDetailPriority}
+        onStatusChange={setDetailStatus}
+        onProgressChange={setDetailProgress}
+        onConfirm={handleDetailSave}
+        onDelete={handleDrawerDelete}
+        onToggleSchedule={() => setScheduleOpen((v) => !v)}
+        onScheduleDateChange={setScheduleDate}
+        onConfirmSchedule={handleConfirmSchedule}
+        onNavigateOccurrence={(occ) => navigate(`/daily-plans?focus=${occ.plan_date}`)}
+      />
 
       <Modal
         title="新增待办"
@@ -1161,30 +1047,6 @@ export function TodosList() {
           }}
           onSubmit={handleCreateSubmit}
         />
-      </Modal>
-
-      <Modal
-        title="安排到每日进度"
-        open={!!schedulingTask}
-        onOk={handleSchedule}
-        onCancel={() => setSchedulingTask(null)}
-        okText="确认安排"
-        cancelText="取消"
-        width={360}
-      >
-        {schedulingTask && (
-          <div className="py-2">
-            <p className="text-sm text-gray-600 mb-3">
-              将「{schedulingTask.title}」添加到每日进度：
-            </p>
-            <Calendar
-              fullscreen={false}
-              value={scheduleDate}
-              onSelect={(date) => setScheduleDate(date)}
-              headerRender={scheduleCalendarHeader}
-            />
-          </div>
-        )}
       </Modal>
     </div>
   );

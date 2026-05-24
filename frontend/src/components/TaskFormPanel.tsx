@@ -277,7 +277,7 @@ export function TaskFormPanel({
             value={title}
             onChange={(e) => onTitleChange(e.target.value)}
             placeholder="待办标题"
-            autoFocus={mode === "create" || mode === "edit"}
+            autoFocus={mode === "create"}
             onKeyDown={(e) => {
               if (e.key === "Enter" && title.trim()) onSubmit?.();
             }}
