@@ -94,6 +94,7 @@ case $COMMAND in
       --exclude '.pytest_cache' \
       --exclude 'logs' \
       --exclude '*.log' \
+      --exclude '.env' \
       --exclude '.env.local' \
       "${BACKEND_LOCAL}/" "${SERVER}:${BACKEND_DEPLOY_PATH}/"
 
@@ -162,6 +163,7 @@ case $COMMAND in
       --exclude '.pytest_cache' \
       --exclude 'logs' \
       --exclude '*.log' \
+      --exclude '.env' \
       --exclude '.env.local' \
       "${BACKEND_LOCAL}/" "${SERVER}:${BACKEND_DEPLOY_PATH}/"
 

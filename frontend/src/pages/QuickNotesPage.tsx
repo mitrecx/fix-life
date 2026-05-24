@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { DatePicker, Input, message } from "antd";
-import { RotateCcw, Search, Send } from "lucide-react";
+import { ImagePlus, RotateCcw, Search, Send } from "lucide-react";
 import { type Dayjs } from "dayjs";
 import { LoadingSpinner } from "@/components/LoadingSpinner";
 import QuickNoteMarkdown from "@/components/QuickNoteMarkdown";
@@ -20,15 +20,27 @@ function hasActiveFilters(filters: QuickNoteListFilters) {
   return !!(filters.q?.trim() || filters.dateFrom || filters.dateTo);
 }
 
+const ALLOWED_IMAGE_TYPES = new Set([
+  "image/jpeg",
+  "image/jpg",
+  "image/png",
+  "image/gif",
+  "image/webp",
+]);
+
+const MAX_IMAGE_SIZE = 5 * 1024 * 1024;
+
 export default function QuickNotesPage() {
   const [notes, setNotes] = useState<QuickNote[]>([]);
   const [loading, setLoading] = useState(true);
   const [sending, setSending] = useState(false);
+  const [uploadingImage, setUploadingImage] = useState(false);
   const [draft, setDraft] = useState("");
   const [queryInput, setQueryInput] = useState("");
   const [dateRange, setDateRange] = useState<[Dayjs | null, Dayjs | null]>([null, null]);
   const [appliedFilters, setAppliedFilters] = useState<QuickNoteListFilters>({});
   const messagesEndRef = useRef<HTMLDivElement>(null);
+  const imageInputRef = useRef<HTMLInputElement>(null);
 
   const scrollToBottom = useCallback((behavior: ScrollBehavior = "smooth") => {
     messagesEndRef.current?.scrollIntoView({ behavior });
@@ -100,6 +112,36 @@ export default function QuickNotesPage() {
     if (event.key === "Enter" && !event.shiftKey) {
       event.preventDefault();
       void handleSend();
+    }
+  };
+
+  const handleImageSelect = async (event: React.ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0];
+    event.target.value = "";
+    if (!file || uploadingImage || sending) {
+      return;
+    }
+
+    if (!ALLOWED_IMAGE_TYPES.has(file.type)) {
+      message.error("请上传 JPG、PNG、GIF 或 WEBP 格式的图片");
+      return;
+    }
+    if (file.size > MAX_IMAGE_SIZE) {
+      message.error("图片大小不能超过 5MB");
+      return;
+    }
+
+    try {
+      setUploadingImage(true);
+      const { url } = await quickNoteService.uploadImage(file);
+      const imageMarkdown = `![图片](${url})`;
+      setDraft((prev) => (prev.trim() ? `${prev.trim()}\n\n${imageMarkdown}` : imageMarkdown));
+      message.success("图片已添加，点击发送即可保存");
+    } catch (error) {
+      console.error("Failed to upload quick note image:", error);
+      message.error(error instanceof Error ? error.message : "图片上传失败");
+    } finally {
+      setUploadingImage(false);
     }
   };
 
@@ -176,19 +218,35 @@ export default function QuickNotesPage() {
 
         <div className="border-t border-gray-200 p-3 bg-gray-50">
           <div className="flex items-end gap-2">
+            <input
+              ref={imageInputRef}
+              type="file"
+              accept="image/jpeg,image/png,image/gif,image/webp"
+              className="hidden"
+              onChange={(event) => void handleImageSelect(event)}
+            />
+            <button
+              type="button"
+              onClick={() => imageInputRef.current?.click()}
+              disabled={uploadingImage || sending}
+              className="flex-shrink-0 h-10 w-10 flex items-center justify-center rounded-xl border border-gray-300 text-gray-600 hover:bg-gray-100 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+              title="上传图片"
+            >
+              {uploadingImage ? <LoadingSpinner size="small" inline /> : <ImagePlus size={18} />}
+            </button>
             <Input.TextArea
               value={draft}
               onChange={(e) => setDraft(e.target.value)}
               onKeyDown={handleKeyDown}
               placeholder="输入想记录的内容…（Enter 发送，Shift+Enter 换行）"
               autoSize={{ minRows: 1, maxRows: 6 }}
-              disabled={sending}
+              disabled={sending || uploadingImage}
               className="!rounded-xl"
             />
             <button
               type="button"
               onClick={() => void handleSend()}
-              disabled={sending || !draft.trim()}
+              disabled={sending || uploadingImage || !draft.trim()}
               className="flex-shrink-0 h-10 w-10 flex items-center justify-center rounded-xl bg-indigo-500 text-white hover:bg-indigo-600 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
               title="发送"
             >

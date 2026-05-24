@@ -20,3 +20,7 @@ export interface QuickNoteListFilters {
 export interface QuickNoteCreate {
   content: string;
 }
+
+export interface QuickNoteImageUploadResponse {
+  url: string;
+}

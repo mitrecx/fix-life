@@ -21,3 +21,7 @@ class QuickNoteResponse(BaseModel):
 class QuickNoteList(BaseModel):
     notes: list[QuickNoteResponse]
     total: int
+
+
+class QuickNoteImageUploadResponse(BaseModel):
+    url: str

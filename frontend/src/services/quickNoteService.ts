@@ -1,5 +1,11 @@
 import api from "./api";
-import type { QuickNote, QuickNoteCreate, QuickNoteList, QuickNoteListFilters } from "@/types/quickNote";
+import type {
+  QuickNote,
+  QuickNoteCreate,
+  QuickNoteImageUploadResponse,
+  QuickNoteList,
+  QuickNoteListFilters,
+} from "@/types/quickNote";
 
 class QuickNoteService {
   private baseUrl = "/quick-notes";
@@ -28,6 +34,16 @@ class QuickNoteService {
 
   async createNote(data: QuickNoteCreate): Promise<QuickNote> {
     return api.post<QuickNote>(this.baseUrl, data);
+  }
+
+  async uploadImage(file: File): Promise<QuickNoteImageUploadResponse> {
+    const formData = new FormData();
+    formData.append("file", file);
+    return api.post<QuickNoteImageUploadResponse>(`${this.baseUrl}/upload-image`, formData, {
+      headers: {
+        "Content-Type": "multipart/form-data",
+      },
+    });
   }
 
   async deleteNote(noteId: string): Promise<void> {

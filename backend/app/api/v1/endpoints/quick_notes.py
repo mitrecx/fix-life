@@ -1,12 +1,26 @@
 from datetime import date
 from uuid import UUID
 
-from fastapi import APIRouter, Depends, HTTPException, Query, status
+from fastapi import APIRouter, Depends, File, HTTPException, Query, UploadFile, status
+from fastapi.responses import Response
 from sqlalchemy.orm import Session
 
 from app.api.v1.deps import get_current_user, get_db
+from app.core.config import settings
 from app.models.user import User
-from app.schemas.quick_note import QuickNoteCreate, QuickNoteList, QuickNoteResponse
+from app.schemas.quick_note import (
+    QuickNoteCreate,
+    QuickNoteImageUploadResponse,
+    QuickNoteList,
+    QuickNoteResponse,
+)
+from app.services.media_token import verify_media_token
+from app.services.oss_storage import (
+    ALLOWED_IMAGE_TYPES,
+    MAX_QUICK_NOTE_IMAGE_SIZE,
+    OssStorageError,
+    OssStorageService,
+)
 from app.services.quick_note_service import QuickNoteService
 
 router = APIRouter()
@@ -49,6 +63,64 @@ def create_quick_note(
     service = QuickNoteService(db)
     note = service.create_note(current_user.id, data)
     return service.to_response(note)
+
+
+@router.post("/upload-image", response_model=QuickNoteImageUploadResponse)
+async def upload_quick_note_image(
+    file: UploadFile = File(...),
+    current_user: User = Depends(get_current_user),
+):
+    if not settings.OSS_ENABLED:
+        raise HTTPException(status_code=503, detail="图片上传服务未配置")
+
+    content_type = file.content_type or ""
+    if content_type not in ALLOWED_IMAGE_TYPES:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="不支持的文件类型，请上传 JPG、PNG、GIF 或 WEBP 格式的图片",
+        )
+
+    content = await file.read()
+    if not content:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="文件为空")
+    if len(content) > MAX_QUICK_NOTE_IMAGE_SIZE:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="文件大小不能超过 5MB",
+        )
+
+    try:
+        storage = OssStorageService.from_settings()
+        url = storage.upload_quick_note_image(current_user.id, content, content_type)
+    except OssStorageError as exc:
+        raise HTTPException(status_code=503, detail="图片上传失败，请稍后重试") from exc
+    except ValueError as exc:
+        raise HTTPException(status_code=400, detail=str(exc)) from exc
+
+    return QuickNoteImageUploadResponse(url=url)
+
+
+@router.get("/media/{token}")
+def get_quick_note_media(token: str):
+    try:
+        object_key = verify_media_token(token)
+    except ValueError as exc:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="图片不存在") from exc
+
+    if not settings.OSS_ENABLED:
+        raise HTTPException(status_code=503, detail="图片服务未配置")
+
+    try:
+        storage = OssStorageService.from_settings()
+        content, content_type = storage.get_object(object_key)
+    except OssStorageError as exc:
+        raise HTTPException(status_code=404, detail="图片不存在") from exc
+
+    return Response(
+        content=content,
+        media_type=content_type,
+        headers={"Cache-Control": "public, max-age=31536000, immutable"},
+    )
 
 
 @router.delete("/{note_id}", status_code=status.HTTP_204_NO_CONTENT)

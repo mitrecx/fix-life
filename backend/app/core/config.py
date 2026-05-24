@@ -73,6 +73,16 @@ class Settings(BaseSettings):
     # Frontend
     FRONTEND_URL: str = "http://localhost:5277"
 
+    # Aliyun OSS (optional; required for quick-note image uploads)
+    OSS_ENABLED: bool = False
+    OSS_ACCESS_KEY_ID: str = ""
+    OSS_ACCESS_KEY_SECRET: str = ""
+    OSS_BUCKET: str = ""
+    OSS_ENDPOINT: str = ""  # e.g. oss-cn-shanghai.aliyuncs.com
+    OSS_REGION: str = "cn-shanghai"
+    OSS_PREFIX: str = "fix-life"
+    OSS_PUBLIC_BASE_URL: str = ""  # optional CDN/custom domain, e.g. https://cdn.example.com
+
     def __init__(self, **kwargs):
         super().__init__(**kwargs)
         # Parse CORS_ORIGINS if it's a string

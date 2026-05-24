@@ -31,6 +31,14 @@ const markdownComponents: Components = {
       {children}
     </a>
   ),
+  img: ({ src, alt }) => (
+    <img
+      src={src}
+      alt={alt ?? "图片"}
+      loading="lazy"
+      className="max-w-full rounded-lg my-2 border border-gray-200/80"
+    />
+  ),
   hr: () => <hr className="my-3 border-gray-200" />,
   strong: ({ children }) => <strong className="font-semibold">{children}</strong>,
   pre: ({ children }) => (

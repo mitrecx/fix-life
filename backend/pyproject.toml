@@ -21,6 +21,7 @@ dependencies = [
     "redis>=5.0.0",
     "requests>=2.32.5",
     "fastmcp>=2.0",
+    "oss2>=2.19.1",
 ]
 
 [dependency-groups]
