@@ -8,7 +8,6 @@ import { useNavigate } from "react-router-dom";
 import { backlogTaskService } from "@/services/backlogTaskService";
 import { TodosFilterBar } from "@/components/TodosFilterBar";
 import { TaskFormPanel, taskFormStatusLabel } from "@/components/TaskFormPanel";
-import { DataRepairModal } from "@/components/DataRepairModal";
 import type {
   BacklogTask,
   BacklogTaskDetail,
@@ -432,7 +431,6 @@ export function TodosList() {
   const [scheduleDate, setScheduleDate] = useState<Dayjs>(dayjs());
   const [dragging, setDragging] = useState<{ task: BacklogTask; from: KanbanColumnId } | null>(null);
   const [dropTarget, setDropTarget] = useState<KanbanColumnId | null>(null);
-  const [repairOpen, setRepairOpen] = useState(false);
   const [selectionMode, setSelectionMode] = useState(false);
   const [selectedIds, setSelectedIds] = useState<Set<string>>(() => new Set());
   const [batchDeleting, setBatchDeleting] = useState(false);
@@ -878,7 +876,6 @@ export function TodosList() {
         matchCount={matchCount}
         onChange={updateFilters}
         onClear={clearFilters}
-        onDataRepair={() => setRepairOpen(true)}
         selectionMode={selectionMode}
         onToggleSelectionMode={() => {
           if (selectionMode) exitSelectionMode();
@@ -1153,12 +1150,6 @@ export function TodosList() {
           </div>
         )}
       </Modal>
-
-      <DataRepairModal
-        open={repairOpen}
-        onClose={() => setRepairOpen(false)}
-        onComplete={() => loadTasks({ silent: true })}
-      />
     </div>
   );
 }

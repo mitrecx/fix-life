@@ -38,7 +38,6 @@ interface TodosFilterBarProps {
   matchCount: number;
   onChange: (patch: Partial<BacklogListFilters>) => void;
   onClear: () => void;
-  onDataRepair?: () => void;
   selectionMode?: boolean;
   onToggleSelectionMode?: () => void;
 }
@@ -56,7 +55,6 @@ export function TodosFilterBar({
   matchCount,
   onChange,
   onClear,
-  onDataRepair,
   selectionMode = false,
   onToggleSelectionMode,
 }: TodosFilterBarProps) {
@@ -180,15 +178,6 @@ export function TodosFilterBar({
               }`}
             >
               {selectionMode ? "多选中" : "多选"}
-            </button>
-          )}
-          {onDataRepair && (
-            <button
-              type="button"
-              onClick={onDataRepair}
-              className="px-3 py-1.5 text-xs font-medium text-amber-700 bg-amber-50 rounded-lg hover:bg-amber-100 transition-all"
-            >
-              数据修复
             </button>
           )}
           {hasActiveFilters && (
