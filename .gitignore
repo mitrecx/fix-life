@@ -69,6 +69,8 @@ htmlcov/
 # Dependencies
 node_modules/
 jspm_packages/
+frontend/pnpm-lock.yaml
+frontend/pnpm-workspace.yaml
 
 # Build output
 dist/
@@ -133,6 +135,9 @@ Desktop.ini
 
 # Claude Code
 .claude/
+
+# Superpowers / Brainstorm 本地会话产物
+.superpowers/
 
 # Cursor 项目技能目录
 .cursor/skills/
