@@ -4,8 +4,17 @@ from sqlalchemy.orm import Session, load_only
 from sqlalchemy import and_
 from sqlalchemy.exc import IntegrityError
 
+from app.models.backlog_daily_link import BacklogDailyLink
+from app.models.backlog_task import BacklogTask
 from app.models.daily_plan import DailyPlan, DailyTask, DailyTaskPriority, DailyTaskStatus
-from app.schemas.daily_plan import DailyPlanCreate, DailyPlanUpdate, DailyTaskCreate, DailyTaskUpdate
+from app.schemas.daily_plan import (
+    DailyPlanCreate,
+    DailyPlanUpdate,
+    DailyTaskCreate,
+    DailyTaskUpdate,
+    DailyPlanResponse,
+    DailyTaskResponse,
+)
 
 
 class DailyPlanService:
@@ -199,10 +208,35 @@ class DailyPlanService:
         return task
 
     def delete_task(self, task_id: str) -> bool:
-        """Delete a task."""
+        """Delete a task and its backlog daily link, if any."""
         task = self.get_task(task_id)
         if not task:
             return False
+
+        link = (
+            self.db.query(BacklogDailyLink)
+            .filter(BacklogDailyLink.daily_task_id == task.id)
+            .first()
+        )
+        if link is not None:
+            backlog = (
+                self.db.query(BacklogTask)
+                .filter(BacklogTask.id == link.backlog_task_id)
+                .first()
+            )
+            self.db.delete(link)
+            self.db.flush()
+
+            if backlog is not None:
+                if backlog.daily_task_id == task.id:
+                    backlog.daily_task_id = None
+                remaining = (
+                    self.db.query(BacklogDailyLink)
+                    .filter(BacklogDailyLink.backlog_task_id == backlog.id)
+                    .order_by(BacklogDailyLink.plan_date.desc())
+                    .first()
+                )
+                backlog.scheduled_date = remaining.plan_date if remaining else None
 
         self.db.delete(task)
         self.db.commit()
@@ -220,3 +254,31 @@ class DailyPlanService:
         self.db.commit()
         self.db.refresh(task)
         return task
+
+    def to_task_response(self, task: DailyTask) -> DailyTaskResponse:
+        from app.services.backlog_task_service import BacklogTaskService
+
+        base = DailyTaskResponse.model_validate(task)
+        if not task.backlog_task_id:
+            return base
+
+        progress_map = BacklogTaskService(self.db).batch_daily_task_progress([str(task.id)])
+        meta = progress_map.get(str(task.id))
+        if not meta:
+            return base
+        return base.model_copy(update=meta)
+
+    def to_plan_response(self, plan: DailyPlan) -> DailyPlanResponse:
+        from app.services.backlog_task_service import BacklogTaskService
+
+        daily_task_ids = [str(task.id) for task in plan.daily_tasks if task.backlog_task_id]
+        progress_map = BacklogTaskService(self.db).batch_daily_task_progress(daily_task_ids)
+
+        tasks: List[DailyTaskResponse] = []
+        for task in plan.daily_tasks:
+            base = DailyTaskResponse.model_validate(task)
+            meta = progress_map.get(str(task.id))
+            tasks.append(base.model_copy(update=meta) if meta else base)
+
+        base_plan = DailyPlanResponse.model_validate(plan)
+        return base_plan.model_copy(update={"daily_tasks": tasks})

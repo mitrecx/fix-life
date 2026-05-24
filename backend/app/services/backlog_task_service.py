@@ -231,6 +231,69 @@ class BacklogTaskService:
             .first()
         )
 
+    def batch_daily_task_progress(
+        self, daily_task_ids: List[str]
+    ) -> Dict[str, Dict[str, Optional[int]]]:
+        """Progress snapshot + delta for daily tasks linked to backlog."""
+        if not daily_task_ids:
+            return {}
+
+        links = (
+            self.db.query(BacklogDailyLink)
+            .filter(BacklogDailyLink.daily_task_id.in_(daily_task_ids))
+            .all()
+        )
+        if not links:
+            return {}
+
+        backlog_ids = {link.backlog_task_id for link in links}
+        backlog_progress = {
+            str(row.id): row.progress
+            for row in self.db.query(BacklogTask.id, BacklogTask.progress)
+            .filter(BacklogTask.id.in_(backlog_ids))
+            .all()
+        }
+
+        all_links = (
+            self.db.query(BacklogDailyLink)
+            .filter(BacklogDailyLink.backlog_task_id.in_(backlog_ids))
+            .order_by(BacklogDailyLink.plan_date.asc())
+            .all()
+        )
+
+        links_by_backlog: Dict[str, List[BacklogDailyLink]] = {}
+        for link in all_links:
+            links_by_backlog.setdefault(str(link.backlog_task_id), []).append(link)
+
+        link_by_daily = {str(link.daily_task_id): link for link in links}
+        result: Dict[str, Dict[str, Optional[int]]] = {}
+
+        for daily_task_id in daily_task_ids:
+            link = link_by_daily.get(daily_task_id)
+            if link is None:
+                continue
+
+            progress_after: Optional[int] = None
+            progress_delta: Optional[int] = None
+            prev_after = 0
+            for backlog_link in links_by_backlog.get(str(link.backlog_task_id), []):
+                if backlog_link.id == link.id:
+                    if backlog_link.progress_after is not None:
+                        progress_after = backlog_link.progress_after
+                        progress_delta = max(0, backlog_link.progress_after - prev_after)
+                    else:
+                        progress_after = backlog_progress.get(str(link.backlog_task_id))
+                    break
+                if backlog_link.progress_after is not None:
+                    prev_after = backlog_link.progress_after
+
+            result[daily_task_id] = {
+                "progress_after": progress_after,
+                "progress_delta": progress_delta,
+            }
+
+        return result
+
     def get_link_for_date(self, backlog_task_id: str, plan_date: date) -> Optional[BacklogDailyLink]:
         return (
             self.db.query(BacklogDailyLink)
@@ -260,8 +323,44 @@ class BacklogTaskService:
             plan_date=link.plan_date,
             daily_status=daily.status if daily else None,
             daily_title=daily.title if daily else None,
+            progress_after=link.progress_after,
+            progress_delta=None,
             created_at=link.created_at or datetime.utcnow(),
         )
+
+    def _build_occurrences_with_progress(self, links: List[BacklogDailyLink]) -> List[BacklogOccurrence]:
+        sorted_asc = sorted(links, key=lambda link: link.plan_date)
+        prev_after = 0
+        built: List[BacklogOccurrence] = []
+        for link in sorted_asc:
+            occ = self._build_occurrence(link)
+            if link.progress_after is not None:
+                progress_delta = max(0, link.progress_after - prev_after)
+                prev_after = link.progress_after
+                built.append(
+                    occ.model_copy(
+                        update={
+                            "progress_after": link.progress_after,
+                            "progress_delta": progress_delta,
+                        }
+                    )
+                )
+            else:
+                built.append(occ)
+        built.reverse()
+        return built
+
+    def _record_progress_snapshot(
+        self,
+        task: BacklogTask,
+        new_progress: int,
+        *,
+        plan_date: Optional[date] = None,
+    ) -> None:
+        target = plan_date or date.today()
+        link = self.get_link_for_date(str(task.id), target)
+        if link is not None:
+            link.progress_after = new_progress
 
     def to_response(
         self, task: BacklogTask, *, possible_duplicate_count: int = 0
@@ -274,7 +373,7 @@ class BacklogTaskService:
     def to_detail(self, task: BacklogTask) -> BacklogTaskDetail:
         links = self.get_links_for_backlog(str(task.id))
         meta = self.get_task_meta(task)
-        occurrences = [self._build_occurrence(link) for link in links]
+        occurrences = self._build_occurrences_with_progress(links)
         base = BacklogTaskResponse.model_validate(task)
         return BacklogTaskDetail(**base.model_copy(update=meta).model_dump(), occurrences=occurrences)
 
@@ -335,6 +434,7 @@ class BacklogTaskService:
                         status=DailyTaskStatus.DONE,
                     ),
                 )
+                existing_link.progress_after = task.progress
                 task.scheduled_date = plan_date
                 task.daily_task_id = daily_task.id
                 return
@@ -353,6 +453,9 @@ class BacklogTaskService:
 
         self._create_link(task, str(daily_task.id), plan_date)
         daily_task.backlog_task_id = task.id
+        link = self.get_link_for_date(str(task.id), plan_date)
+        if link is not None:
+            link.progress_after = task.progress
 
     def _link_backlog_to_plan(
         self,
@@ -412,6 +515,7 @@ class BacklogTaskService:
         update_data = task_in.model_dump(exclude_unset=True)
         new_progress = update_data.pop("progress", None)
         new_status = update_data.pop("status", None)
+        progress_plan_date = update_data.pop("progress_plan_date", None)
         old_progress = task.progress
 
         for field, value in update_data.items():
@@ -441,6 +545,13 @@ class BacklogTaskService:
             if new_progress == 100:
                 self._sync_completed_daily_task(str(task.user_id), task)
 
+        if task.progress != old_progress:
+            self._record_progress_snapshot(
+                task,
+                task.progress,
+                plan_date=progress_plan_date,
+            )
+
         self.db.commit()
         self.db.refresh(task)
         return task
@@ -463,6 +574,7 @@ class BacklogTaskService:
 
         self.apply_progress(task, 100)
         self._sync_completed_daily_task(str(task.user_id), task)
+        self._record_progress_snapshot(task, 100)
         self.db.commit()
         self.db.refresh(task)
         return task

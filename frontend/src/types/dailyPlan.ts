@@ -18,6 +18,8 @@ export interface DailyTask {
   estimated_minutes?: number;
   actual_minutes: number;
   time_slot?: string;
+  progress_after?: number | null;
+  progress_delta?: number | null;
   created_at: string;
   updated_at: string;
 }

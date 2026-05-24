@@ -72,6 +72,12 @@ const formatDate = (dateStr: string) => {
   return `${date.getMonth() + 1}月${date.getDate()}日`;
 };
 
+const formatProgressDelta = (delta: number | null | undefined) => {
+  if (delta == null) return "—";
+  if (delta > 0) return `+${delta}%`;
+  return "0%";
+};
+
 export function DailyPlanCard({ plan, onUpdate, onEdit, onDelete }: DailyPlanCardProps) {
   const [addModalOpen, setAddModalOpen] = useState(false);
   const [isTaskSectionCollapsed, setIsTaskSectionCollapsed] = useState(false);
@@ -136,7 +142,10 @@ export function DailyPlanCard({ plan, onUpdate, onEdit, onDelete }: DailyPlanCar
     try {
       await dailyPlanService.updateTaskStatus(progressModalTask.id, "done");
       if (choice !== "keep" && progressModalTask.backlog_task_id) {
-        await backlogTaskService.update(progressModalTask.backlog_task_id, { progress: choice });
+        await backlogTaskService.update(progressModalTask.backlog_task_id, {
+          progress: choice,
+          progress_plan_date: plan.plan_date,
+        });
       }
       setProgressModalTask(null);
       onUpdate();
@@ -265,11 +274,11 @@ export function DailyPlanCard({ plan, onUpdate, onEdit, onDelete }: DailyPlanCar
               return (
                 <div
                   key={task.id}
-                  className="flex items-center gap-2 p-2 bg-white rounded-lg border border-gray-100 group hover:border-indigo-200 transition-all duration-200"
+                  className="flex items-start gap-2 p-2 bg-white rounded-lg border border-gray-100 group hover:border-indigo-200 transition-all duration-200"
                 >
                   <button
                     onClick={() => handleToggleTaskStatus(task)}
-                    className={`flex-shrink-0 p-0.5 rounded transition-all ${
+                    className={`flex-shrink-0 p-0.5 rounded transition-all mt-0.5 ${
                       task.status === "done"
                         ? "text-emerald-500 bg-emerald-50"
                         : "text-gray-300 hover:text-emerald-400 hover:bg-emerald-50"
@@ -277,45 +286,59 @@ export function DailyPlanCard({ plan, onUpdate, onEdit, onDelete }: DailyPlanCar
                   >
                     <StatusIcon size={16} strokeWidth={2.5} />
                   </button>
-                  <span
-                    className={`flex-1 text-sm break-words min-w-0 ${
-                      task.status === "done" ? "text-gray-400" : "text-gray-700"
-                    }`}
-                  >
-                    {task.title}
-                  </span>
-                  {task.time_slot && (
-                    <span className="text-xs px-1.5 py-0.5 rounded bg-gray-100 text-gray-600">
-                      {task.time_slot}
-                    </span>
-                  )}
-                  {contextConfig && (
-                    <span
-                      className="text-xs px-2 py-0.5 rounded font-medium"
-                      style={{
-                        backgroundColor: `${contextConfig.color}15`,
-                        color: contextConfig.color,
-                        border: `1px solid ${contextConfig.color}30`,
-                      }}
-                    >
-                      {contextConfig.label}
-                    </span>
-                  )}
-                  {priorityConfig && (
-                    <span
-                      className="text-xs px-2 py-0.5 rounded font-medium"
-                      style={{
-                        backgroundColor: `${priorityConfig.color}15`,
-                        color: priorityConfig.color,
-                        border: `1px solid ${priorityConfig.color}30`,
-                      }}
-                    >
-                      {priorityConfig.label}
-                    </span>
-                  )}
+                  <div className="flex-1 min-w-0">
+                    <div className="flex items-center gap-2 flex-wrap">
+                      <span
+                        className={`flex-1 min-w-0 text-sm break-words ${
+                          task.status === "done" ? "text-gray-400" : "text-gray-700"
+                        }`}
+                      >
+                        {task.title}
+                      </span>
+                      {task.time_slot && (
+                        <span className="text-xs px-1.5 py-0.5 rounded bg-gray-100 text-gray-600">
+                          {task.time_slot}
+                        </span>
+                      )}
+                      {contextConfig && (
+                        <span
+                          className="text-xs px-2 py-0.5 rounded font-medium"
+                          style={{
+                            backgroundColor: `${contextConfig.color}15`,
+                            color: contextConfig.color,
+                            border: `1px solid ${contextConfig.color}30`,
+                          }}
+                        >
+                          {contextConfig.label}
+                        </span>
+                      )}
+                      {priorityConfig && (
+                        <span
+                          className="text-xs px-2 py-0.5 rounded font-medium"
+                          style={{
+                            backgroundColor: `${priorityConfig.color}15`,
+                            color: priorityConfig.color,
+                            border: `1px solid ${priorityConfig.color}30`,
+                          }}
+                        >
+                          {priorityConfig.label}
+                        </span>
+                      )}
+                    </div>
+                    {task.backlog_task_id && (
+                      <div className="flex items-center gap-3 mt-1">
+                        <span className="text-xs text-gray-500 tabular-nums">
+                          总进度 {task.progress_after != null ? `${task.progress_after}%` : "—"}
+                        </span>
+                        <span className="text-xs text-amber-600 font-medium tabular-nums">
+                          当日 {formatProgressDelta(task.progress_delta)}
+                        </span>
+                      </div>
+                    )}
+                  </div>
                   <button
                     onClick={() => handleDeleteTask(task.id)}
-                    className="opacity-0 group-hover:opacity-100 p-1 text-gray-400 hover:text-red-500 hover:bg-red-50 rounded transition-all"
+                    className="opacity-0 group-hover:opacity-100 p-1 text-gray-400 hover:text-red-500 hover:bg-red-50 rounded transition-all shrink-0"
                     title="删除任务"
                   >
                     <Trash2 size={12} />

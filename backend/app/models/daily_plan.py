@@ -91,6 +91,7 @@ class DailyTask(Base):
         "BacklogDailyLink",
         back_populates="daily_task",
         uselist=False,
+        passive_deletes=True,
     )
 
     def __repr__(self):

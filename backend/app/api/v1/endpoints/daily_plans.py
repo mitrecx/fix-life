@@ -37,7 +37,10 @@ def get_daily_plans(
         start_date=start_date,
         end_date=end_date,
     )
-    return DailyPlanList(plans=plans, total=len(plans))
+    return DailyPlanList(
+        plans=[service.to_plan_response(plan) for plan in plans],
+        total=len(plans),
+    )
 
 
 @router.get("/by-date/{plan_date}", response_model=DailyPlanByDateResponse)
@@ -65,7 +68,7 @@ def create_daily_plan(
     service = DailyPlanService(db)
     plan, created = service.create_or_merge_plan(str(current_user.id), plan_in)
     response.status_code = 201 if created else 200
-    return plan
+    return service.to_plan_response(plan)
 
 
 @router.get("/{plan_id}", response_model=DailyPlanResponse)
@@ -81,7 +84,7 @@ def get_daily_plan(
         raise HTTPException(status_code=404, detail="Daily plan not found")
     if str(plan.user_id) != str(current_user.id):
         raise HTTPException(status_code=403, detail="Not authorized to access this plan")
-    return plan
+    return service.to_plan_response(plan)
 
 
 @router.put("/{plan_id}", response_model=DailyPlanResponse)
@@ -100,7 +103,7 @@ def update_daily_plan(
         raise HTTPException(status_code=403, detail="Not authorized to update this plan")
 
     updated_plan = service.update_plan(plan_id, plan_in)
-    return updated_plan
+    return service.to_plan_response(updated_plan)
 
 
 @router.delete("/{plan_id}", status_code=204)
@@ -138,7 +141,7 @@ def get_daily_tasks(
         raise HTTPException(status_code=403, detail="Not authorized to access this plan")
 
     tasks = service.get_plan_tasks(plan_id)
-    return tasks
+    return [service.to_task_response(task) for task in tasks]
 
 
 @router.post("/{plan_id}/tasks", response_model=DailyTaskResponse, status_code=201)
@@ -160,7 +163,7 @@ def create_daily_task(
     task = backlog_service.add_to_daily_plan(str(current_user.id), plan_id, task_in)
     if not task:
         raise HTTPException(status_code=400, detail="Unable to add task to daily plan")
-    return task
+    return daily_service.to_task_response(task)
 
 
 @router.put("/tasks/{task_id}", response_model=DailyTaskResponse)
@@ -187,7 +190,7 @@ def update_daily_task(
             str(updated_task.id),
             is_done=updated_task.status == DailyTaskStatus.DONE,
         )
-    return updated_task
+    return service.to_task_response(updated_task) if updated_task else updated_task
 
 
 @router.delete("/tasks/{task_id}", status_code=204)
@@ -235,4 +238,4 @@ def update_task_status(
             str(updated_task.id),
             is_done=updated_task.status == DailyTaskStatus.DONE,
         )
-    return updated_task
+    return service.to_task_response(updated_task) if updated_task else updated_task

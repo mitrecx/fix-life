@@ -44,6 +44,8 @@ class DailyTaskResponse(DailyTaskBase):
     daily_plan_id: UUID
     backlog_task_id: Optional[UUID] = None
     actual_minutes: int
+    progress_after: Optional[int] = Field(None, ge=0, le=100)
+    progress_delta: Optional[int] = Field(None, ge=0, le=100)
     created_at: datetime
     updated_at: datetime
 

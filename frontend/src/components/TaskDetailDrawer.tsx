@@ -142,6 +142,8 @@ function OccurrenceTimeline({
               </th>
               <th className="text-left font-medium px-3 py-2.5">日期</th>
               <th className="text-left font-medium px-3 py-2.5">当天状态</th>
+              <th className="text-right font-medium px-3 py-2.5">总进度</th>
+              <th className="text-right font-medium px-3 py-2.5">当日推进</th>
               <th className="text-right font-medium px-3 py-2.5">操作</th>
             </tr>
           </thead>
@@ -163,6 +165,16 @@ function OccurrenceTimeline({
                   <td className="px-3 py-2.5 text-gray-800">{occ.plan_date}</td>
                   <td className="px-3 py-2.5 text-gray-600">
                     {DAILY_STATUS_LABELS[occ.daily_status ?? "todo"] ?? occ.daily_status}
+                  </td>
+                  <td className="px-3 py-2.5 text-right text-gray-700 tabular-nums">
+                    {occ.progress_after != null ? `${occ.progress_after}%` : "—"}
+                  </td>
+                  <td className="px-3 py-2.5 text-right text-amber-600 font-medium tabular-nums">
+                    {occ.progress_delta != null && occ.progress_delta > 0
+                      ? `+${occ.progress_delta}%`
+                      : occ.progress_delta === 0
+                        ? "0%"
+                        : "—"}
                   </td>
                   <td className="px-3 py-2.5 text-right whitespace-nowrap">
                     <button

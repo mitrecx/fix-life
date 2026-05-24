@@ -1,7 +1,7 @@
 from datetime import datetime, date
 import uuid
 
-from sqlalchemy import Column, Date, DateTime, ForeignKey, UniqueConstraint
+from sqlalchemy import Column, Date, DateTime, ForeignKey, Integer, UniqueConstraint
 from sqlalchemy.dialects.postgresql import UUID
 from sqlalchemy.orm import relationship
 
@@ -31,6 +31,7 @@ class BacklogDailyLink(Base):
         nullable=False,
     )
     plan_date = Column(Date, nullable=False)
+    progress_after = Column(Integer, nullable=True)
     created_at = Column(DateTime, default=datetime.utcnow)
 
     backlog_task = relationship("BacklogTask", back_populates="daily_links")

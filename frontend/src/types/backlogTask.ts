@@ -48,6 +48,8 @@ export interface BacklogOccurrence {
   plan_date: string;
   daily_status?: "todo" | "in-progress" | "done" | "cancelled";
   daily_title?: string;
+  progress_after?: number;
+  progress_delta?: number;
   created_at: string;
 }
 
@@ -70,6 +72,8 @@ export interface BacklogTaskUpdate {
   priority?: TaskPriority;
   progress?: number;
   status?: BacklogTaskStatus;
+  /** When progress changes, record snapshot on this plan date's daily link */
+  progress_plan_date?: string;
 }
 
 export type BacklogTab = "pending" | "in_progress" | "done" | "active";
@@ -155,4 +159,4 @@ function dayjsFormatShort(dateStr: string): string {
   return `${d.getMonth() + 1}/${d.getDate()}`;
 }
 
-export type DailyProgressChoice = "keep" | 25 | 50 | 75 | 100;
+export type DailyProgressChoice = "keep" | number;

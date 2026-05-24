@@ -48,6 +48,10 @@ class BacklogTaskUpdate(BaseModel):
     priority: Optional[TaskPriority] = None
     progress: Optional[int] = Field(None, ge=0, le=100)
     status: Optional[BacklogTaskStatus] = None
+    progress_plan_date: Optional[date] = Field(
+        None,
+        description="When progress changes, snapshot cumulative progress on this plan date's link",
+    )
 
     class Config:
         from_attributes = True
@@ -63,6 +67,8 @@ class BacklogOccurrence(BaseModel):
     plan_date: date
     daily_status: Optional[DailyTaskStatus] = None
     daily_title: Optional[str] = None
+    progress_after: Optional[int] = Field(None, ge=0, le=100)
+    progress_delta: Optional[int] = Field(None, ge=0, le=100)
     created_at: datetime
 
     class Config:
