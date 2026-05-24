@@ -95,7 +95,7 @@ export default function Layout() {
   const mainPadding = collapsed ? "pl-16" : "pl-56";
 
   return (
-    <div className="min-h-screen bg-gray-50 flex">
+    <div className="min-h-screen h-dvh overflow-hidden bg-gray-50 flex">
       <aside
         className={`fixed inset-y-0 left-0 z-50 flex ${sidebarWidth} flex-col border-r border-gray-200 bg-white transition-[width] duration-200 ease-in-out`}
       >
@@ -176,8 +176,8 @@ export default function Layout() {
         </div>
       </aside>
 
-      <div className={`flex flex-1 flex-col min-w-0 transition-[padding] duration-200 ease-in-out ${mainPadding}`}>
-        <main className="flex-1 overflow-auto px-3 sm:px-4 py-3 sm:py-4">
+      <div className={`flex flex-1 flex-col min-w-0 min-h-0 transition-[padding] duration-200 ease-in-out ${mainPadding}`}>
+        <main className="flex-1 min-h-0 overflow-auto px-3 sm:px-4 py-3 sm:py-4">
           <Suspense fallback={<PageLoader />}>
             <Outlet />
           </Suspense>

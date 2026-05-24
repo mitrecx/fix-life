@@ -1,5 +1,6 @@
 from datetime import datetime, date
-from typing import List, Optional, Literal
+from functools import cmp_to_key
+from typing import List, Optional, Literal, Tuple, Dict, Any
 
 from sqlalchemy import cast, Date
 from sqlalchemy.orm import Session
@@ -23,6 +24,19 @@ from app.services.daily_plan_service import DailyPlanService
 
 BacklogTimeField = Literal["created", "scheduled", "completed"]
 BacklogTab = Literal["pending", "in_progress", "done", "active"]
+
+_PRIORITY_RANK = {
+    TaskPriority.HIGH: 0,
+    TaskPriority.MEDIUM: 1,
+    TaskPriority.LOW: 2,
+}
+
+_EMPTY_LINK_META: Dict[str, Any] = {
+    "occurrence_count": 0,
+    "is_scheduled": False,
+    "last_plan_date": None,
+    "linked_dates": [],
+}
 
 
 class BacklogTaskService:
@@ -49,7 +63,9 @@ class BacklogTaskService:
         time_field: Optional[BacklogTimeField] = None,
         date_from: Optional[date] = None,
         date_to: Optional[date] = None,
-    ) -> List[BacklogTask]:
+        limit: Optional[int] = None,
+        offset: int = 0,
+    ) -> Tuple[List[BacklogTask], int]:
         query = self.db.query(BacklogTask).filter(BacklogTask.user_id == user_id)
 
         if tab == "pending":
@@ -90,9 +106,108 @@ class BacklogTaskService:
                 if date_to is not None:
                     query = query.filter(cast(BacklogTask.completed_at, Date) <= date_to)
 
+        tasks = query.all()
+        if not tasks:
+            return [], 0
+
+        link_meta = self._batch_link_meta([str(task.id) for task in tasks])
+        sorted_tasks = self._sort_tasks_for_tab(tasks, tab, link_meta)
+        total = len(sorted_tasks)
+
+        if limit is not None:
+            sorted_tasks = sorted_tasks[offset : offset + limit]
+
+        return sorted_tasks, total
+
+    @staticmethod
+    def _compare_tasks(
+        task_a: BacklogTask,
+        meta_a: Dict[str, Any],
+        task_b: BacklogTask,
+        meta_b: Dict[str, Any],
+        tab: BacklogTab,
+    ) -> int:
         if tab == "done":
-            return query.order_by(BacklogTask.completed_at.desc(), BacklogTask.created_at.desc()).all()
-        return query.order_by(BacklogTask.created_at.desc()).all()
+            completed_a = task_a.completed_at or task_a.updated_at
+            completed_b = task_b.completed_at or task_b.updated_at
+            if completed_a != completed_b:
+                return -1 if completed_a > completed_b else 1
+            if task_a.created_at != task_b.created_at:
+                return -1 if task_a.created_at > task_b.created_at else 1
+            return 0
+
+        rank_a = _PRIORITY_RANK.get(task_a.priority, 1)
+        rank_b = _PRIORITY_RANK.get(task_b.priority, 1)
+        if rank_a != rank_b:
+            return rank_a - rank_b
+
+        if tab == "in_progress":
+            if task_a.progress != task_b.progress:
+                return task_b.progress - task_a.progress
+            if task_a.created_at != task_b.created_at:
+                return -1 if task_a.created_at > task_b.created_at else 1
+            return 0
+
+        if (
+            meta_a["is_scheduled"]
+            and meta_b["is_scheduled"]
+            and meta_a["last_plan_date"]
+            and meta_b["last_plan_date"]
+            and meta_a["last_plan_date"] != meta_b["last_plan_date"]
+        ):
+            return -1 if meta_a["last_plan_date"] < meta_b["last_plan_date"] else 1
+
+        if task_a.created_at != task_b.created_at:
+            return -1 if task_a.created_at > task_b.created_at else 1
+        return 0
+
+    def _sort_tasks_for_tab(
+        self,
+        tasks: List[BacklogTask],
+        tab: BacklogTab,
+        link_meta: Dict[str, Dict[str, Any]],
+    ) -> List[BacklogTask]:
+        def sort_key(task: BacklogTask) -> Tuple[BacklogTask, Dict[str, Any]]:
+            return task, link_meta.get(str(task.id), _EMPTY_LINK_META)
+
+        items = [sort_key(task) for task in tasks]
+
+        def compare(item_a: Tuple[BacklogTask, Dict[str, Any]], item_b: Tuple[BacklogTask, Dict[str, Any]]) -> int:
+            return self._compare_tasks(item_a[0], item_a[1], item_b[0], item_b[1], tab)
+
+        return [task for task, _ in sorted(items, key=cmp_to_key(compare))]
+
+    def _batch_link_meta(self, task_ids: List[str]) -> Dict[str, Dict[str, Any]]:
+        if not task_ids:
+            return {}
+
+        links = (
+            self.db.query(BacklogDailyLink)
+            .filter(BacklogDailyLink.backlog_task_id.in_(task_ids))
+            .order_by(BacklogDailyLink.plan_date.desc())
+            .all()
+        )
+
+        grouped: Dict[str, Dict[str, Any]] = {}
+        for link in links:
+            task_id = str(link.backlog_task_id)
+            entry = grouped.setdefault(
+                task_id,
+                {"links": [], "dates": set()},
+            )
+            entry["links"].append(link)
+            entry["dates"].add(link.plan_date)
+
+        result: Dict[str, Dict[str, Any]] = {}
+        for task_id, entry in grouped.items():
+            sorted_dates = sorted(entry["dates"])
+            result[task_id] = {
+                "occurrence_count": len(entry["links"]),
+                "is_scheduled": True,
+                "last_plan_date": entry["links"][0].plan_date,
+                "linked_dates": sorted_dates[:3],
+            }
+        return result
 
     def get_task(self, task_id: str) -> Optional[BacklogTask]:
         return self.db.query(BacklogTask).filter(BacklogTask.id == task_id).first()

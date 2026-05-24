@@ -70,7 +70,7 @@ export function AddToTodayModal({
         backlogTaskService.list("pending"),
         backlogTaskService.list("in_progress"),
       ]);
-      setCandidates([...pending, ...inProgress]);
+      setCandidates([...pending.tasks, ...inProgress.tasks]);
     } catch (error) {
       console.error("Failed to load backlog tasks:", error);
       message.error("加载待办失败");

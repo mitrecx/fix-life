@@ -51,6 +51,14 @@ const DEFAULT_FILTERS: BacklogListFilters = {
   timeField: "created",
 };
 
+const COLUMN_PAGE_SIZE = 20;
+
+const EMPTY_COLUMN_TOTALS: Record<KanbanColumnId, number> = {
+  pending: 0,
+  in_progress: 0,
+  done: 0,
+};
+
 function sortColumnTasks(tasks: BacklogTask[], column: KanbanColumnId): BacklogTask[] {
   const sorted = [...tasks];
   sorted.sort((a, b) => {
@@ -323,8 +331,17 @@ export function TodosList() {
   const [pendingTasks, setPendingTasks] = useState<BacklogTask[]>([]);
   const [inProgressTasks, setInProgressTasks] = useState<BacklogTask[]>([]);
   const [doneTasks, setDoneTasks] = useState<BacklogTask[]>([]);
+  const [columnTotals, setColumnTotals] = useState<Record<KanbanColumnId, number>>(EMPTY_COLUMN_TOTALS);
+  const [loadingMoreColumn, setLoadingMoreColumn] = useState<KanbanColumnId | null>(null);
+  const loadingMoreRef = useRef<Set<KanbanColumnId>>(new Set());
+  const columnScrollRefs = useRef<Record<KanbanColumnId, HTMLDivElement | null>>({
+    pending: null,
+    in_progress: null,
+    done: null,
+  });
   const [loading, setLoading] = useState(true);
   const [formOpen, setFormOpen] = useState(false);
+  const [createAsCompleted, setCreateAsCompleted] = useState(false);
   const [formTitle, setFormTitle] = useState("");
   const [formDescription, setFormDescription] = useState("");
   const [formContext, setFormContext] = useState<TaskContext>(DEFAULT_TASK_CONTEXT);
@@ -357,13 +374,12 @@ export function TodosList() {
   useEffect(() => {
     const main = document.querySelector("main");
     if (!main) return;
-    if (!drawerOpen) return;
     const prevOverflow = main.style.overflow;
     main.style.overflow = "hidden";
     return () => {
       main.style.overflow = prevOverflow;
     };
-  }, [drawerOpen]);
+  }, []);
 
   const allColumnTasks = useMemo(
     () => [...pendingTasks, ...inProgressTasks, ...doneTasks],
@@ -394,8 +410,8 @@ export function TodosList() {
     [pendingTasks, inProgressTasks, doneTasks]
   );
 
-  const matchCount = pendingTasks.length + inProgressTasks.length + doneTasks.length;
-  const showInitialLoading = loading && matchCount === 0;
+  const matchCount = columnTotals.pending + columnTotals.in_progress + columnTotals.done;
+  const showInitialLoading = loading && matchCount === 0 && pendingTasks.length === 0;
 
   const visibleTaskIds = useMemo(
     () => [...pendingTasks, ...inProgressTasks, ...doneTasks].map((t) => t.id),
@@ -463,9 +479,22 @@ export function TodosList() {
     const target = kanbanColumnForTask(task);
     (["pending", "in_progress", "done"] as KanbanColumnId[]).forEach((col) => {
       setColumnState(col, (prev) => {
+        const existedInColumn = prev.some((t) => t.id === task.id);
         const rest = prev.filter((t) => t.id !== task.id);
         if (col === target) {
+          if (!existedInColumn) {
+            setColumnTotals((totals) => ({
+              ...totals,
+              [col]: totals[col] + 1,
+            }));
+          }
           return sortColumnTasks([task, ...rest], col);
+        }
+        if (existedInColumn) {
+          setColumnTotals((totals) => ({
+            ...totals,
+            [col]: Math.max(0, totals[col] - 1),
+          }));
         }
         return rest;
       });
@@ -474,14 +503,30 @@ export function TodosList() {
 
   const removeTaskFromColumns = useCallback((taskId: string) => {
     (["pending", "in_progress", "done"] as KanbanColumnId[]).forEach((col) => {
-      setColumnState(col, (prev) => prev.filter((t) => t.id !== taskId));
+      setColumnState(col, (prev) => {
+        if (!prev.some((t) => t.id === taskId)) return prev;
+        setColumnTotals((totals) => ({
+          ...totals,
+          [col]: Math.max(0, totals[col] - 1),
+        }));
+        return prev.filter((t) => t.id !== taskId);
+      });
     });
   }, [setColumnState]);
 
   const removeTasksFromColumns = useCallback((taskIds: string[]) => {
     const idSet = new Set(taskIds);
     (["pending", "in_progress", "done"] as KanbanColumnId[]).forEach((col) => {
-      setColumnState(col, (prev) => prev.filter((t) => !idSet.has(t.id)));
+      setColumnState(col, (prev) => {
+        const removedCount = prev.filter((t) => idSet.has(t.id)).length;
+        if (removedCount > 0) {
+          setColumnTotals((totals) => ({
+            ...totals,
+            [col]: Math.max(0, totals[col] - removedCount),
+          }));
+        }
+        return prev.filter((t) => !idSet.has(t.id));
+      });
     });
   }, [setColumnState]);
 
@@ -489,14 +534,19 @@ export function TodosList() {
     const silent = options?.silent ?? hasLoadedOnceRef.current;
     if (!silent) setLoading(true);
     try {
-      const [pending, inProgress, done] = await Promise.all([
-        backlogTaskService.list("pending", apiFilters),
-        backlogTaskService.list("in_progress", apiFilters),
-        backlogTaskService.list("done", apiFilters),
+      const [pendingRes, inProgressRes, doneRes] = await Promise.all([
+        backlogTaskService.list("pending", apiFilters, { limit: COLUMN_PAGE_SIZE, offset: 0 }),
+        backlogTaskService.list("in_progress", apiFilters, { limit: COLUMN_PAGE_SIZE, offset: 0 }),
+        backlogTaskService.list("done", apiFilters, { limit: COLUMN_PAGE_SIZE, offset: 0 }),
       ]);
-      setPendingTasks(sortColumnTasks(pending, "pending"));
-      setInProgressTasks(sortColumnTasks(inProgress, "in_progress"));
-      setDoneTasks(sortColumnTasks(done, "done"));
+      setPendingTasks(pendingRes.tasks);
+      setInProgressTasks(inProgressRes.tasks);
+      setDoneTasks(doneRes.tasks);
+      setColumnTotals({
+        pending: pendingRes.total,
+        in_progress: inProgressRes.total,
+        done: doneRes.total,
+      });
     } catch (error) {
       console.error("Failed to load backlog tasks:", error);
       if (!silent) message.error("加载待办失败");
@@ -506,17 +556,82 @@ export function TodosList() {
     }
   }, [apiFilters]);
 
+  const loadMoreColumn = useCallback(
+    async (column: KanbanColumnId) => {
+      const loadedCount = columnTasks[column].length;
+      const total = columnTotals[column];
+      if (loadedCount >= total || loadingMoreRef.current.has(column)) return;
+
+      loadingMoreRef.current.add(column);
+      setLoadingMoreColumn(column);
+      try {
+        const result = await backlogTaskService.list(column, apiFilters, {
+          limit: COLUMN_PAGE_SIZE,
+          offset: loadedCount,
+        });
+        setColumnState(column, (prev) => {
+          const existingIds = new Set(prev.map((t) => t.id));
+          const merged = [...prev];
+          for (const task of result.tasks) {
+            if (!existingIds.has(task.id)) merged.push(task);
+          }
+          return merged;
+        });
+        setColumnTotals((prev) => ({ ...prev, [column]: result.total }));
+      } catch (error) {
+        console.error(`Failed to load more ${column} tasks:`, error);
+        message.error("加载更多失败");
+      } finally {
+        loadingMoreRef.current.delete(column);
+        setLoadingMoreColumn(null);
+      }
+    },
+    [apiFilters, columnTasks, columnTotals, setColumnState]
+  );
+
+  const handleColumnScroll = useCallback(
+    (column: KanbanColumnId, event: React.UIEvent<HTMLDivElement>) => {
+      const el = event.currentTarget;
+      const remaining = el.scrollHeight - el.scrollTop - el.clientHeight;
+      if (remaining > 80) return;
+      if (columnTasks[column].length >= columnTotals[column]) return;
+      void loadMoreColumn(column);
+    },
+    [columnTasks, columnTotals, loadMoreColumn]
+  );
+
   useEffect(() => {
     loadTasks();
   }, [loadTasks]);
 
-  const resetCreateForm = useCallback(() => {
+  useEffect(() => {
+    if (loading || showInitialLoading) return;
+    (["pending", "in_progress", "done"] as KanbanColumnId[]).forEach((col) => {
+      const el = columnScrollRefs.current[col];
+      if (!el) return;
+      if (columnTasks[col].length >= columnTotals[col]) return;
+      if (el.scrollHeight <= el.clientHeight + 1) {
+        void loadMoreColumn(col);
+      }
+    });
+  }, [
+    pendingTasks,
+    inProgressTasks,
+    doneTasks,
+    columnTotals,
+    loading,
+    showInitialLoading,
+    loadMoreColumn,
+    columnTasks,
+  ]);
+
+  const resetCreateForm = useCallback((asCompleted = false) => {
     setFormTitle("");
     setFormDescription("");
     setFormContext(DEFAULT_TASK_CONTEXT);
     setFormPriority(DEFAULT_TASK_PRIORITY);
-    setFormStatus("pending");
-    setFormProgress(0);
+    setFormStatus(asCompleted ? "done" : "pending");
+    setFormProgress(asCompleted ? 100 : 0);
   }, []);
 
   const resetDetailDraft = useCallback(() => {
@@ -553,7 +668,14 @@ export function TodosList() {
   }, [setSearchParams]);
 
   const openCreateForm = useCallback(() => {
-    resetCreateForm();
+    setCreateAsCompleted(false);
+    resetCreateForm(false);
+    setFormOpen(true);
+  }, [resetCreateForm]);
+
+  const openCreateCompletedForm = useCallback(() => {
+    setCreateAsCompleted(true);
+    resetCreateForm(true);
     setFormOpen(true);
   }, [resetCreateForm]);
 
@@ -585,7 +707,8 @@ export function TodosList() {
 
   const closeCreateForm = useCallback(() => {
     setFormOpen(false);
-    resetCreateForm();
+    setCreateAsCompleted(false);
+    resetCreateForm(false);
   }, [resetCreateForm]);
 
   useEffect(() => {
@@ -636,16 +759,21 @@ export function TodosList() {
 
     setIsSubmitting(true);
     const trimmedDescription = formDescription.trim();
+    const progress = createAsCompleted ? 100 : formProgress;
     try {
       const created = await backlogTaskService.create({
         title: formTitle.trim(),
         context: formContext,
         priority: formPriority,
         description: trimmedDescription || undefined,
-        progress: formProgress,
+        progress,
       });
+      const wasCompleted = createAsCompleted;
       closeCreateForm();
       applyUpdatedTask(created);
+      if (wasCompleted) {
+        message.success("已添加到今日进度并完成");
+      }
     } catch (error) {
       console.error("Failed to save backlog task:", error);
       message.error("添加失败");
@@ -843,13 +971,7 @@ export function TodosList() {
   };
 
   return (
-    <div
-      className={`relative flex flex-col px-3 py-3 sm:px-4 sm:py-4 ${
-        drawerOpen
-          ? "h-[calc(100dvh-2rem)] max-h-[calc(100dvh-2rem)] overflow-hidden"
-          : "min-h-[calc(100dvh-2rem)] h-full"
-      }`}
-    >
+    <div className="relative flex flex-col h-full min-h-0 overflow-hidden px-3 py-3 sm:px-4 sm:py-4">
       <TodosFilterBar
         filters={filters}
         matchCount={matchCount}
@@ -902,7 +1024,7 @@ export function TodosList() {
       {showInitialLoading ? (
         <div className="flex-1 flex items-center justify-center text-gray-400 text-sm">加载中...</div>
       ) : (
-        <div className="flex-1 flex gap-2.5 min-h-0 mt-4">
+        <div className="flex-1 flex gap-2.5 min-h-0 mt-4 overflow-hidden">
           {COLUMNS.map((col) => {
             const tasks = columnTasks[col.id];
             const isDropHighlight = dropTarget === col.id && dragging && dragging.from !== col.id;
@@ -943,33 +1065,54 @@ export function TodosList() {
                       新增待办
                     </button>
                   )}
+                  {col.id === "done" && (
+                    <button
+                      type="button"
+                      onClick={openCreateCompletedForm}
+                      className="inline-flex items-center gap-1 px-2 py-1 text-[11px] font-medium text-emerald-700 bg-emerald-50 rounded-md hover:bg-emerald-100 transition-all"
+                    >
+                      <Plus size={14} />
+                      新增完成
+                    </button>
+                  )}
                   <span className="flex-1" />
-                  <span className="text-[10px] font-medium text-gray-500 tabular-nums">{tasks.length}</span>
+                  <span className="text-[10px] font-medium text-gray-500 tabular-nums">
+                    {columnTotals[col.id]}
+                  </span>
                 </div>
 
                 <div
-                  className={`flex-1 min-h-0 overflow-y-auto p-2 space-y-2 transition-colors ${
+                  ref={(el) => {
+                    columnScrollRefs.current[col.id] = el;
+                  }}
+                  className={`flex-1 min-h-0 overflow-y-auto overscroll-contain p-2 space-y-2 transition-colors ${
                     isDropHighlight ? "bg-blue-50/60 ring-2 ring-inset ring-blue-200" : ""
                   }`}
+                  onScroll={(event) => handleColumnScroll(col.id, event)}
                 >
                   {tasks.length === 0 ? (
                     <div className="flex items-center justify-center py-8 text-[11px] text-gray-400">无匹配</div>
                   ) : (
-                    tasks.map((task) => (
-                      <KanbanCard
-                        key={task.id}
-                        task={task}
-                        column={col.id}
-                        draggable={!selectionMode}
-                        selectionMode={selectionMode}
-                        selected={selectedIds.has(task.id)}
-                        highlighted={taskId === task.id}
-                        onToggleSelect={toggleTaskSelection}
-                        onDragStart={(t, from) => setDragging({ task: t, from })}
-                        onPriorityChange={handlePriorityChange}
-                        onOpenDetail={openTaskDetail}
-                      />
-                    ))
+                    <>
+                      {tasks.map((task) => (
+                        <KanbanCard
+                          key={task.id}
+                          task={task}
+                          column={col.id}
+                          draggable={!selectionMode}
+                          selectionMode={selectionMode}
+                          selected={selectedIds.has(task.id)}
+                          highlighted={taskId === task.id}
+                          onToggleSelect={toggleTaskSelection}
+                          onDragStart={(t, from) => setDragging({ task: t, from })}
+                          onPriorityChange={handlePriorityChange}
+                          onOpenDetail={openTaskDetail}
+                        />
+                      ))}
+                      {loadingMoreColumn === col.id && (
+                        <div className="py-2 text-center text-[11px] text-gray-400">加载中…</div>
+                      )}
+                    </>
                   )}
                 </div>
               </div>
@@ -1016,7 +1159,7 @@ export function TodosList() {
       />
 
       <Modal
-        title="新增待办"
+        title={createAsCompleted ? "新增完成" : "新增待办"}
         open={formOpen}
         onOk={handleCreateSubmit}
         onCancel={closeCreateForm}
@@ -1025,6 +1168,9 @@ export function TodosList() {
         confirmLoading={isSubmitting}
         okButtonProps={{ disabled: !formTitle.trim() }}
       >
+        {createAsCompleted && (
+          <p className="text-sm text-gray-500 mb-3">将直接记为已完成，并添加到今日进度。</p>
+        )}
         <TaskFormPanel
           mode="create"
           title={formTitle}
@@ -1033,6 +1179,7 @@ export function TodosList() {
           priority={formPriority}
           status={formStatus}
           progress={formProgress}
+          hideStatusFields={createAsCompleted}
           onTitleChange={setFormTitle}
           onDescriptionChange={setFormDescription}
           onContextChange={setFormContext}

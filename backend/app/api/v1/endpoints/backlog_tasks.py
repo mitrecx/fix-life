@@ -41,6 +41,8 @@ def list_backlog_tasks(
     ),
     date_from: Optional[date] = Query(None),
     date_to: Optional[date] = Query(None),
+    limit: Optional[int] = Query(None, ge=1, le=100, description="Page size; omit to return all matches"),
+    offset: int = Query(0, ge=0, description="Number of rows to skip after sorting"),
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ):
@@ -53,7 +55,7 @@ def list_backlog_tasks(
         raise HTTPException(status_code=422, detail="time_field must be created, scheduled, or completed")
 
     service = BacklogTaskService(db)
-    tasks = service.get_user_tasks(
+    tasks, total = service.get_user_tasks(
         str(current_user.id),
         tab=tab,  # type: ignore[arg-type]
         context=context,
@@ -62,6 +64,8 @@ def list_backlog_tasks(
         time_field=time_field,  # type: ignore[arg-type]
         date_from=date_from,
         date_to=date_to,
+        limit=limit,
+        offset=offset,
     )
     repair_service = TaskDataRepairService(db)
     dup_counts = repair_service.compute_fuzzy_duplicate_counts(
@@ -72,7 +76,7 @@ def list_backlog_tasks(
             service.to_response(t, possible_duplicate_count=dup_counts.get(str(t.id), 0))
             for t in tasks
         ],
-        total=len(tasks),
+        total=total,
     )
 
 

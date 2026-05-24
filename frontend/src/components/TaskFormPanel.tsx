@@ -43,6 +43,7 @@ export interface TaskFormPanelProps {
   onSubmit?: () => void;
   statusLabel?: string | null;
   timestamps?: TaskFormTimestamps;
+  hideStatusFields?: boolean;
 }
 
 function DetailRow({ label, children }: { label: string; children: ReactNode }) {
@@ -263,10 +264,11 @@ export function TaskFormPanel({
   onSubmit,
   statusLabel,
   timestamps,
+  hideStatusFields = false,
 }: TaskFormPanelProps) {
   const editing = mode === "edit" || mode === "create";
   const showTimestamps = mode !== "create" && timestamps !== undefined;
-  const showProgressPresets = editing && onProgressChange !== undefined;
+  const showProgressPresets = editing && onProgressChange !== undefined && !hideStatusFields;
 
   return (
     <dl className="py-1">
@@ -300,6 +302,7 @@ export function TaskFormPanel({
           <ReadOnlyField multiline>{description.trim() || null}</ReadOnlyField>
         )}
       </DetailRow>
+      {!hideStatusFields && (
       <DetailRow label="状态">
         {editing ? (
           <div>
@@ -323,6 +326,7 @@ export function TaskFormPanel({
           </ReadOnlyField>
         )}
       </DetailRow>
+      )}
       <DetailRow label="优先级">
         {editing ? (
           <PrioritySelector value={priority} onChange={onPriorityChange} />

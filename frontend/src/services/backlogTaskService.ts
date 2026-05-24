@@ -18,6 +18,11 @@ interface BacklogTaskListResponse {
   total: number;
 }
 
+export interface BacklogListPageOptions {
+  limit?: number;
+  offset?: number;
+}
+
 class BacklogTaskService {
   private baseUrl = "/backlog-tasks";
 
@@ -25,7 +30,11 @@ class BacklogTaskService {
     return !!(filters.dateFrom || filters.dateTo);
   }
 
-  buildListParams(tab: BacklogTab, filters: BacklogListFilters = {}): URLSearchParams {
+  buildListParams(
+    tab: BacklogTab,
+    filters: BacklogListFilters = {},
+    options?: BacklogListPageOptions
+  ): URLSearchParams {
     const params = new URLSearchParams({ tab });
 
     const context = this.contextFilterToParam(filters.context ?? "all");
@@ -43,15 +52,21 @@ class BacklogTaskService {
       if (filters.dateTo) params.append("date_to", filters.dateTo);
     }
 
+    if (options?.limit != null) {
+      params.append("limit", String(options.limit));
+      params.append("offset", String(options.offset ?? 0));
+    }
+
     return params;
   }
 
-  async list(tab: BacklogTab = "pending", filters: BacklogListFilters = {}): Promise<BacklogTask[]> {
-    const params = this.buildListParams(tab, filters);
-    const response = await api.get<BacklogTaskListResponse>(
-      `${this.baseUrl}/?${params.toString()}`
-    );
-    return response.tasks;
+  async list(
+    tab: BacklogTab = "pending",
+    filters: BacklogListFilters = {},
+    options?: BacklogListPageOptions
+  ): Promise<BacklogTaskListResponse> {
+    const params = this.buildListParams(tab, filters, options);
+    return await api.get<BacklogTaskListResponse>(`${this.baseUrl}/?${params.toString()}`);
   }
 
   async get(id: string): Promise<BacklogTaskDetail> {
