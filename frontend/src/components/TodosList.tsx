@@ -40,10 +40,10 @@ import {
 } from "@/types/taskPriority";
 import type { TaskPriority } from "@/types/taskPriority";
 
-const COLUMNS: { id: KanbanColumnId; title: string; accent: string }[] = [
-  { id: "pending", title: "待办", accent: "border-t-blue-500" },
-  { id: "in_progress", title: "处理中", accent: "border-t-amber-500" },
-  { id: "done", title: "已完成", accent: "border-t-emerald-500" },
+const COLUMNS: { id: KanbanColumnId; title: string; accent: string; spinner: string }[] = [
+  { id: "pending", title: "待办", accent: "border-t-blue-500", spinner: "border-blue-100 border-t-blue-500" },
+  { id: "in_progress", title: "处理中", accent: "border-t-amber-500", spinner: "border-amber-100 border-t-amber-500" },
+  { id: "done", title: "已完成", accent: "border-t-emerald-500", spinner: "border-emerald-100 border-t-emerald-500" },
 ];
 
 const DEFAULT_FILTERS: BacklogListFilters = {
@@ -54,6 +54,12 @@ const DEFAULT_FILTERS: BacklogListFilters = {
 };
 
 const COLUMN_PAGE_SIZE = 20;
+
+const EMPTY_COLUMN_LOADING: Record<KanbanColumnId, boolean> = {
+  pending: true,
+  in_progress: true,
+  done: true,
+};
 
 const EMPTY_COLUMN_TOTALS: Record<KanbanColumnId, number> = {
   pending: 0,
@@ -391,24 +397,8 @@ function KanbanCard({
                 {contextConfig.label}
               </span>
             )}
-            {isScheduled && task.last_plan_date && column !== "done" && (
-              <span className="text-sm text-blue-600 font-medium">
-                已安排 {dayjs(task.last_plan_date).format("M月D日")}
-              </span>
-            )}
             {(task.possible_duplicate_count ?? 0) > 0 && column !== "done" && (
               <span className="text-sm text-rose-600 font-medium">可能重复</span>
-            )}
-            {column === "in_progress" && onProgressCommit && (
-              <KanbanCardProgressSlider
-                task={task}
-                onCommit={onProgressCommit}
-                onInteractStart={() => setProgressDragLocked(true)}
-                onInteractEnd={() => setProgressDragLocked(false)}
-              />
-            )}
-            {(column === "pending" || column === "in_progress") && formatLinkedDates(task) && (
-              <span className="text-sm text-gray-400">📅 {formatLinkedDates(task)}</span>
             )}
             {column === "pending" && !isScheduled && (
               <span className="text-sm text-gray-400">{formatRelativeTime(task.created_at)}</span>
@@ -417,6 +407,24 @@ function KanbanCard({
               <span className="text-sm text-gray-400">{formatDateTime(task.completed_at)}</span>
             )}
           </div>
+          {column === "in_progress" && onProgressCommit && (
+            <KanbanCardProgressSlider
+              task={task}
+              onCommit={onProgressCommit}
+              onInteractStart={() => setProgressDragLocked(true)}
+              onInteractEnd={() => setProgressDragLocked(false)}
+            />
+          )}
+          {isScheduled && task.last_plan_date && column !== "done" && (
+            <div className="flex items-center flex-wrap gap-1.5 mt-1.5">
+              <span className="text-sm text-blue-600 font-medium">
+                已安排 {dayjs(task.last_plan_date).format("M月D日")}
+              </span>
+              {formatLinkedDates(task) && (
+                <span className="text-sm text-gray-400">📅 {formatLinkedDates(task)}</span>
+              )}
+            </div>
+          )}
         </div>
       </div>
     </div>
@@ -442,7 +450,9 @@ export function TodosList() {
     in_progress: null,
     done: null,
   });
-  const [loading, setLoading] = useState(true);
+  const [loadingColumns, setLoadingColumns] = useState<Record<KanbanColumnId, boolean>>(
+    () => ({ ...EMPTY_COLUMN_LOADING })
+  );
   const [formOpen, setFormOpen] = useState(false);
   const [createAsCompleted, setCreateAsCompleted] = useState(false);
   const [formTitle, setFormTitle] = useState("");
@@ -511,7 +521,7 @@ export function TodosList() {
   );
 
   const matchCount = columnTotals.pending + columnTotals.in_progress + columnTotals.done;
-  const showInitialLoading = loading && matchCount === 0 && pendingTasks.length === 0;
+  const isColumnQueryLoading = (column: KanbanColumnId) => loadingColumns[column];
 
   const visibleTaskIds = useMemo(
     () => [...pendingTasks, ...inProgressTasks, ...doneTasks].map((t) => t.id),
@@ -670,30 +680,35 @@ export function TodosList() {
   }, [setColumnState]);
 
   const loadTasks = useCallback(async (options?: { silent?: boolean }) => {
-    const silent = options?.silent ?? hasLoadedOnceRef.current;
-    if (!silent) setLoading(true);
-    try {
-      const [pendingRes, inProgressRes, doneRes] = await Promise.all([
-        backlogTaskService.list("pending", apiFilters, { limit: COLUMN_PAGE_SIZE, offset: 0 }),
-        backlogTaskService.list("in_progress", apiFilters, { limit: COLUMN_PAGE_SIZE, offset: 0 }),
-        backlogTaskService.list("done", apiFilters, { limit: COLUMN_PAGE_SIZE, offset: 0 }),
-      ]);
-      setPendingTasks(pendingRes.tasks);
-      setInProgressTasks(inProgressRes.tasks);
-      setDoneTasks(doneRes.tasks);
-      setColumnTotals({
-        pending: pendingRes.total,
-        in_progress: inProgressRes.total,
-        done: doneRes.total,
-      });
-    } catch (error) {
-      console.error("Failed to load backlog tasks:", error);
-      if (!silent) message.error("加载待办失败");
-    } finally {
-      hasLoadedOnceRef.current = true;
-      if (!silent) setLoading(false);
+    const silent = options?.silent ?? false;
+    const columns: KanbanColumnId[] = ["pending", "in_progress", "done"];
+
+    if (!silent) {
+      setLoadingColumns({ pending: true, in_progress: true, done: true });
     }
-  }, [apiFilters]);
+
+    await Promise.all(
+      columns.map(async (column) => {
+        try {
+          const result = await backlogTaskService.list(column, apiFilters, {
+            limit: COLUMN_PAGE_SIZE,
+            offset: 0,
+          });
+          setColumnState(column, () => result.tasks);
+          setColumnTotals((prev) => ({ ...prev, [column]: result.total }));
+        } catch (error) {
+          console.error(`Failed to load ${column} backlog tasks:`, error);
+          if (!silent) message.error("加载待办失败");
+        } finally {
+          if (!silent) {
+            setLoadingColumns((prev) => ({ ...prev, [column]: false }));
+          }
+        }
+      })
+    );
+
+    hasLoadedOnceRef.current = true;
+  }, [apiFilters, setColumnState]);
 
   const loadMoreColumn = useCallback(
     async (column: KanbanColumnId) => {
@@ -744,7 +759,7 @@ export function TodosList() {
   }, [loadTasks]);
 
   useEffect(() => {
-    if (loading || showInitialLoading) return;
+    if (loadingColumns.pending || loadingColumns.in_progress || loadingColumns.done) return;
     (["pending", "in_progress", "done"] as KanbanColumnId[]).forEach((col) => {
       const el = columnScrollRefs.current[col];
       if (!el) return;
@@ -758,8 +773,7 @@ export function TodosList() {
     inProgressTasks,
     doneTasks,
     columnTotals,
-    loading,
-    showInitialLoading,
+    loadingColumns,
     loadMoreColumn,
     columnTasks,
   ]);
@@ -1253,12 +1267,10 @@ export function TodosList() {
         </div>
       )}
 
-      {showInitialLoading ? (
-        <div className="flex-1 flex items-center justify-center text-gray-400 text-sm">加载中...</div>
-      ) : (
-        <div className="flex-1 flex gap-2.5 min-h-0 mt-4 overflow-hidden">
+      <div className="flex-1 flex gap-2.5 min-h-0 mt-4 overflow-hidden">
           {COLUMNS.map((col) => {
             const tasks = columnTasks[col.id];
+            const columnLoading = isColumnQueryLoading(col.id);
             const isDropHighlight = dropTarget === col.id && dragging && dragging.from !== col.id;
 
             return (
@@ -1308,9 +1320,21 @@ export function TodosList() {
                     </button>
                   )}
                   <span className="flex-1" />
-                  <span className="text-sm font-medium text-gray-500 tabular-nums">
-                    {columnTotals[col.id]}
-                  </span>
+                  {columnLoading ? (
+                    <span
+                      className="inline-flex h-5 w-5 items-center justify-center shrink-0"
+                      role="status"
+                      aria-label="加载中"
+                    >
+                      <span
+                        className={`h-3.5 w-3.5 rounded-full border-2 animate-spin ${col.spinner}`}
+                      />
+                    </span>
+                  ) : (
+                    <span className="text-sm font-medium text-gray-500 tabular-nums min-w-[1.25rem] text-right">
+                      {columnTotals[col.id]}
+                    </span>
+                  )}
                 </div>
 
                 <div
@@ -1323,7 +1347,9 @@ export function TodosList() {
                   onScroll={(event) => handleColumnScroll(col.id, event)}
                 >
                   {tasks.length === 0 ? (
-                    <div className="flex items-center justify-center py-8 text-[11px] text-gray-400">无匹配</div>
+                    columnLoading ? null : (
+                      <div className="flex items-center justify-center py-8 text-[11px] text-gray-400">无匹配</div>
+                    )
                   ) : (
                     <>
                       {tasks.map((task) => (
@@ -1356,7 +1382,6 @@ export function TodosList() {
             );
           })}
         </div>
-      )}
 
       <TaskDetailDrawer
         open={drawerOpen && !!activeTask}
