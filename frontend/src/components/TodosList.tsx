@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback, useMemo } from "react";
-import { Trash2, Calendar, SquarePen, Plus } from "lucide-react";
+import { Trash2, Calendar, SquarePen, Plus, CheckSquare, X } from "lucide-react";
 import { DatePicker, Modal, message } from "antd";
 import type { Dayjs } from "dayjs";
 import dayjs from "dayjs";
@@ -55,11 +55,15 @@ const DEFAULT_FILTERS: BacklogListFilters = {
 function sortColumnTasks(tasks: BacklogTask[], column: KanbanColumnId): BacklogTask[] {
   const sorted = [...tasks];
   sorted.sort((a, b) => {
+    if (column === "done") {
+      const byCompleted =
+        dayjs(b.completed_at ?? b.updated_at).valueOf() -
+        dayjs(a.completed_at ?? a.updated_at).valueOf();
+      if (byCompleted !== 0) return byCompleted;
+      return dayjs(b.created_at).valueOf() - dayjs(a.created_at).valueOf();
+    }
     const byPriority = compareTaskPriority(a.priority, b.priority);
     if (byPriority !== 0) return byPriority;
-    if (column === "done") {
-      return dayjs(b.completed_at ?? b.updated_at).valueOf() - dayjs(a.completed_at ?? a.updated_at).valueOf();
-    }
     if (column === "in_progress") {
       return (b.progress ?? 0) - (a.progress ?? 0);
     }
@@ -148,7 +152,7 @@ function formatRelativeTime(dateStr: string) {
 }
 
 function formatDateTime(dateStr: string) {
-  return dayjs(dateStr).format("M/D HH:mm");
+  return dayjs(dateStr).format("YYYY/M/D");
 }
 
 function progressForColumn(column: KanbanColumnId, from: KanbanColumnId, current: number): number {
@@ -210,6 +214,9 @@ interface KanbanCardProps {
   task: BacklogTask;
   column: KanbanColumnId;
   draggable: boolean;
+  selectionMode: boolean;
+  selected: boolean;
+  onToggleSelect: (task: BacklogTask) => void;
   onDragStart: (task: BacklogTask, from: KanbanColumnId) => void;
   onSchedule: (task: BacklogTask) => void;
   onPriorityChange: (task: BacklogTask, priority: TaskPriority) => void;
@@ -222,6 +229,9 @@ function KanbanCard({
   task,
   column,
   draggable,
+  selectionMode,
+  selected,
+  onToggleSelect,
   onDragStart,
   onSchedule,
   onPriorityChange,
@@ -235,17 +245,37 @@ function KanbanCard({
 
   return (
     <div
-      draggable={draggable}
+      draggable={draggable && !selectionMode}
       onDragStart={(e) => {
+        if (selectionMode) return;
         e.dataTransfer.effectAllowed = "move";
         onDragStart(task, column);
       }}
-      className={`group bg-white rounded-md border border-gray-200 p-2.5 hover:border-gray-300 transition-all ${
-        draggable ? "cursor-grab active:cursor-grabbing" : ""
-      }`}
+      className={`group bg-white rounded-md border p-2.5 hover:border-gray-300 transition-all ${
+        selectionMode ? "cursor-pointer" : draggable ? "cursor-grab active:cursor-grabbing" : ""
+      } ${selected ? "border-indigo-400 bg-indigo-50/40 ring-1 ring-indigo-200" : "border-gray-200"}`}
+      onClick={() => {
+        if (selectionMode) onToggleSelect(task);
+      }}
     >
       <div className="flex items-start gap-1.5">
-        <div className="flex-1 min-w-0 cursor-pointer" onClick={() => onView(task)}>
+        {selectionMode && (
+          <input
+            type="checkbox"
+            checked={selected}
+            readOnly
+            className="mt-0.5 shrink-0 rounded border-gray-300 text-indigo-600 focus:ring-indigo-500 pointer-events-none"
+          />
+        )}
+        <div
+          className={`flex-1 min-w-0 ${selectionMode ? "" : "cursor-pointer"}`}
+          onClick={(e) => {
+            if (!selectionMode) {
+              e.stopPropagation();
+              onView(task);
+            }
+          }}
+        >
           <p
             className={`text-sm leading-snug break-words hover:text-gray-600 ${
               column === "done" ? "text-gray-500 hover:text-gray-400" : "text-gray-800"
@@ -327,7 +357,9 @@ function KanbanCard({
         </div>
       </div>
 
-      <div className="flex items-center gap-1 mt-1.5 pt-1 border-t border-gray-100">
+      <div
+        className={`flex items-center gap-1 mt-1.5 pt-1 border-t border-gray-100 ${selectionMode ? "pointer-events-none opacity-50" : ""}`}
+      >
         <button
           type="button"
           onClick={(e) => {
@@ -401,6 +433,9 @@ export function TodosList() {
   const [dragging, setDragging] = useState<{ task: BacklogTask; from: KanbanColumnId } | null>(null);
   const [dropTarget, setDropTarget] = useState<KanbanColumnId | null>(null);
   const [repairOpen, setRepairOpen] = useState(false);
+  const [selectionMode, setSelectionMode] = useState(false);
+  const [selectedIds, setSelectedIds] = useState<Set<string>>(() => new Set());
+  const [batchDeleting, setBatchDeleting] = useState(false);
 
   useEffect(() => {
     const timer = window.setTimeout(() => setDebouncedQ(filters.q ?? ""), 300);
@@ -422,6 +457,47 @@ export function TodosList() {
   );
 
   const matchCount = pendingTasks.length + inProgressTasks.length + doneTasks.length;
+
+  const visibleTaskIds = useMemo(
+    () => [...pendingTasks, ...inProgressTasks, ...doneTasks].map((t) => t.id),
+    [pendingTasks, inProgressTasks, doneTasks]
+  );
+
+  const selectedCount = selectedIds.size;
+  const allVisibleSelected =
+    visibleTaskIds.length > 0 && visibleTaskIds.every((id) => selectedIds.has(id));
+
+  const exitSelectionMode = useCallback(() => {
+    setSelectionMode(false);
+    setSelectedIds(new Set());
+  }, []);
+
+  const toggleTaskSelection = useCallback((task: BacklogTask) => {
+    setSelectedIds((prev) => {
+      const next = new Set(prev);
+      if (next.has(task.id)) next.delete(task.id);
+      else next.add(task.id);
+      return next;
+    });
+  }, []);
+
+  const toggleSelectAllVisible = useCallback(() => {
+    setSelectedIds(() => (allVisibleSelected ? new Set() : new Set(visibleTaskIds)));
+  }, [allVisibleSelected, visibleTaskIds]);
+
+  const toggleColumnSelection = useCallback((column: KanbanColumnId) => {
+    const columnIds = columnTasks[column].map((t) => t.id);
+    setSelectedIds((prev) => {
+      const allSelected = columnIds.length > 0 && columnIds.every((id) => prev.has(id));
+      const next = new Set(prev);
+      if (allSelected) {
+        columnIds.forEach((id) => next.delete(id));
+      } else {
+        columnIds.forEach((id) => next.add(id));
+      }
+      return next;
+    });
+  }, [columnTasks]);
 
   const updateFilters = useCallback(
     (patch: Partial<BacklogListFilters>) => {
@@ -460,6 +536,13 @@ export function TodosList() {
   const removeTaskFromColumns = useCallback((taskId: string) => {
     (["pending", "in_progress", "done"] as KanbanColumnId[]).forEach((col) => {
       setColumnState(col, (prev) => prev.filter((t) => t.id !== taskId));
+    });
+  }, [setColumnState]);
+
+  const removeTasksFromColumns = useCallback((taskIds: string[]) => {
+    const idSet = new Set(taskIds);
+    (["pending", "in_progress", "done"] as KanbanColumnId[]).forEach((col) => {
+      setColumnState(col, (prev) => prev.filter((t) => !idSet.has(t.id)));
     });
   }, [setColumnState]);
 
@@ -692,12 +775,51 @@ export function TodosList() {
       cancelText: "取消",
       onOk: async () => {
         removeTaskFromColumns(task.id);
+        setSelectedIds((prev) => {
+          if (!prev.has(task.id)) return prev;
+          const next = new Set(prev);
+          next.delete(task.id);
+          return next;
+        });
         try {
           await backlogTaskService.delete(task.id);
         } catch (error) {
           await loadTasks({ silent: true });
           console.error("Failed to delete task:", error);
           message.error("删除失败");
+        }
+      },
+    });
+  };
+
+  const handleBatchDelete = () => {
+    if (selectedCount === 0 || batchDeleting) return;
+    const ids = [...selectedIds];
+    Modal.confirm({
+      title: "批量删除",
+      content: `确定要删除选中的 ${ids.length} 条待办吗？此操作不可撤销。`,
+      okText: "删除",
+      okType: "danger",
+      cancelText: "取消",
+      onOk: async () => {
+        setBatchDeleting(true);
+        removeTasksFromColumns(ids);
+        exitSelectionMode();
+        try {
+          const results = await Promise.allSettled(ids.map((id) => backlogTaskService.delete(id)));
+          const failed = results.filter((r) => r.status === "rejected").length;
+          if (failed === 0) {
+            message.success(`已删除 ${ids.length} 条待办`);
+          } else {
+            await loadTasks({ silent: true });
+            message.warning(`删除完成：成功 ${ids.length - failed} 条，失败 ${failed} 条`);
+          }
+        } catch (error) {
+          await loadTasks({ silent: true });
+          console.error("Failed to batch delete tasks:", error);
+          message.error("批量删除失败");
+        } finally {
+          setBatchDeleting(false);
         }
       },
     });
@@ -757,7 +879,46 @@ export function TodosList() {
         onChange={updateFilters}
         onClear={clearFilters}
         onDataRepair={() => setRepairOpen(true)}
+        selectionMode={selectionMode}
+        onToggleSelectionMode={() => {
+          if (selectionMode) exitSelectionMode();
+          else setSelectionMode(true);
+        }}
       />
+
+      {selectionMode && (
+        <div className="mt-3 flex flex-wrap items-center gap-2 px-3 py-2 bg-indigo-50 border border-indigo-100 rounded-lg shrink-0">
+          <CheckSquare size={16} className="text-indigo-600 shrink-0" />
+          <span className="text-sm text-indigo-900">
+            已选 <span className="font-semibold tabular-nums">{selectedCount}</span> 项
+          </span>
+          <button
+            type="button"
+            onClick={toggleSelectAllVisible}
+            className="px-2.5 py-1 text-xs font-medium text-indigo-700 bg-white border border-indigo-200 rounded-md hover:bg-indigo-100 transition-all"
+          >
+            {allVisibleSelected ? "取消全选" : "全选当前结果"}
+          </button>
+          <span className="flex-1" />
+          <button
+            type="button"
+            disabled={selectedCount === 0 || batchDeleting}
+            onClick={handleBatchDelete}
+            className="inline-flex items-center gap-1 px-2.5 py-1 text-xs font-medium text-white bg-red-500 rounded-md hover:bg-red-600 disabled:opacity-50 disabled:cursor-not-allowed transition-all"
+          >
+            <Trash2 size={13} />
+            {batchDeleting ? "删除中…" : "批量删除"}
+          </button>
+          <button
+            type="button"
+            onClick={exitSelectionMode}
+            className="inline-flex items-center gap-1 px-2.5 py-1 text-xs font-medium text-gray-600 bg-white border border-gray-200 rounded-md hover:bg-gray-50 transition-all"
+          >
+            <X size={13} />
+            取消
+          </button>
+        </div>
+      )}
 
       {loading ? (
         <div className="flex-1 flex items-center justify-center text-gray-400 text-sm">加载中...</div>
@@ -784,6 +945,15 @@ export function TodosList() {
               >
                 <div className="flex items-center gap-2 px-2.5 py-2 border-b border-gray-200/80 bg-white/80 shrink-0">
                   <h2 className="text-xs font-semibold text-gray-700">{col.title}</h2>
+                  {selectionMode && tasks.length > 0 && (
+                    <button
+                      type="button"
+                      onClick={() => toggleColumnSelection(col.id)}
+                      className="px-1.5 py-0.5 text-[10px] font-medium text-indigo-600 bg-indigo-50 rounded hover:bg-indigo-100 transition-all"
+                    >
+                      {tasks.every((t) => selectedIds.has(t.id)) ? "取消" : "全选"}
+                    </button>
+                  )}
                   {col.id === "pending" && (
                     <button
                       type="button"
@@ -811,7 +981,10 @@ export function TodosList() {
                         key={task.id}
                         task={task}
                         column={col.id}
-                        draggable
+                        draggable={!selectionMode}
+                        selectionMode={selectionMode}
+                        selected={selectedIds.has(task.id)}
+                        onToggleSelect={toggleTaskSelection}
                         onDragStart={(t, from) => setDragging({ task: t, from })}
                         onSchedule={openSchedule}
                         onPriorityChange={handlePriorityChange}

@@ -39,6 +39,8 @@ interface TodosFilterBarProps {
   onChange: (patch: Partial<BacklogListFilters>) => void;
   onClear: () => void;
   onDataRepair?: () => void;
+  selectionMode?: boolean;
+  onToggleSelectionMode?: () => void;
 }
 
 function FilterGroup({ children }: { children: ReactNode }) {
@@ -55,6 +57,8 @@ export function TodosFilterBar({
   onChange,
   onClear,
   onDataRepair,
+  selectionMode = false,
+  onToggleSelectionMode,
 }: TodosFilterBarProps) {
   const keyword = filters.q ?? "";
   const timeField = filters.timeField ?? "created";
@@ -165,6 +169,19 @@ export function TodosFilterBar({
 
         <div className="inline-flex items-center gap-2 shrink-0 py-1">
           <span className="text-sm text-gray-500">{matchCount} 条匹配</span>
+          {onToggleSelectionMode && (
+            <button
+              type="button"
+              onClick={onToggleSelectionMode}
+              className={`px-3 py-1.5 text-xs font-medium rounded-lg transition-all ${
+                selectionMode
+                  ? "text-indigo-700 bg-indigo-100 hover:bg-indigo-200"
+                  : "text-gray-600 bg-gray-100 hover:bg-gray-200"
+              }`}
+            >
+              {selectionMode ? "多选中" : "多选"}
+            </button>
+          )}
           {onDataRepair && (
             <button
               type="button"

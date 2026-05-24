@@ -1,4 +1,4 @@
-from datetime import datetime, timedelta
+from datetime import datetime, time, timedelta
 from typing import Dict, List, Optional, Tuple
 from uuid import UUID
 
@@ -227,6 +227,8 @@ class TaskDataRepairService:
             progress=progress,
         )
         self.backlog_service.apply_progress(backlog, progress)
+        if progress == 100:
+            backlog.completed_at = datetime.combine(plan.plan_date, time(12, 0))
         self.db.add(backlog)
         self.db.flush()
         self.backlog_service._create_link(backlog, str(daily.id), plan.plan_date)
