@@ -417,9 +417,11 @@ export function TodosList() {
   const navigate = useNavigate();
   const [searchParams, setSearchParams] = useSearchParams();
   const filterParamKey = filterSearchParamKey(searchParams);
-  const filters = useMemo(() => parseFilters(searchParams), [filterParamKey, searchParams]);
+  const filters = useMemo(() => parseFilters(searchParams), [filterParamKey]);
   const [draftFilters, setDraftFilters] = useState<BacklogListFilters>(() => parseFilters(searchParams));
   const hasLoadedOnceRef = useRef(false);
+  const searchParamsRef = useRef(searchParams);
+  searchParamsRef.current = searchParams;
 
   const [pendingTasks, setPendingTasks] = useState<BacklogTask[]>([]);
   const [inProgressTasks, setInProgressTasks] = useState<BacklogTask[]>([]);
@@ -489,7 +491,7 @@ export function TodosList() {
 
   useEffect(() => {
     setDraftFilters(parseFilters(searchParams));
-  }, [filterParamKey, searchParams]);
+  }, [filterParamKey]);
 
   const apiFilters = filters;
 
@@ -664,6 +666,7 @@ export function TodosList() {
   const loadTasks = useCallback(async (options?: { silent?: boolean }) => {
     const silent = options?.silent ?? false;
     const columns: KanbanColumnId[] = ["pending", "in_progress", "done"];
+    const currentFilters = parseFilters(searchParamsRef.current);
 
     if (!silent) {
       setLoadingColumns({ pending: true, in_progress: true, done: true });
@@ -672,7 +675,7 @@ export function TodosList() {
     await Promise.all(
       columns.map(async (column) => {
         try {
-          const result = await backlogTaskService.list(column, apiFilters, {
+          const result = await backlogTaskService.list(column, currentFilters, {
             limit: COLUMN_PAGE_SIZE,
             offset: 0,
           });
@@ -690,7 +693,7 @@ export function TodosList() {
     );
 
     hasLoadedOnceRef.current = true;
-  }, [apiFilters, setColumnState]);
+  }, [filterParamKey, setColumnState]);
 
   const loadMoreColumn = useCallback(
     async (column: KanbanColumnId) => {
@@ -1104,9 +1107,9 @@ export function TodosList() {
           next.delete(id);
           return next;
         });
-        closeTaskDetail();
         try {
           await backlogTaskService.delete(id);
+          closeTaskDetail();
         } catch (error) {
           await loadTasks({ silent: true });
           console.error("Failed to delete task:", error);
