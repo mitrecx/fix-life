@@ -1,22 +1,17 @@
 import { useState, useEffect } from "react";
-import { Plus, Download, X, Copy } from "lucide-react";
+import { Download, X } from "lucide-react";
 import { Modal, message } from "antd";
-import type { DailyPlan, DailyPlanCreate, DailyPlanUpdate, DailyTask } from "@/types/dailyPlan";
+import type { DailyPlan, DailyTask } from "@/types/dailyPlan";
 import type { DailySummary } from "@/types/dailySummary";
 import { dailyPlanService } from "@/services/dailyPlanService";
 import { dailySummaryService } from "@/services/dailySummaryService";
 import { DailyPlanCard } from "./DailyPlanCard";
-import { DailyPlanForm } from "./DailyPlanForm";
-import { BatchCreateTasksModal } from "./BatchCreateTasksModal";
 import { LoadingSpinner } from "@/components/LoadingSpinner";
 
 export function DailyPlansList({ focusDate }: { focusDate?: string | null }) {
   const [plans, setPlans] = useState<DailyPlan[]>([]);
   const [loading, setLoading] = useState(true);
-  const [showForm, setShowForm] = useState(false);
-  const [editingPlan, setEditingPlan] = useState<DailyPlan | null>(null);
   const [showExportModal, setShowExportModal] = useState(false);
-  const [showBatchCreateModal, setShowBatchCreateModal] = useState(false);
   const [planSummaries, setPlanSummaries] = useState<Record<string, DailySummary>>({});
 
   useEffect(() => {
@@ -293,33 +288,6 @@ export function DailyPlansList({ focusDate }: { focusDate?: string | null }) {
     );
   };
 
-  const handleCreate = async (data: DailyPlanCreate | DailyPlanUpdate) => {
-    try {
-      const { created } = await dailyPlanService.create(data as DailyPlanCreate);
-      setShowForm(false);
-      if (!created) {
-        message.success("该日期已有计划，已合并更新");
-      } else {
-        message.success("日计划已创建");
-      }
-      loadPlans();
-    } catch (error) {
-      const errorMessage = error instanceof Error ? error.message : "创建失败，请稍后重试";
-      message.error(errorMessage);
-    }
-  };
-
-  const handleUpdate = async (data: DailyPlanUpdate) => {
-    if (!editingPlan) return;
-    try {
-      await dailyPlanService.update(editingPlan.id, data);
-      setEditingPlan(null);
-      loadPlans();
-    } catch (error) {
-      console.error("Failed to update plan:", error);
-    }
-  };
-
   const handleDelete = async (planId: string) => {
     Modal.confirm({
       title: "确认删除",
@@ -542,25 +510,11 @@ export function DailyPlansList({ focusDate }: { focusDate?: string | null }) {
         {/* New plan button */}
         <div className="flex flex-wrap items-center gap-2 sm:gap-4">
           <button
-            onClick={() => setShowForm(true)}
-            className="flex items-center gap-2 px-5 py-2.5 text-emerald-700 bg-emerald-50 rounded-xl hover:bg-emerald-100 transition-all"
-          >
-            <Plus size={20} />
-            <span className="font-medium">新建计划</span>
-          </button>
-          <button
             onClick={handleOpenExportModal}
             className="flex items-center gap-2 px-5 py-2.5 text-orange-700 bg-orange-50 rounded-xl hover:bg-orange-100 transition-all"
           >
             <Download size={20} />
             <span className="font-medium">导出</span>
-          </button>
-          <button
-            onClick={() => setShowBatchCreateModal(true)}
-            className="flex items-center gap-2 px-5 py-2.5 text-blue-700 bg-blue-50 rounded-xl hover:bg-blue-100 transition-all"
-          >
-            <Copy size={20} />
-            <span className="font-medium">批量创建</span>
           </button>
         </div>
       </div>
@@ -580,7 +534,7 @@ export function DailyPlansList({ focusDate }: { focusDate?: string | null }) {
               <p className="text-lg text-gray-600 font-medium">
                 {formatDateRange()} 还没有计划
               </p>
-              <p className="text-sm text-gray-400 mt-2">点击"新建计划"开始创建你的第一个日计划</p>
+              <p className="text-sm text-gray-400 mt-2">可从待办安排任务到每日进度</p>
             </div>
           ) : (
             plans.map((plan) => (
@@ -589,32 +543,11 @@ export function DailyPlansList({ focusDate }: { focusDate?: string | null }) {
                 plan={plan}
                 onUpdate={loadPlans}
                 onTaskUpdate={(task) => patchDailyTask(plan.id, task)}
-                onEdit={() => setEditingPlan(plan)}
                 onDelete={() => handleDelete(plan.id)}
               />
             ))
           )}
         </div>
-      )}
-
-      {/* Create Form */}
-      {showForm && (
-        <DailyPlanForm
-          onSubmit={handleCreate}
-          onCancel={() => setShowForm(false)}
-          submitLabel="创建"
-          defaultDate={new Date().toISOString().split("T")[0]}
-        />
-      )}
-
-      {/* Edit Form */}
-      {editingPlan && (
-        <DailyPlanForm
-          onSubmit={handleUpdate}
-          onCancel={() => setEditingPlan(null)}
-          initialData={editingPlan}
-          submitLabel="保存"
-        />
       )}
 
       {/* Export Modal */}
@@ -664,14 +597,6 @@ export function DailyPlansList({ focusDate }: { focusDate?: string | null }) {
             </div>
           </div>
         </div>
-      )}
-
-      {/* Batch Create Tasks Modal */}
-      {showBatchCreateModal && (
-        <BatchCreateTasksModal
-          onClose={() => setShowBatchCreateModal(false)}
-          onSuccess={loadPlans}
-        />
       )}
     </div>
   );

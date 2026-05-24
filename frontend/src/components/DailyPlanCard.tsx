@@ -1,5 +1,5 @@
-import { useState, useEffect, useMemo, useRef } from "react";
-import { Edit, Trash2, Plus, CheckCircle, Circle, Clock, ChevronDown, ChevronUp, BookOpen } from "lucide-react";
+import { useState, useEffect, useRef } from "react";
+import { Trash2, CheckCircle, Circle, Clock, ChevronDown, ChevronUp, BookOpen } from "lucide-react";
 import { Modal, message } from "antd";
 import type { DailyPlan, DailyTask, DailyTaskStatus } from "@/types/dailyPlan";
 import { DAILY_TASK_PRIORITY } from "@/types/dailyPlan";
@@ -7,14 +7,12 @@ import { DEFAULT_TASK_CONTEXT, getTaskContextConfig } from "@/types/taskContext"
 import { dailyPlanService } from "@/services/dailyPlanService";
 import { backlogTaskService } from "@/services/backlogTaskService";
 import { DailySummaryModal } from "@/components/DailySummaryModal";
-import { AddToTodayModal } from "@/components/AddToTodayModal";
 import { systemSettingsService } from "@/services/systemSettingsService";
 
 interface DailyPlanCardProps {
   plan: DailyPlan;
   onUpdate: () => void;
   onTaskUpdate: (task: DailyTask) => void;
-  onEdit: () => void;
   onDelete: () => void;
 }
 
@@ -39,13 +37,6 @@ const getWeekdayConfig = (dateStr: string) => {
   const date = new Date(dateStr);
   const day = date.getDay();
   return WEEKDAY_CONFIG.find((w) => w.day === day) || WEEKDAY_CONFIG[6];
-};
-
-const getProgressColor = (rate: number) => {
-  if (rate === 100) return "linear-gradient(to right, rgb(52 211 153), rgb(34 197 94))";
-  if (rate >= 50) return "linear-gradient(to right, rgb(96 165 250), rgb(99 102 241))";
-  if (rate >= 25) return "linear-gradient(to right, rgb(251 191 36), rgb(249 115 22))";
-  return "linear-gradient(to right, rgb(156 163 175), rgb(100 116 139))";
 };
 
 const sortTasks = (tasks: DailyTask[]) => {
@@ -197,8 +188,7 @@ function DailyTaskProgressSlider({
   );
 }
 
-export function DailyPlanCard({ plan, onUpdate, onTaskUpdate, onEdit, onDelete }: DailyPlanCardProps) {
-  const [addModalOpen, setAddModalOpen] = useState(false);
+export function DailyPlanCard({ plan, onUpdate, onTaskUpdate, onDelete }: DailyPlanCardProps) {
   const [isTaskSectionCollapsed, setIsTaskSectionCollapsed] = useState(false);
   const [showSummaryModal, setShowSummaryModal] = useState(false);
   const [showDailySummary, setShowDailySummary] = useState(false);
@@ -212,15 +202,6 @@ export function DailyPlanCard({ plan, onUpdate, onTaskUpdate, onEdit, onDelete }
   }, []);
 
   const weekdayConfig = getWeekdayConfig(plan.plan_date);
-  const progressColor = getProgressColor(plan.completion_rate);
-
-  const existingBacklogIds = useMemo(() => {
-    const ids = new Set<string>();
-    for (const task of plan.daily_tasks) {
-      if (task.backlog_task_id) ids.add(task.backlog_task_id);
-    }
-    return ids;
-  }, [plan.daily_tasks]);
 
   const updateDailyStatus = async (task: DailyTask, newStatus: DailyTaskStatus) => {
     await dailyPlanService.updateTaskStatus(task.id, newStatus);
@@ -313,13 +294,6 @@ export function DailyPlanCard({ plan, onUpdate, onTaskUpdate, onEdit, onDelete }
               </button>
             )}
             <button
-              onClick={onEdit}
-              className="p-1.5 text-gray-400 hover:text-indigo-600 hover:bg-indigo-50 rounded-lg transition-all"
-              title="编辑"
-            >
-              <Edit size={16} />
-            </button>
-            <button
               onClick={() => setShowSummaryModal(true)}
               className="p-1.5 text-gray-400 hover:text-purple-600 hover:bg-purple-50 rounded-lg transition-all"
               title="总结"
@@ -337,40 +311,12 @@ export function DailyPlanCard({ plan, onUpdate, onTaskUpdate, onEdit, onDelete }
         </div>
       </div>
 
-      {plan.total_tasks > 0 && !isTaskSectionCollapsed && (
-        <div className="px-4 py-2 bg-white">
-          <div className="flex items-center justify-between text-xs mb-1.5">
-            <span className="text-gray-600">
-              {plan.completed_tasks}/{plan.total_tasks}
-            </span>
-            <span className={`font-semibold ${plan.completion_rate === 100 ? "text-emerald-600" : "text-indigo-600"}`}>
-              {plan.completion_rate.toFixed(0)}%
-            </span>
-          </div>
-          <div className="w-full bg-gray-100 rounded-full h-2 overflow-hidden">
-            <div
-              className="h-2 rounded-full transition-all duration-500 ease-out"
-              style={{ width: `${plan.completion_rate}%`, background: progressColor }}
-            />
-          </div>
-        </div>
-      )}
-
       {!isTaskSectionCollapsed && (
         <div
           className="px-4 py-3"
           style={{ background: "linear-gradient(to bottom, rgb(249 250 251), rgb(255 255 255))" }}
         >
-          <div className="flex items-center justify-between mb-2">
-            <h4 className="text-xs font-semibold text-gray-700">任务清单</h4>
-            <button
-              onClick={() => setAddModalOpen(true)}
-              className="flex items-center gap-1 text-xs text-indigo-600 hover:text-indigo-700 font-medium transition-colors"
-            >
-              <Plus size={14} />
-              添到今日
-            </button>
-          </div>
+          <h4 className="text-xs font-semibold text-gray-700 mb-2">任务清单</h4>
 
           <div className="space-y-1.5">
             {sortTasks(plan.daily_tasks).map((task) => {
@@ -501,15 +447,6 @@ export function DailyPlanCard({ plan, onUpdate, onTaskUpdate, onEdit, onDelete }
           )}
         </div>
       )}
-
-      <AddToTodayModal
-        open={addModalOpen}
-        planId={plan.id}
-        planDate={plan.plan_date}
-        existingBacklogIds={existingBacklogIds}
-        onClose={() => setAddModalOpen(false)}
-        onSuccess={onUpdate}
-      />
 
       {showSummaryModal && (
         <DailySummaryModal
