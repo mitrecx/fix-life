@@ -36,7 +36,6 @@ export default function SettingsPage() {
   const [isLoading, setIsLoading] = useState(true);
   const [isSaving, setIsSaving] = useState(false);
   const [mcpKeys, setMcpKeys] = useState<McpApiKey[]>([]);
-  const [mcpKeyName, setMcpKeyName] = useState("");
   const [isCreatingMcpKey, setIsCreatingMcpKey] = useState(false);
   const [createdMcpKey, setCreatedMcpKey] = useState<McpApiKeyCreateResponse | null>(null);
 
@@ -68,15 +67,17 @@ export default function SettingsPage() {
   };
 
   const handleCreateMcpKey = async () => {
-    if (!mcpKeyName.trim()) {
-      message.error("请输入 Key 名称");
-      return;
-    }
+    const name = new Date().toLocaleString("zh-CN", {
+      year: "numeric",
+      month: "2-digit",
+      day: "2-digit",
+      hour: "2-digit",
+      minute: "2-digit",
+    });
     try {
       setIsCreatingMcpKey(true);
-      const created = await systemSettingsService.createMcpKey(mcpKeyName.trim());
+      const created = await systemSettingsService.createMcpKey(name);
       setCreatedMcpKey(created);
-      setMcpKeyName("");
       await loadMcpKeys();
       message.success("API Key 已创建");
     } catch (error) {
@@ -462,27 +463,15 @@ export default function SettingsPage() {
                     </p>
                   </div>
 
-                  <div className="p-4 bg-gray-50 rounded-xl border border-gray-200 space-y-3">
-                    <label className="block text-sm font-medium text-gray-700">
-                      新建 API Key
-                    </label>
-                    <div className="flex gap-2">
-                      <Input
-                        placeholder="例如：Cursor 办公室 Mac"
-                        value={mcpKeyName}
-                        onChange={(e) => setMcpKeyName(e.target.value)}
-                        disabled={isCreatingMcpKey}
-                        size="large"
-                      />
-                      <Button
-                        type="primary"
-                        icon={<Plus size={16} />}
-                        loading={isCreatingMcpKey}
-                        onClick={handleCreateMcpKey}
-                      >
-                        生成
-                      </Button>
-                    </div>
+                  <div className="p-4 bg-gray-50 rounded-xl border border-gray-200">
+                    <Button
+                      type="primary"
+                      icon={<Plus size={16} />}
+                      loading={isCreatingMcpKey}
+                      onClick={handleCreateMcpKey}
+                    >
+                      生成 API Key
+                    </Button>
                   </div>
 
                   <div className="space-y-3">
