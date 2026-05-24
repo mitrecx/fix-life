@@ -30,6 +30,7 @@ class User(Base):
     yearly_goals = relationship("YearlyGoal", back_populates="user", cascade="all, delete-orphan")
     monthly_plans = relationship("MonthlyPlan", back_populates="user", cascade="all, delete-orphan")
     daily_plans = relationship("DailyPlan", back_populates="user", cascade="all, delete-orphan")
+    backlog_tasks = relationship("BacklogTask", back_populates="user", cascade="all, delete-orphan")
     daily_summaries = relationship("DailySummary", cascade="all, delete-orphan")
     weekly_summaries = relationship("WeeklySummary", back_populates="user", cascade="all, delete-orphan")
     user_roles = relationship("UserRole", back_populates="user", cascade="all, delete-orphan")

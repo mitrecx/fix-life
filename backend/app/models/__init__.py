@@ -5,6 +5,7 @@ from app.models.role_permission import RolePermission
 from app.models.user_role import UserRole
 from app.models.yearly_goal import YearlyGoal, MonthlyMilestone, GoalStatus, GoalCategory
 from app.models.task_context import TaskContext
+from app.models.backlog_task import BacklogTask, BacklogTaskStatus
 from app.models.monthly_plan import MonthlyPlan, MonthlyTask, TaskPriority, TaskStatus
 from app.models.daily_plan import (
     DailyPlan,
@@ -27,6 +28,8 @@ __all__ = [
     "GoalStatus",
     "GoalCategory",
     "TaskContext",
+    "BacklogTask",
+    "BacklogTaskStatus",
     "MonthlyPlan",
     "MonthlyTask",
     "TaskPriority",

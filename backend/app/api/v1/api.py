@@ -11,6 +11,7 @@ from app.api.v1.endpoints import (
     weekly_summaries,
     system,
     admin_users,
+    backlog_tasks,
 )
 
 api_router = APIRouter()
@@ -24,6 +25,7 @@ api_router.include_router(system_settings.router, prefix="/system-settings", tag
 api_router.include_router(yearly_goals.router, prefix="/yearly-goals", tags=["yearly-goals"])
 api_router.include_router(monthly_plans.router, prefix="/monthly-plans", tags=["monthly-plans"])
 api_router.include_router(daily_plans.router, prefix="/daily-plans", tags=["daily-plans"])
+api_router.include_router(backlog_tasks.router, prefix="/backlog-tasks", tags=["backlog-tasks"])
 api_router.include_router(daily_summaries.router, prefix="/daily-summaries", tags=["daily-summaries"])
 api_router.include_router(weekly_summaries.router, prefix="/weekly-summaries", tags=["weekly-summaries"])
 api_router.include_router(analytics.router, prefix="/analytics", tags=["analytics"])

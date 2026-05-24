@@ -12,6 +12,7 @@ const ForgotPasswordPage = lazy(() => import("@/pages/ForgotPasswordPage"));
 const YearlyGoalsPage = lazy(() => import("@/pages/YearlyGoalsPage"));
 const MonthlyPlansPage = lazy(() => import("@/pages/MonthlyPlansPage"));
 const DailyPlansPage = lazy(() => import("@/pages/DailyPlansPage"));
+const TodosPage = lazy(() => import("@/pages/TodosPage"));
 const AnalyticsPage = lazy(() => import("@/pages/AnalyticsPage"));
 const WeeklySummariesPage = lazy(() => import("@/pages/WeeklySummariesPage"));
 const WeeklySummaryDetailPage = lazy(() => import("@/pages/WeeklySummaryDetailPage"));
@@ -71,6 +72,10 @@ export const router = createBrowserRouter([
       {
         path: "daily-plans",
         element: <DailyPlansPage />,
+      },
+      {
+        path: "todos",
+        element: <TodosPage />,
       },
       {
         path: "monthly-plans",

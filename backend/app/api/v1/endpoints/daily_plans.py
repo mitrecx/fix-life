@@ -17,6 +17,7 @@ from app.schemas.daily_plan import (
     DailyTaskResponse,
 )
 from app.services.daily_plan_service import DailyPlanService
+from app.services.backlog_task_service import BacklogTaskService
 
 router = APIRouter()
 
@@ -177,6 +178,11 @@ def update_daily_task(
         raise HTTPException(status_code=403, detail="Not authorized to update this task")
 
     updated_task = service.update_task(task_id, task_in)
+    if updated_task and task_in.status is not None:
+        BacklogTaskService(db).sync_from_daily_task(
+            str(updated_task.id),
+            is_done=updated_task.status == DailyTaskStatus.DONE,
+        )
     return updated_task
 
 
@@ -220,4 +226,9 @@ def update_task_status(
         raise HTTPException(status_code=403, detail="Not authorized to update this task")
 
     updated_task = service.update_task_status(task_id, status)
+    if updated_task:
+        BacklogTaskService(db).sync_from_daily_task(
+            str(updated_task.id),
+            is_done=updated_task.status == DailyTaskStatus.DONE,
+        )
     return updated_task

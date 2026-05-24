@@ -14,6 +14,7 @@ export default function Layout() {
 
   const navItems = useMemo(() => {
     const items = [
+      { path: "/todos", label: "待办", shortLabel: "待" },
       { path: "/daily-plans", label: "每日计划", shortLabel: "日" },
       { path: "/monthly-plans", label: "月度计划", shortLabel: "月" },
       { path: "/yearly-goals", label: "年度目标", shortLabel: "年" },
