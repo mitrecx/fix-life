@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useState } from "react";
 import { Modal, message } from "antd";
-import { Loader2, Wrench } from "lucide-react";
+import { Wrench } from "lucide-react";
+import { LoadingSpinner } from "@/components/LoadingSpinner";
 import {
   taskDataRepairService,
   type DataRepairPreview,
@@ -138,10 +139,7 @@ export function DataRepairModal({ open, onClose, onComplete }: DataRepairModalPr
       ]}
     >
       {loading ? (
-        <div className="flex items-center justify-center gap-2 py-12 text-gray-400 text-sm">
-          <Loader2 size={16} className="animate-spin" />
-          分析数据中…
-        </div>
+        <LoadingSpinner size="small" label="分析数据中…" block />
       ) : preview ? (
         <div className="space-y-4 text-sm">
           <div className="grid grid-cols-2 gap-3">

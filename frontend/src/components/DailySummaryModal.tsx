@@ -4,6 +4,7 @@ import { Modal, message } from "antd";
 import type { DailySummary, DailySummaryCreate, SummaryType } from "@/types/dailySummary";
 import { SUMMARY_TYPE_OPTIONS } from "@/types/dailySummary";
 import { dailySummaryService } from "@/services/dailySummaryService";
+import { LoadingSpinner } from "@/components/LoadingSpinner";
 
 interface DailySummaryModalProps {
   planId: string;
@@ -140,9 +141,7 @@ export function DailySummaryModal({ planId, planDate, onClose, onUpdate }: Daily
 
         {/* Content */}
         {initialLoading ? (
-          <div className="p-6 flex items-center justify-center">
-            <div className="text-gray-500 text-sm">加载中...</div>
-          </div>
+          <LoadingSpinner size="small" label="加载中…" block className="p-6" />
         ) : (
           <div className="p-6">
             {/* Summary Type Selection */}

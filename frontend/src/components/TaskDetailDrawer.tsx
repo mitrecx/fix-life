@@ -4,6 +4,7 @@ import { Calendar, Select } from "antd";
 import type { CalendarProps } from "antd";
 import type { Dayjs } from "dayjs";
 import { TaskFormPanel, taskFormStatusLabel, TaskFormTimestamps } from "@/components/TaskFormPanel";
+import { LoadingSpinner } from "@/components/LoadingSpinner";
 import type { BacklogTaskDetail, BacklogOccurrence, TaskFormStatus } from "@/types/backlogTask";
 import { progressToFormStatus } from "@/types/backlogTask";
 import type { TaskContext } from "@/types/taskContext";
@@ -324,32 +325,43 @@ export function TaskDetailDrawer({
             hideTimestamps
           />
 
-          {!isDone && scheduleOpen && (
-            <div className="mt-5 pt-4 border-t border-gray-100">
-              <p className="text-xs text-gray-600 mb-2">选择要添加到的日期：</p>
-              <div className="p-3 bg-gray-50 border border-gray-100 rounded-lg max-w-sm">
-                <Calendar
-                  fullscreen={false}
-                  value={scheduleDate}
-                  onSelect={(date) => onScheduleDateChange(date)}
-                  headerRender={scheduleCalendarHeader}
-                />
+          <div className="mt-5 pt-4 border-t border-gray-100 pb-2">
+            <div className="flex items-center justify-between gap-3 mb-2">
+              <h3 className="text-sm font-semibold text-gray-700">每日进度记录</h3>
+              {!isDone && (
                 <button
                   type="button"
-                  disabled={isScheduling}
-                  onClick={onConfirmSchedule}
-                  className="mt-3 w-full px-3 py-1.5 text-sm font-medium text-white bg-blue-600 rounded-lg hover:bg-blue-700 disabled:opacity-50"
+                  onClick={onToggleSchedule}
+                  className="inline-flex items-center gap-1.5 px-3 py-1.5 text-sm font-medium text-blue-700 bg-blue-50 border border-blue-100 rounded-lg hover:bg-blue-100 transition-colors shrink-0"
                 >
-                  {isScheduling ? "安排中…" : "确认安排"}
+                  <CalendarIcon size={14} />
+                  {scheduleOpen ? "收起日历" : "安排到每日进度"}
                 </button>
-              </div>
+              )}
             </div>
-          )}
-
-          <div className="mt-5 pt-4 border-t border-gray-100 pb-2">
-            <h3 className="text-sm font-semibold text-gray-700 mb-2">每日进度记录</h3>
+            {!isDone && scheduleOpen && (
+              <div className="mb-4">
+                <p className="text-xs text-gray-600 mb-2">选择要添加到的日期：</p>
+                <div className="p-3 bg-gray-50 border border-gray-100 rounded-lg max-w-sm">
+                  <Calendar
+                    fullscreen={false}
+                    value={scheduleDate}
+                    onSelect={(date) => onScheduleDateChange(date)}
+                    headerRender={scheduleCalendarHeader}
+                  />
+                  <button
+                    type="button"
+                    disabled={isScheduling}
+                    onClick={onConfirmSchedule}
+                    className="mt-3 w-full px-3 py-1.5 text-sm font-medium text-white bg-blue-600 rounded-lg hover:bg-blue-700 disabled:opacity-50"
+                  >
+                    {isScheduling ? "安排中…" : "确认安排"}
+                  </button>
+                </div>
+              </div>
+            )}
             {detailLoading ? (
-              <p className="text-sm text-gray-400">加载中…</p>
+              <LoadingSpinner size="small" label="加载中…" />
             ) : (
               <OccurrenceTimeline
                 occurrences={taskDetail?.occurrences ?? []}
@@ -368,16 +380,6 @@ export function TaskDetailDrawer({
 
       <footer className="shrink-0 px-4 py-3 border-t border-gray-200 bg-white">
         <div className="max-w-3xl mx-auto flex flex-wrap items-center gap-2">
-          {!isDone && (
-            <button
-              type="button"
-              onClick={onToggleSchedule}
-              className="inline-flex items-center gap-1.5 px-3 py-1.5 text-sm font-medium text-blue-700 bg-blue-50 border border-blue-100 rounded-lg hover:bg-blue-100 transition-colors"
-            >
-              <CalendarIcon size={14} />
-              {scheduleOpen ? "收起日历" : "安排到每日进度"}
-            </button>
-          )}
           <button
             type="button"
             onClick={onDelete}

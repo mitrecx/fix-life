@@ -3,13 +3,13 @@ import { useNavigate } from "react-router-dom";
 import {
   Users,
   Search,
-  Loader2,
   KeyRound,
   Shield,
   UserCog,
   UserPlus,
   Trash2,
 } from "lucide-react";
+import { LoadingSpinner } from "@/components/LoadingSpinner";
 import {
   Table,
   Input,
@@ -384,9 +384,7 @@ export default function AdminUsersPage() {
 
       <div className="bg-white rounded-xl border border-gray-200 overflow-hidden">
         {loading && items.length === 0 ? (
-          <div className="flex justify-center py-24 text-gray-500">
-            <Loader2 className="animate-spin" size={28} />
-          </div>
+          <LoadingSpinner size="large" block className="py-24" />
         ) : (
           <Table
             rowKey="id"

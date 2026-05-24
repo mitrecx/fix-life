@@ -1,7 +1,8 @@
 import { useCallback, useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { Button, Card, Spin, Tag, Typography, message } from "antd";
+import { Button, Card, Tag, Typography, message } from "antd";
 import { RefreshCw } from "lucide-react";
+import { LoadingSpinner } from "@/components/LoadingSpinner";
 import { getSystemStatus, SystemStatusForbiddenError } from "@/services/systemService";
 import type { StatusCheckItem } from "@/types/systemStatus";
 
@@ -114,7 +115,7 @@ export default function SystemStatusPage() {
                   className="absolute inset-0 bg-white/55 z-10 flex items-center justify-center pointer-events-none"
                   aria-busy
                 >
-                  <Spin size="small" />
+                  <LoadingSpinner size="small" />
                 </div>
               ) : null}
               <div className="flex items-center justify-between gap-2 flex-wrap">
@@ -131,7 +132,7 @@ export default function SystemStatusPage() {
               </div>
               {showInitialSpinner ? (
                 <div className="flex justify-center py-6">
-                  <Spin size="small" />
+                  <LoadingSpinner size="small" />
                 </div>
               ) : (
                 <div className="min-h-[44px]">

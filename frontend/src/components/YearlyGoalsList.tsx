@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react";
-import { Empty, Spin, Select, Space, Button, message, Modal } from "antd";
+import { Empty, Select, Space, Button, message, Modal } from "antd";
+import { LoadingSpinner } from "@/components/LoadingSpinner";
 import { PlusOutlined, ReloadOutlined } from "@ant-design/icons";
 import { useYearlyGoalStore } from "@/store/yearlyGoalStore";
 import YearlyGoalCard from "./YearlyGoalCard";
@@ -141,9 +142,7 @@ const YearlyGoalsList = () => {
 
       {/* Goals List */}
       {loading && goals.length === 0 ? (
-        <div className="text-center py-12 sm:py-16">
-          <Spin size="large" />
-        </div>
+        <LoadingSpinner size="large" block className="py-12 sm:py-16" />
       ) : goals.length === 0 ? (
         <Empty
           description="还没有年度目标，点击右上角创建一个吧！"

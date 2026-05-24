@@ -1,5 +1,6 @@
 import { useState, useEffect } from "react";
 import { BarChart3, TrendingUp, Target, Calendar } from "lucide-react";
+import { LoadingSpinner } from "@/components/LoadingSpinner";
 import {
   BarChart,
   Bar,
@@ -70,11 +71,7 @@ export default function AnalyticsPage() {
   };
 
   if (loading) {
-    return (
-      <div className="flex justify-center items-center min-h-[400px]">
-        <div className="animate-spin rounded-full h-12 w-12 border-4 border-indigo-200 border-t-indigo-600" />
-      </div>
-    );
+    return <LoadingSpinner size="large" block className="min-h-[400px]" />;
   }
 
   if (!dashboardStats || !yearlyStats) {

@@ -1,6 +1,7 @@
 import { useState } from "react";
-import { Calendar, Loader2 } from "lucide-react";
+import { Calendar } from "lucide-react";
 import { DatePicker, message } from "antd";
+import { LoadingSpinner } from "@/components/LoadingSpinner";
 import type { Dayjs } from "dayjs";
 import dayjs from "dayjs";
 import { dailyPlanService } from "@/services/dailyPlanService";
@@ -246,7 +247,7 @@ export function BatchCreateTasksModal({ onClose, onSuccess }: BatchCreateTasksMo
           >
             {isSubmitting ? (
               <>
-                <Loader2 className="w-4 h-4 animate-spin" />
+                <LoadingSpinner size="small" inline />
                 创建中...
               </>
             ) : (

@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback, useMemo, useRef } from "react";
-import { Trash2, Plus, CheckSquare, X } from "lucide-react";
+import { Trash2, Plus, CheckSquare, X, Calendar } from "lucide-react";
 import { Modal, message } from "antd";
 import type { Dayjs } from "dayjs";
 import dayjs from "dayjs";
@@ -8,6 +8,7 @@ import { useNavigate } from "react-router-dom";
 import { backlogTaskService } from "@/services/backlogTaskService";
 import { dailyPlanService } from "@/services/dailyPlanService";
 import { TodosFilterBar } from "@/components/TodosFilterBar";
+import { LoadingSpinner } from "@/components/LoadingSpinner";
 import { TaskFormPanel } from "@/components/TaskFormPanel";
 import { TaskDetailDrawer } from "@/components/TaskDetailDrawer";
 import type {
@@ -40,10 +41,10 @@ import {
 } from "@/types/taskPriority";
 import type { TaskPriority } from "@/types/taskPriority";
 
-const COLUMNS: { id: KanbanColumnId; title: string; accent: string; spinner: string }[] = [
-  { id: "pending", title: "待办", accent: "border-t-blue-500", spinner: "border-blue-100 border-t-blue-500" },
-  { id: "in_progress", title: "处理中", accent: "border-t-amber-500", spinner: "border-amber-100 border-t-amber-500" },
-  { id: "done", title: "已完成", accent: "border-t-emerald-500", spinner: "border-emerald-100 border-t-emerald-500" },
+const COLUMNS: { id: KanbanColumnId; title: string; accent: string }[] = [
+  { id: "pending", title: "待办", accent: "border-t-blue-500" },
+  { id: "in_progress", title: "处理中", accent: "border-t-amber-500" },
+  { id: "done", title: "已完成", accent: "border-t-emerald-500" },
 ];
 
 const DEFAULT_FILTERS: BacklogListFilters = {
@@ -421,7 +422,10 @@ function KanbanCard({
                 已安排 {dayjs(task.last_plan_date).format("M月D日")}
               </span>
               {formatLinkedDates(task) && (
-                <span className="text-sm text-gray-400">📅 {formatLinkedDates(task)}</span>
+                <span className="inline-flex items-center gap-1 text-sm text-gray-400">
+                  <Calendar size={14} className="shrink-0" aria-hidden />
+                  {formatLinkedDates(task)}
+                </span>
               )}
             </div>
           )}
@@ -877,7 +881,6 @@ export function TodosList() {
     const task = fromColumns ?? fromSnapshot;
     if (!task) return;
     populateDetailDraft(task);
-    setScheduleDate(task.last_plan_date ? dayjs(task.last_plan_date) : dayjs());
     populatedTaskIdRef.current = taskId;
   }, [taskId, allColumnTasks, drawerTaskSnapshot, populateDetailDraft]);
 
@@ -1321,15 +1324,7 @@ export function TodosList() {
                   )}
                   <span className="flex-1" />
                   {columnLoading ? (
-                    <span
-                      className="inline-flex h-5 w-5 items-center justify-center shrink-0"
-                      role="status"
-                      aria-label="加载中"
-                    >
-                      <span
-                        className={`h-3.5 w-3.5 rounded-full border-2 animate-spin ${col.spinner}`}
-                      />
-                    </span>
+                    <LoadingSpinner size="small" className="h-5 w-5 shrink-0" />
                   ) : (
                     <span className="text-sm font-medium text-gray-500 tabular-nums min-w-[1.25rem] text-right">
                       {columnTotals[col.id]}
@@ -1373,7 +1368,9 @@ export function TodosList() {
                         />
                       ))}
                       {loadingMoreColumn === col.id && (
-                        <div className="py-2 text-center text-[11px] text-gray-400">加载中…</div>
+                        <div className="py-2 flex justify-center">
+                          <LoadingSpinner size="small" />
+                        </div>
                       )}
                     </>
                   )}
@@ -1414,7 +1411,12 @@ export function TodosList() {
         onProgressChange={setDetailProgress}
         onConfirm={handleDetailSave}
         onDelete={handleDrawerDelete}
-        onToggleSchedule={() => setScheduleOpen((v) => !v)}
+        onToggleSchedule={() => {
+          setScheduleOpen((open) => {
+            if (!open) setScheduleDate(dayjs());
+            return !open;
+          });
+        }}
         onScheduleDateChange={setScheduleDate}
         onConfirmSchedule={handleConfirmSchedule}
         onNavigateOccurrence={(occ) => navigate(`/daily-plans?focus=${occ.plan_date}`)}

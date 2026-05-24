@@ -8,6 +8,7 @@ import { dailySummaryService } from "@/services/dailySummaryService";
 import { DailyPlanCard } from "./DailyPlanCard";
 import { DailyPlanForm } from "./DailyPlanForm";
 import { BatchCreateTasksModal } from "./BatchCreateTasksModal";
+import { LoadingSpinner } from "@/components/LoadingSpinner";
 
 export function DailyPlansList({ focusDate }: { focusDate?: string | null }) {
   const [plans, setPlans] = useState<DailyPlan[]>([]);
@@ -565,11 +566,7 @@ export function DailyPlansList({ focusDate }: { focusDate?: string | null }) {
       </div>
 
       {/* Loading */}
-      {loading && (
-        <div className="flex justify-center py-12">
-          <div className="animate-spin rounded-full h-10 w-10 border-4 border-emerald-200 border-t-emerald-600" />
-        </div>
-      )}
+      {loading && <LoadingSpinner size="large" block />}
 
       {/* Plans List */}
       {!loading && (

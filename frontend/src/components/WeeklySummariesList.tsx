@@ -1,7 +1,8 @@
 import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { Calendar, FileText, Plus } from "lucide-react";
-import { Button, Spin, message, Modal, InputNumber } from "antd";
+import { Button, message, Modal, InputNumber } from "antd";
+import { LoadingSpinner } from "@/components/LoadingSpinner";
 import { weeklySummaryService } from "@/services/weeklySummaryService";
 import type { WeeklySummary } from "@/types/weeklySummary";
 
@@ -144,9 +145,7 @@ export function WeeklySummariesList() {
 
       {/* Summaries List */}
       {loading ? (
-        <div className="flex justify-center items-center py-12">
-          <Spin size="large" />
-        </div>
+        <LoadingSpinner size="large" block />
       ) : summaries.length === 0 ? (
         <div className="text-center py-12 bg-white rounded-2xl shadow-sm">
           <FileText className="mx-auto text-gray-400" size={48} />

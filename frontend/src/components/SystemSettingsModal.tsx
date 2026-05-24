@@ -1,6 +1,7 @@
 import { useState, useEffect } from "react";
-import { Settings, Loader2, Mail, MessageSquare } from "lucide-react";
+import { Settings, Mail, MessageSquare } from "lucide-react";
 import { Switch, Input, message } from "antd";
+import { LoadingSpinner } from "@/components/LoadingSpinner";
 import { systemSettingsService } from "@/services/systemSettingsService";
 import type { SystemSettings } from "@/types/systemSettings";
 
@@ -82,9 +83,7 @@ export function SystemSettingsModal({ onClose }: SystemSettingsModalProps) {
         {/* Content */}
         <div className="flex-1 overflow-y-auto p-6 space-y-6">
           {isLoading ? (
-            <div className="flex items-center justify-center py-12">
-              <Loader2 className="w-8 h-8 text-indigo-600 animate-spin" />
-            </div>
+            <LoadingSpinner size="large" block />
           ) : (
             <>
               {/* 显示每日总结 */}
@@ -253,7 +252,7 @@ export function SystemSettingsModal({ onClose }: SystemSettingsModalProps) {
           >
             {isSaving ? (
               <>
-                <Loader2 className="w-4 h-4 animate-spin" />
+                <LoadingSpinner size="small" inline />
                 保存中...
               </>
             ) : (

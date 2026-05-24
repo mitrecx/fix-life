@@ -1,7 +1,6 @@
 import { useState, useEffect } from "react";
 import {
   Settings,
-  Loader2,
   Save,
   Monitor,
   Send,
@@ -14,6 +13,7 @@ import {
 } from "lucide-react";
 import { Switch, Input, message, Tabs, Modal, Button } from "antd";
 import type { TabsProps } from "antd";
+import { LoadingSpinner } from "@/components/LoadingSpinner";
 import { systemSettingsService } from "@/services/systemSettingsService";
 import type { SystemSettings } from "@/types/systemSettings";
 import type { McpApiKey, McpApiKeyCreateResponse } from "@/types/mcpApiKey";
@@ -343,7 +343,7 @@ export default function SettingsPage() {
           >
             {isSaving ? (
               <>
-                <Loader2 className="w-4 h-4 animate-spin" />
+                <LoadingSpinner size="small" inline />
                 保存中...
               </>
             ) : (
@@ -391,9 +391,7 @@ export default function SettingsPage() {
         <div className="flex-1 min-w-0">
           {isLoading ? (
             <div className="bg-white rounded-xl border border-gray-200 p-12">
-              <div className="flex items-center justify-center">
-                <Loader2 className="w-8 h-8 text-indigo-600 animate-spin" />
-              </div>
+              <LoadingSpinner size="large" block />
             </div>
           ) : (
             <div className="bg-white rounded-xl border border-gray-200 p-6">

@@ -10,7 +10,8 @@ import {
   ArrowLeft,
   Send,
 } from "lucide-react";
-import { Button, Spin, message } from "antd";
+import { Button, message } from "antd";
+import { LoadingSpinner } from "@/components/LoadingSpinner";
 import { weeklySummaryService } from "@/services/weeklySummaryService";
 import { systemSettingsService } from "@/services/systemSettingsService";
 import type { SystemSettings } from "@/types/systemSettings";
@@ -163,11 +164,7 @@ export function WeeklySummaryDetail() {
   };
 
   if (loading) {
-    return (
-      <div className="flex justify-center items-center py-12">
-        <Spin size="large" />
-      </div>
-    );
+    return <LoadingSpinner size="large" block />;
   }
 
   if (!summary) {

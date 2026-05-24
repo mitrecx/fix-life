@@ -5,6 +5,7 @@ import type { MonthlyPlan, MonthlyPlanCreate, MonthlyPlanUpdate } from "@/types/
 import { monthlyPlanService } from "@/services/monthlyPlanService";
 import { MonthlyPlanCard } from "./MonthlyPlanCard";
 import { MonthlyPlanForm } from "./MonthlyPlanForm";
+import { LoadingSpinner } from "@/components/LoadingSpinner";
 
 // Custom sorting: current month first, then future months ascending, then past months ascending
 const sortPlans = (plans: MonthlyPlan[]): MonthlyPlan[] => {
@@ -154,11 +155,7 @@ export function MonthlyPlansList() {
       </div>
 
       {/* Loading */}
-      {loading && (
-        <div className="flex justify-center py-12">
-          <div className="animate-spin rounded-full h-10 w-10 border-4 border-indigo-200 border-t-indigo-600" />
-        </div>
-      )}
+      {loading && <LoadingSpinner size="large" block />}
 
       {/* Plans List */}
       {!loading && (

@@ -4,6 +4,7 @@ import { Search } from "lucide-react";
 import { backlogTaskService } from "@/services/backlogTaskService";
 import { dailyPlanService } from "@/services/dailyPlanService";
 import { TaskFormPanel } from "@/components/TaskFormPanel";
+import { LoadingSpinner } from "@/components/LoadingSpinner";
 import type { BacklogTask, TaskFormStatus } from "@/types/backlogTask";
 import { applyStatusChange, progressToFormStatus } from "@/types/backlogTask";
 import { DEFAULT_TASK_CONTEXT, getTaskContextConfig } from "@/types/taskContext";
@@ -200,7 +201,7 @@ export function AddToTodayModal({
           </div>
           <div className="max-h-64 overflow-y-auto border border-gray-200 rounded-lg divide-y divide-gray-100">
             {loadingCandidates ? (
-              <div className="py-8 text-center text-sm text-gray-400">加载中…</div>
+              <LoadingSpinner size="small" label="加载中…" block className="py-8" />
             ) : filteredCandidates.length === 0 ? (
               <div className="py-8 text-center text-sm text-gray-400">
                 {candidates.length === 0 ? "暂无待办" : "无匹配或未添加的待办"}
