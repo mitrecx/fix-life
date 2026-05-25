@@ -1,7 +1,8 @@
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { Fragment, useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { DatePicker, Input, Modal, message } from "antd";
 import { CheckSquare, ImagePlus, RotateCcw, Search, Send, Trash2, X } from "lucide-react";
 import { type Dayjs } from "dayjs";
+import dayjs from "dayjs";
 import { LoadingSpinner } from "@/components/LoadingSpinner";
 import QuickNoteMarkdown from "@/components/QuickNoteMarkdown";
 import { quickNoteService } from "@/services/quickNoteService";
@@ -14,6 +15,29 @@ function formatMessageTime(iso: string) {
     hour: "2-digit",
     minute: "2-digit",
   });
+}
+
+function formatDateDivider(iso: string) {
+  return new Date(iso).toLocaleDateString("zh-CN", {
+    year: "numeric",
+    month: "long",
+    day: "numeric",
+    weekday: "short",
+  });
+}
+
+function isSameCalendarDay(a: string, b: string) {
+  return dayjs(a).format("YYYY-MM-DD") === dayjs(b).format("YYYY-MM-DD");
+}
+
+function DateDivider({ iso }: { iso: string }) {
+  return (
+    <div className="flex items-center gap-3 py-1">
+      <div className="h-px flex-1 bg-gray-200" />
+      <span className="text-xs text-gray-400 shrink-0">{formatDateDivider(iso)}</span>
+      <div className="h-px flex-1 bg-gray-200" />
+    </div>
+  );
 }
 
 function hasActiveFilters(filters: QuickNoteListFilters) {
@@ -389,7 +413,7 @@ export default function QuickNotesPage() {
           )}
         </div>
 
-        <div className="flex-1 overflow-y-auto p-4 space-y-3 bg-white">
+        <div className="flex-1 overflow-y-auto p-4 bg-white">
           {loading ? (
             <div className="py-16">
               <LoadingSpinner size="large" block />
@@ -399,10 +423,18 @@ export default function QuickNotesPage() {
               {filtering ? "没有匹配的记录" : "还没有记录，在下方输入第一条吧"}
             </div>
           ) : (
-            notes.map((note) => {
+            <div className="space-y-6">
+            {notes.map((note, index) => {
               const selected = selectedIds.has(note.id);
+              const prevNote = index > 0 ? notes[index - 1] : null;
+              const showDateDivider =
+                index === 0 ||
+                (prevNote !== null && !isSameCalendarDay(prevNote.created_at, note.created_at));
+
               return (
-                <div key={note.id} className="flex justify-start items-start gap-2">
+                <Fragment key={note.id}>
+                  {showDateDivider && <DateDivider iso={note.created_at} />}
+                  <div className="flex justify-start items-start gap-2">
                   {selectionMode && (
                     <label className="mt-5 inline-flex items-center">
                       <input
@@ -444,8 +476,10 @@ export default function QuickNotesPage() {
                     </div>
                   </div>
                 </div>
+                </Fragment>
               );
-            })
+            })}
+            </div>
           )}
           <div ref={messagesEndRef} />
         </div>
