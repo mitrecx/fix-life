@@ -54,6 +54,17 @@ class QuickNoteService:
         self.db.delete(note)
         self.db.commit()
 
+    def delete_notes(self, user_id: UUID, note_ids: list[UUID]) -> int:
+        if not note_ids:
+            return 0
+        deleted = (
+            self.db.query(QuickNote)
+            .filter(QuickNote.user_id == user_id, QuickNote.id.in_(note_ids))
+            .delete(synchronize_session=False)
+        )
+        self.db.commit()
+        return deleted
+
     @staticmethod
     def to_response(note: QuickNote) -> QuickNoteResponse:
         return QuickNoteResponse.model_validate(note)

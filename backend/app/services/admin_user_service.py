@@ -12,6 +12,7 @@ from app.models.role import Role
 from app.models.user import User
 from app.models.user_role import UserRole
 from app.schemas.admin_user import AdminUserCreate, AdminUserListItem, RoleBrief
+from app.services.rbac_service import assign_community_role
 
 
 class AdminUserService:
@@ -134,6 +135,8 @@ class AdminUserService:
         self.db.flush()
         if data.role_ids:
             self.replace_roles(user, list(data.role_ids))
+        else:
+            assign_community_role(self.db, user.id)
         self.db.refresh(user)
         return user
 

@@ -25,3 +25,11 @@ class QuickNoteList(BaseModel):
 
 class QuickNoteImageUploadResponse(BaseModel):
     url: str
+
+
+class QuickNoteBatchDelete(BaseModel):
+    ids: list[UUID] = Field(..., min_length=1, max_length=200)
+
+
+class QuickNoteBatchDeleteResponse(BaseModel):
+    deleted: int

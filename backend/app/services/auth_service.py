@@ -4,6 +4,7 @@ from sqlalchemy.orm import Session
 
 from app.models.user import User
 from app.schemas.user import UserRegister
+from app.services.rbac_service import assign_community_role
 
 
 class AuthService:
@@ -51,6 +52,8 @@ class AuthService:
             is_active=True
         )
         self.db.add(user)
+        self.db.flush()
+        assign_community_role(self.db, user.id)
         self.db.commit()
         self.db.refresh(user)
         return user

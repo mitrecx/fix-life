@@ -17,6 +17,7 @@ import { useAuthStore } from "@/store/authStore";
 import PageLoader from "@/components/PageLoader";
 
 const USERS_MANAGE = "users:manage";
+const QUICK_NOTES_USE = "quick_notes:use";
 const SIDEBAR_COLLAPSED_KEY = "fix-life-sidebar-collapsed";
 
 type NavItem = {
@@ -48,14 +49,17 @@ export default function Layout() {
   }, [collapsed]);
 
   const navItems = useMemo(() => {
-    const items: NavItem[] = [
-      { path: "/quick-notes", label: "随手记", icon: NotebookPen },
+    const items: NavItem[] = [];
+    if (user?.permissions?.includes(QUICK_NOTES_USE)) {
+      items.push({ path: "/quick-notes", label: "随手记", icon: NotebookPen });
+    }
+    items.push(
       { path: "/todos", label: "待办", icon: ListTodo },
       { path: "/daily-plans", label: "每日进度", icon: CalendarDays },
       { path: "/monthly-plans", label: "月度计划", icon: Calendar },
       { path: "/yearly-goals", label: "年度目标", icon: Target },
       { path: "/analytics", label: "数据统计", icon: BarChart3 },
-    ];
+    );
     if (user?.permissions?.includes(USERS_MANAGE)) {
       items.push({ path: "/admin/users", label: "用户管理", icon: Users });
     }

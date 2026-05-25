@@ -1,6 +1,6 @@
-import { useCallback, useEffect, useRef, useState } from "react";
-import { DatePicker, Input, message } from "antd";
-import { ImagePlus, RotateCcw, Search, Send } from "lucide-react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { DatePicker, Input, Modal, message } from "antd";
+import { CheckSquare, ImagePlus, RotateCcw, Search, Send, Trash2, X } from "lucide-react";
 import { type Dayjs } from "dayjs";
 import { LoadingSpinner } from "@/components/LoadingSpinner";
 import QuickNoteMarkdown from "@/components/QuickNoteMarkdown";
@@ -39,6 +39,9 @@ export default function QuickNotesPage() {
   const [queryInput, setQueryInput] = useState("");
   const [dateRange, setDateRange] = useState<[Dayjs | null, Dayjs | null]>([null, null]);
   const [appliedFilters, setAppliedFilters] = useState<QuickNoteListFilters>({});
+  const [selectionMode, setSelectionMode] = useState(false);
+  const [selectedIds, setSelectedIds] = useState<Set<string>>(() => new Set());
+  const [deleting, setDeleting] = useState(false);
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const imageInputRef = useRef<HTMLInputElement>(null);
 
@@ -62,6 +65,11 @@ export default function QuickNotesPage() {
   useEffect(() => {
     void loadNotes(appliedFilters);
   }, [appliedFilters, loadNotes]);
+
+  useEffect(() => {
+    setSelectedIds(new Set());
+    setSelectionMode(false);
+  }, [appliedFilters]);
 
   useEffect(() => {
     if (!loading && notes.length > 0 && !hasActiveFilters(appliedFilters)) {
@@ -146,6 +154,101 @@ export default function QuickNotesPage() {
   };
 
   const filtering = hasActiveFilters(appliedFilters);
+  const selectedCount = selectedIds.size;
+  const allVisibleSelected = useMemo(
+    () => notes.length > 0 && notes.every((note) => selectedIds.has(note.id)),
+    [notes, selectedIds],
+  );
+
+  const exitSelectionMode = () => {
+    setSelectionMode(false);
+    setSelectedIds(new Set());
+  };
+
+  const toggleNoteSelection = (noteId: string) => {
+    setSelectedIds((prev) => {
+      const next = new Set(prev);
+      if (next.has(noteId)) {
+        next.delete(noteId);
+      } else {
+        next.add(noteId);
+      }
+      return next;
+    });
+  };
+
+  const toggleSelectAllVisible = () => {
+    if (allVisibleSelected) {
+      setSelectedIds(new Set());
+      return;
+    }
+    setSelectedIds(new Set(notes.map((note) => note.id)));
+  };
+
+  const removeNotesFromList = (noteIds: string[]) => {
+    const idSet = new Set(noteIds);
+    setNotes((prev) => prev.filter((note) => !idSet.has(note.id)));
+    setSelectedIds((prev) => {
+      const next = new Set(prev);
+      noteIds.forEach((id) => next.delete(id));
+      return next;
+    });
+  };
+
+  const handleDeleteNote = (note: QuickNote) => {
+    Modal.confirm({
+      title: "删除消息",
+      content: "确定要删除这条随手记吗？此操作不可撤销。",
+      okText: "删除",
+      okType: "danger",
+      cancelText: "取消",
+      onOk: async () => {
+        removeNotesFromList([note.id]);
+        try {
+          await quickNoteService.deleteNote(note.id);
+          message.success("已删除");
+        } catch (error) {
+          console.error("Failed to delete quick note:", error);
+          await loadNotes(appliedFilters);
+          message.error("删除失败");
+        }
+      },
+    });
+  };
+
+  const handleBatchDelete = () => {
+    if (selectedCount === 0 || deleting) {
+      return;
+    }
+    const ids = [...selectedIds];
+    Modal.confirm({
+      title: "批量删除",
+      content: `确定要删除选中的 ${ids.length} 条随手记吗？此操作不可撤销。`,
+      okText: "删除",
+      okType: "danger",
+      cancelText: "取消",
+      onOk: async () => {
+        setDeleting(true);
+        removeNotesFromList(ids);
+        exitSelectionMode();
+        try {
+          const result = await quickNoteService.deleteNotes(ids);
+          if (result.deleted === ids.length) {
+            message.success(`已删除 ${result.deleted} 条`);
+          } else {
+            await loadNotes(appliedFilters);
+            message.warning(`删除完成：成功 ${result.deleted} 条，未找到 ${ids.length - result.deleted} 条`);
+          }
+        } catch (error) {
+          console.error("Failed to batch delete quick notes:", error);
+          await loadNotes(appliedFilters);
+          message.error("批量删除失败");
+        } finally {
+          setDeleting(false);
+        }
+      },
+    });
+  };
 
   return (
     <div className="w-full h-[calc(100dvh-5rem)] flex flex-col">
@@ -187,7 +290,60 @@ export default function QuickNotesPage() {
                 重置
               </button>
             )}
+            {notes.length > 0 && (
+              <button
+                type="button"
+                onClick={() => {
+                  if (selectionMode) {
+                    exitSelectionMode();
+                  } else {
+                    setSelectionMode(true);
+                  }
+                }}
+                className={`h-8 px-3 inline-flex items-center gap-1.5 rounded-lg text-sm transition-colors ${
+                  selectionMode
+                    ? "bg-indigo-100 text-indigo-700 border border-indigo-200"
+                    : "border border-gray-300 text-gray-600 hover:bg-gray-100"
+                }`}
+              >
+                <CheckSquare size={14} />
+                {selectionMode ? "多选中" : "多选"}
+              </button>
+            )}
           </div>
+          {selectionMode && (
+            <div className="flex flex-wrap items-center gap-2 px-3 py-2 bg-indigo-50 border border-indigo-100 rounded-lg">
+              <CheckSquare size={16} className="text-indigo-600 shrink-0" />
+              <span className="text-sm text-indigo-900">
+                已选 <span className="font-semibold tabular-nums">{selectedCount}</span> 项
+              </span>
+              <button
+                type="button"
+                onClick={toggleSelectAllVisible}
+                className="px-2.5 py-1 text-xs font-medium text-indigo-700 bg-white border border-indigo-200 rounded-md hover:bg-indigo-100 transition-all"
+              >
+                {allVisibleSelected ? "取消全选" : "全选当前结果"}
+              </button>
+              <span className="flex-1" />
+              <button
+                type="button"
+                disabled={selectedCount === 0 || deleting}
+                onClick={handleBatchDelete}
+                className="inline-flex items-center gap-1 px-2.5 py-1 text-xs font-medium text-white bg-red-500 rounded-md hover:bg-red-600 disabled:opacity-50 disabled:cursor-not-allowed transition-all"
+              >
+                <Trash2 size={13} />
+                {deleting ? "删除中…" : "批量删除"}
+              </button>
+              <button
+                type="button"
+                onClick={exitSelectionMode}
+                className="inline-flex items-center gap-1 px-2.5 py-1 text-xs font-medium text-gray-600 bg-white border border-gray-200 rounded-md hover:bg-gray-50 transition-all"
+              >
+                <X size={13} />
+                取消
+              </button>
+            </div>
+          )}
         </div>
 
         <div className="flex-1 overflow-y-auto p-4 space-y-3 bg-white">
@@ -200,18 +356,48 @@ export default function QuickNotesPage() {
               {filtering ? "没有匹配的记录" : "还没有记录，在下方输入第一条吧"}
             </div>
           ) : (
-            notes.map((note) => (
-              <div key={note.id} className="flex justify-end">
-                <div className="max-w-[85%] rounded-2xl rounded-br-md bg-gray-50 text-gray-800 border border-gray-200/80 px-4 py-2.5">
-                  <div className="text-sm break-words">
-                    <QuickNoteMarkdown content={note.content} />
+            notes.map((note) => {
+              const selected = selectedIds.has(note.id);
+              return (
+                <div key={note.id} className="flex justify-end items-start gap-2">
+                  {selectionMode && (
+                    <label className="mt-3 inline-flex items-center">
+                      <input
+                        type="checkbox"
+                        checked={selected}
+                        onChange={() => toggleNoteSelection(note.id)}
+                        className="h-4 w-4 rounded border-gray-300 text-indigo-600 focus:ring-indigo-500"
+                      />
+                    </label>
+                  )}
+                  <div
+                    className={`relative max-w-[85%] rounded-2xl rounded-br-md bg-gray-50 text-gray-800 border px-4 py-2.5 transition-colors ${
+                      selected
+                        ? "border-indigo-300 bg-indigo-50/50 ring-1 ring-indigo-200"
+                        : "border-gray-200/80"
+                    } ${selectionMode ? "cursor-pointer" : "group"}`}
+                    onClick={selectionMode ? () => toggleNoteSelection(note.id) : undefined}
+                  >
+                    {!selectionMode && (
+                      <button
+                        type="button"
+                        onClick={() => handleDeleteNote(note)}
+                        className="absolute -top-2 -left-2 h-7 w-7 inline-flex items-center justify-center rounded-full border border-gray-200 bg-white text-gray-400 opacity-0 group-hover:opacity-100 hover:text-red-500 hover:border-red-200 transition-all shadow-sm"
+                        title="删除"
+                      >
+                        <Trash2 size={14} />
+                      </button>
+                    )}
+                    <div className="text-sm break-words">
+                      <QuickNoteMarkdown content={note.content} />
+                    </div>
+                    <p className="text-[11px] text-gray-400 mt-1.5 text-right">
+                      {formatMessageTime(note.created_at)}
+                    </p>
                   </div>
-                  <p className="text-[11px] text-gray-400 mt-1.5 text-right">
-                    {formatMessageTime(note.created_at)}
-                  </p>
                 </div>
-              </div>
-            ))
+              );
+            })
           )}
           <div ref={messagesEndRef} />
         </div>

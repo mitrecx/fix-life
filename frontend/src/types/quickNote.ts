@@ -24,3 +24,7 @@ export interface QuickNoteCreate {
 export interface QuickNoteImageUploadResponse {
   url: string;
 }
+
+export interface QuickNoteBatchDeleteResponse {
+  deleted: number;
+}
