@@ -1,12 +1,13 @@
 import { Fragment, useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { DatePicker, Input, Modal, message } from "antd";
-import { CheckSquare, ImagePlus, RotateCcw, Search, Send, Trash2, X } from "lucide-react";
+import { CheckSquare, Copy, ImagePlus, RotateCcw, Search, Send, Trash2, X } from "lucide-react";
 import { type Dayjs } from "dayjs";
 import dayjs from "dayjs";
 import { LoadingSpinner } from "@/components/LoadingSpinner";
 import QuickNoteMarkdown from "@/components/QuickNoteMarkdown";
 import { quickNoteService } from "@/services/quickNoteService";
 import type { QuickNote, QuickNoteListFilters } from "@/types/quickNote";
+import { copyQuickNoteContent } from "@/utils/copyQuickNoteContent";
 
 function formatMessageTime(iso: string) {
   return new Date(iso).toLocaleString("zh-CN", {
@@ -262,6 +263,16 @@ export default function QuickNotesPage() {
     });
   };
 
+  const handleCopyNote = async (note: QuickNote) => {
+    try {
+      await copyQuickNoteContent(note.content);
+      message.success("已复制");
+    } catch (error) {
+      console.error("Failed to copy quick note:", error);
+      message.error("复制失败");
+    }
+  };
+
   const handleDeleteNote = (note: QuickNote) => {
     Modal.confirm({
       title: "删除消息",
@@ -461,16 +472,26 @@ export default function QuickNotesPage() {
                       } ${selectionMode ? "" : "group"}`}
                     >
                       {!selectionMode && (
-                        <button
-                          type="button"
-                          onClick={() => handleDeleteNote(note)}
-                          className="absolute -top-1 right-0 h-7 w-7 inline-flex items-center justify-center rounded-full border border-gray-200 bg-white text-gray-400 opacity-0 group-hover:opacity-100 hover:text-red-500 hover:border-red-200 transition-all shadow-sm"
-                          title="删除"
-                        >
-                          <Trash2 size={14} />
-                        </button>
+                        <div className="absolute -top-1 right-0 flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-all">
+                          <button
+                            type="button"
+                            onClick={() => void handleCopyNote(note)}
+                            className="h-7 w-7 inline-flex items-center justify-center rounded-full border border-gray-200 bg-white text-gray-400 hover:text-indigo-600 hover:border-indigo-200 shadow-sm"
+                            title="复制"
+                          >
+                            <Copy size={14} />
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => handleDeleteNote(note)}
+                            className="h-7 w-7 inline-flex items-center justify-center rounded-full border border-gray-200 bg-white text-gray-400 hover:text-red-500 hover:border-red-200 shadow-sm"
+                            title="删除"
+                          >
+                            <Trash2 size={14} />
+                          </button>
+                        </div>
                       )}
-                      <div className="text-sm break-words pr-8">
+                      <div className="text-sm break-words pr-16">
                         <QuickNoteMarkdown content={note.content} />
                       </div>
                     </div>
