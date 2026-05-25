@@ -70,6 +70,14 @@ class OssStorageService:
             raise OssStorageError(str(exc)) from exc
         return content, content_type
 
+    def delete_object(self, object_key: str) -> None:
+        try:
+            self._bucket.delete_object(object_key)
+        except oss2.exceptions.NoSuchKey:
+            return
+        except oss2.exceptions.OssError as exc:
+            raise OssStorageError(str(exc)) from exc
+
     def upload_quick_note_image(self, user_id: uuid.UUID, content: bytes, content_type: str) -> str:
         extension = ALLOWED_IMAGE_TYPES.get(content_type)
         if extension is None:

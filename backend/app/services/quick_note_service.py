@@ -6,6 +6,7 @@ from sqlalchemy.orm import Session
 
 from app.models.quick_note import QuickNote
 from app.schemas.quick_note import QuickNoteCreate, QuickNoteResponse
+from app.services.quick_note_media import cleanup_orphaned_quick_note_images
 
 MERGE_BLOCK_SEPARATOR = "\n\n"
 
@@ -53,18 +54,42 @@ class QuickNoteService:
         return self.db.query(QuickNote).filter(QuickNote.id == note_id).first()
 
     def delete_note(self, note: QuickNote) -> None:
+        user_id = note.user_id
+        deleted_note_ids = {note.id}
+        deleted_contents = [note.content]
         self.db.delete(note)
         self.db.commit()
+        cleanup_orphaned_quick_note_images(
+            self.db,
+            user_id,
+            deleted_contents,
+            deleted_note_ids=deleted_note_ids,
+        )
 
     def delete_notes(self, user_id: UUID, note_ids: list[UUID]) -> int:
         if not note_ids:
             return 0
-        deleted = (
+        notes = (
             self.db.query(QuickNote)
             .filter(QuickNote.user_id == user_id, QuickNote.id.in_(note_ids))
+            .all()
+        )
+        if not notes:
+            return 0
+        deleted_note_ids = {note.id for note in notes}
+        deleted_contents = [note.content for note in notes]
+        deleted = (
+            self.db.query(QuickNote)
+            .filter(QuickNote.user_id == user_id, QuickNote.id.in_(deleted_note_ids))
             .delete(synchronize_session=False)
         )
         self.db.commit()
+        cleanup_orphaned_quick_note_images(
+            self.db,
+            user_id,
+            deleted_contents,
+            deleted_note_ids=deleted_note_ids,
+        )
         return deleted
 
     def merge_notes(self, user_id: UUID, note_ids: list[UUID]) -> tuple[QuickNote, int]:
