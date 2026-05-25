@@ -1,7 +1,7 @@
 import ReactMarkdown from "react-markdown";
-import remarkGfm from "remark-gfm";
 import type { Components } from "react-markdown";
 import { Image } from "antd";
+import { remarkGfmNoAutolink } from "@/utils/remarkGfmNoAutolink";
 
 const markdownComponents: Components = {
   p: ({ children }) => <p className="text-sm mb-2 last:mb-0 leading-relaxed">{children}</p>,
@@ -36,9 +36,9 @@ const markdownComponents: Components = {
     <Image
       src={src}
       alt={alt ?? "图片"}
-      preview={{ mask: "预览" }}
-      className="!rounded-lg my-2 border border-gray-200/80 object-contain cursor-zoom-in"
-      style={{ maxWidth: 220, maxHeight: 160, width: "auto", height: "auto" }}
+      preview={{ mask: false }}
+      className="!rounded-lg my-2 border border-gray-200/80 object-contain cursor-pointer"
+      style={{ maxWidth: 360, maxHeight: 270, width: "auto", height: "auto" }}
     />
   ),
   hr: () => <hr className="my-3 border-gray-200" />,
@@ -77,9 +77,11 @@ const markdownComponents: Components = {
 export default function QuickNoteMarkdown({ content }: { content: string }) {
   return (
     <Image.PreviewGroup>
-      <ReactMarkdown remarkPlugins={[remarkGfm]} components={markdownComponents}>
-        {content}
-      </ReactMarkdown>
+      <div className="[&>*+*]:mt-4">
+        <ReactMarkdown remarkPlugins={[remarkGfmNoAutolink]} components={markdownComponents}>
+          {content}
+        </ReactMarkdown>
+      </div>
     </Image.PreviewGroup>
   );
 }
