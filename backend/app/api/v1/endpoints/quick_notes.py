@@ -11,6 +11,8 @@ from app.models.user import User
 from app.schemas.quick_note import (
     QuickNoteBatchDelete,
     QuickNoteBatchDeleteResponse,
+    QuickNoteBatchMerge,
+    QuickNoteBatchMergeResponse,
     QuickNoteCreate,
     QuickNoteImageUploadResponse,
     QuickNoteList,
@@ -134,6 +136,20 @@ def batch_delete_quick_notes(
     service = QuickNoteService(db)
     deleted = service.delete_notes(current_user.id, data.ids)
     return QuickNoteBatchDeleteResponse(deleted=deleted)
+
+
+@router.post("/batch-merge", response_model=QuickNoteBatchMergeResponse)
+def batch_merge_quick_notes(
+    data: QuickNoteBatchMerge,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(require_quick_notes_use),
+):
+    service = QuickNoteService(db)
+    try:
+        note, merged = service.merge_notes(current_user.id, data.ids)
+    except ValueError as exc:
+        raise HTTPException(status_code=status.HTTP_422_UNPROCESSABLE_ENTITY, detail=str(exc)) from exc
+    return QuickNoteBatchMergeResponse(note=service.to_response(note), merged=merged)
 
 
 @router.delete("/{note_id}", status_code=status.HTTP_204_NO_CONTENT)

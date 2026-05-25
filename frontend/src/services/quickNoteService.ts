@@ -2,6 +2,7 @@ import api from "./api";
 import type {
   QuickNote,
   QuickNoteBatchDeleteResponse,
+  QuickNoteBatchMergeResponse,
   QuickNoteCreate,
   QuickNoteImageUploadResponse,
   QuickNoteList,
@@ -53,6 +54,12 @@ class QuickNoteService {
 
   async deleteNotes(noteIds: string[]): Promise<QuickNoteBatchDeleteResponse> {
     return api.post<QuickNoteBatchDeleteResponse>(`${this.baseUrl}/batch-delete`, {
+      ids: noteIds,
+    });
+  }
+
+  async mergeNotes(noteIds: string[]): Promise<QuickNoteBatchMergeResponse> {
+    return api.post<QuickNoteBatchMergeResponse>(`${this.baseUrl}/batch-merge`, {
       ids: noteIds,
     });
   }

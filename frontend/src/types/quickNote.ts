@@ -28,3 +28,8 @@ export interface QuickNoteImageUploadResponse {
 export interface QuickNoteBatchDeleteResponse {
   deleted: number;
 }
+
+export interface QuickNoteBatchMergeResponse {
+  note: QuickNote;
+  merged: number;
+}

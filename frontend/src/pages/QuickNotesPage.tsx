@@ -1,6 +1,6 @@
 import { Fragment, useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { DatePicker, Input, Modal, message } from "antd";
-import { CheckSquare, Copy, ImagePlus, RotateCcw, Search, Send, Trash2, X } from "lucide-react";
+import { CheckSquare, Copy, GitMerge, ImagePlus, RotateCcw, Search, Send, Trash2, X } from "lucide-react";
 import { type Dayjs } from "dayjs";
 import dayjs from "dayjs";
 import { LoadingSpinner } from "@/components/LoadingSpinner";
@@ -82,6 +82,7 @@ export default function QuickNotesPage() {
   const [selectionMode, setSelectionMode] = useState(false);
   const [selectedIds, setSelectedIds] = useState<Set<string>>(() => new Set());
   const [deleting, setDeleting] = useState(false);
+  const [merging, setMerging] = useState(false);
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const imageInputRef = useRef<HTMLInputElement>(null);
 
@@ -294,6 +295,42 @@ export default function QuickNotesPage() {
     });
   };
 
+  const handleBatchMerge = () => {
+    if (selectedCount < 2 || merging || deleting) {
+      return;
+    }
+    const ids = [...selectedIds];
+    Modal.confirm({
+      title: "批量合并",
+      content: `确定将选中的 ${ids.length} 条随手记合并为一条吗？内容将按时间顺序拼接，并保留最早一条的时间。`,
+      okText: "合并",
+      cancelText: "取消",
+      onOk: async () => {
+        setMerging(true);
+        try {
+          const result = await quickNoteService.mergeNotes(ids);
+          const idSet = new Set(ids);
+          setNotes((prev) => {
+            const remaining = prev.filter((note) => !idSet.has(note.id));
+            return [...remaining, result.note].sort(
+              (a, b) =>
+                new Date(a.created_at).getTime() - new Date(b.created_at).getTime() ||
+                a.id.localeCompare(b.id),
+            );
+          });
+          exitSelectionMode();
+          message.success(`已合并 ${result.merged} 条`);
+        } catch (error) {
+          console.error("Failed to batch merge quick notes:", error);
+          await loadNotes(appliedFilters);
+          message.error(error instanceof Error ? error.message : "批量合并失败");
+        } finally {
+          setMerging(false);
+        }
+      },
+    });
+  };
+
   const handleBatchDelete = () => {
     if (selectedCount === 0 || deleting) {
       return;
@@ -405,7 +442,16 @@ export default function QuickNotesPage() {
               <span className="flex-1" />
               <button
                 type="button"
-                disabled={selectedCount === 0 || deleting}
+                disabled={selectedCount < 2 || merging || deleting}
+                onClick={handleBatchMerge}
+                className="inline-flex items-center gap-1 px-2.5 py-1 text-xs font-medium text-indigo-700 bg-white border border-indigo-200 rounded-md hover:bg-indigo-100 disabled:opacity-50 disabled:cursor-not-allowed transition-all"
+              >
+                <GitMerge size={13} />
+                {merging ? "合并中…" : "批量合并"}
+              </button>
+              <button
+                type="button"
+                disabled={selectedCount === 0 || deleting || merging}
                 onClick={handleBatchDelete}
                 className="inline-flex items-center gap-1 px-2.5 py-1 text-xs font-medium text-white bg-red-500 rounded-md hover:bg-red-600 disabled:opacity-50 disabled:cursor-not-allowed transition-all"
               >

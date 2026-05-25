@@ -7,6 +7,8 @@ from sqlalchemy.orm import Session
 from app.models.quick_note import QuickNote
 from app.schemas.quick_note import QuickNoteCreate, QuickNoteResponse
 
+MERGE_BLOCK_SEPARATOR = "\n\n"
+
 
 class QuickNoteService:
     def __init__(self, db: Session):
@@ -64,6 +66,42 @@ class QuickNoteService:
         )
         self.db.commit()
         return deleted
+
+    def merge_notes(self, user_id: UUID, note_ids: list[UUID]) -> tuple[QuickNote, int]:
+        if len(note_ids) < 2:
+            raise ValueError("At least two notes are required to merge")
+
+        notes = (
+            self.db.query(QuickNote)
+            .filter(QuickNote.user_id == user_id, QuickNote.id.in_(note_ids))
+            .order_by(QuickNote.created_at.asc(), QuickNote.id.asc())
+            .all()
+        )
+        if len(notes) < 2:
+            raise ValueError("Not enough notes found to merge")
+
+        target = notes[0]
+        merged_content = self._merge_note_contents(notes)
+        if not merged_content:
+            raise ValueError("Merged content cannot be empty")
+        if len(merged_content) > 10000:
+            raise ValueError("Merged content exceeds maximum length")
+
+        target.content = merged_content
+        for note in notes[1:]:
+            self.db.delete(note)
+        self.db.commit()
+        self.db.refresh(target)
+        return target, len(notes)
+
+    @staticmethod
+    def _merge_note_contents(notes: list[QuickNote]) -> str:
+        parts: list[str] = []
+        for note in notes:
+            text = note.content.strip().replace("\r\n", "\n").replace("\r", "\n")
+            if text:
+                parts.append(text)
+        return MERGE_BLOCK_SEPARATOR.join(parts)
 
     @staticmethod
     def to_response(note: QuickNote) -> QuickNoteResponse:

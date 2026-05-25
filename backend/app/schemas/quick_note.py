@@ -33,3 +33,12 @@ class QuickNoteBatchDelete(BaseModel):
 
 class QuickNoteBatchDeleteResponse(BaseModel):
     deleted: int
+
+
+class QuickNoteBatchMerge(BaseModel):
+    ids: list[UUID] = Field(..., min_length=2, max_length=200)
+
+
+class QuickNoteBatchMergeResponse(BaseModel):
+    note: QuickNoteResponse
+    merged: int
