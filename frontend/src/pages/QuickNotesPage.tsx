@@ -30,6 +30,21 @@ const ALLOWED_IMAGE_TYPES = new Set([
 
 const MAX_IMAGE_SIZE = 5 * 1024 * 1024;
 
+function normalizePastedImageFile(file: File): File | null {
+  let type = file.type;
+  if (!type || type === "application/octet-stream") {
+    type = "image/png";
+  }
+  if (!ALLOWED_IMAGE_TYPES.has(type)) {
+    return null;
+  }
+  if (type === file.type) {
+    return file;
+  }
+  const extension = type.split("/")[1] === "jpeg" ? "jpg" : type.split("/")[1];
+  return new File([file], file.name || `pasted-image.${extension}`, { type });
+}
+
 export default function QuickNotesPage() {
   const [notes, setNotes] = useState<QuickNote[]>([]);
   const [loading, setLoading] = useState(true);
@@ -123,25 +138,24 @@ export default function QuickNotesPage() {
     }
   };
 
-  const handleImageSelect = async (event: React.ChangeEvent<HTMLInputElement>) => {
-    const file = event.target.files?.[0];
-    event.target.value = "";
-    if (!file || uploadingImage || sending) {
+  const uploadImageFile = async (file: File) => {
+    if (uploadingImage || sending) {
       return;
     }
 
-    if (!ALLOWED_IMAGE_TYPES.has(file.type)) {
-      message.error("请上传 JPG、PNG、GIF 或 WEBP 格式的图片");
+    const normalized = normalizePastedImageFile(file);
+    if (!normalized) {
+      message.error("请粘贴 JPG、PNG、GIF 或 WEBP 格式的图片");
       return;
     }
-    if (file.size > MAX_IMAGE_SIZE) {
+    if (normalized.size > MAX_IMAGE_SIZE) {
       message.error("图片大小不能超过 5MB");
       return;
     }
 
     try {
       setUploadingImage(true);
-      const { url } = await quickNoteService.uploadImage(file);
+      const { url } = await quickNoteService.uploadImage(normalized);
       const imageMarkdown = `![图片](${url})`;
       setDraft((prev) => (prev.trim() ? `${prev.trim()}\n\n${imageMarkdown}` : imageMarkdown));
       message.success("图片已添加，点击发送即可保存");
@@ -151,6 +165,35 @@ export default function QuickNotesPage() {
     } finally {
       setUploadingImage(false);
     }
+  };
+
+  const handlePaste = (event: React.ClipboardEvent<HTMLTextAreaElement>) => {
+    const items = event.clipboardData?.items;
+    if (!items) {
+      return;
+    }
+
+    for (const item of items) {
+      if (item.kind !== "file" || !item.type.startsWith("image/")) {
+        continue;
+      }
+      const file = item.getAsFile();
+      if (!file) {
+        continue;
+      }
+      event.preventDefault();
+      void uploadImageFile(file);
+      return;
+    }
+  };
+
+  const handleImageSelect = async (event: React.ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0];
+    event.target.value = "";
+    if (!file) {
+      return;
+    }
+    await uploadImageFile(file);
   };
 
   const filtering = hasActiveFilters(appliedFilters);
@@ -424,7 +467,8 @@ export default function QuickNotesPage() {
               value={draft}
               onChange={(e) => setDraft(e.target.value)}
               onKeyDown={handleKeyDown}
-              placeholder="输入想记录的内容…（Enter 发送，Shift+Enter 换行）"
+              onPaste={handlePaste}
+              placeholder="输入想记录的内容…（Enter 发送，Shift+Enter 换行，可直接粘贴图片）"
               autoSize={{ minRows: 1, maxRows: 6 }}
               disabled={sending || uploadingImage}
               className="!rounded-xl"
