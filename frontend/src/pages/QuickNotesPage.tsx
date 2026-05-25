@@ -329,7 +329,7 @@ export default function QuickNotesPage() {
   };
 
   return (
-    <div className="w-full h-[calc(100dvh-5rem)] flex flex-col">
+    <div className="w-full h-[calc(100dvh-1.5rem)] sm:h-[calc(100dvh-2rem)] flex flex-col -mb-3 sm:-mb-4">
       <div className="flex-1 min-h-0 bg-white rounded-xl border border-gray-200 flex flex-col overflow-hidden">
         <div className="border-b border-gray-200 p-3 bg-gray-50 space-y-2">
           <div className="flex flex-wrap items-center gap-2">
@@ -505,43 +505,46 @@ export default function QuickNotesPage() {
           <div ref={messagesEndRef} />
         </div>
 
-        <div className="border-t border-gray-200 p-3 bg-gray-50">
-          <div className="flex items-end gap-2">
-            <input
-              ref={imageInputRef}
-              type="file"
-              accept="image/jpeg,image/png,image/gif,image/webp"
-              className="hidden"
-              onChange={(event) => void handleImageSelect(event)}
-            />
-            <button
-              type="button"
-              onClick={() => imageInputRef.current?.click()}
-              disabled={uploadingImage || sending}
-              className="flex-shrink-0 h-10 w-10 flex items-center justify-center rounded-xl border border-gray-300 text-gray-600 hover:bg-gray-100 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
-              title="上传图片"
-            >
-              {uploadingImage ? <LoadingSpinner size="small" inline /> : <ImagePlus size={18} />}
-            </button>
+        <div className="flex-shrink-0 border-t border-gray-200 px-3 pt-2 pb-3 bg-gray-50">
+          <input
+            ref={imageInputRef}
+            type="file"
+            accept="image/jpeg,image/png,image/gif,image/webp"
+            className="hidden"
+            onChange={(event) => void handleImageSelect(event)}
+          />
+          <div className="relative rounded-xl border border-gray-300 bg-white transition-colors focus-within:border-indigo-400 focus-within:ring-2 focus-within:ring-indigo-100">
             <Input.TextArea
               value={draft}
               onChange={(e) => setDraft(e.target.value)}
               onKeyDown={handleKeyDown}
               onPaste={handlePaste}
               placeholder="输入想记录的内容…（Enter 发送，Shift+Enter 换行，可直接粘贴图片）"
-              autoSize={{ minRows: 1, maxRows: 6 }}
+              autoSize={{ minRows: 1, maxRows: 8 }}
               disabled={sending || uploadingImage}
-              className="!rounded-xl"
+              variant="borderless"
+              className="!px-3 !pt-3 !pb-11 !resize-none !shadow-none"
             />
-            <button
-              type="button"
-              onClick={() => void handleSend()}
-              disabled={sending || uploadingImage || !draft.trim()}
-              className="flex-shrink-0 h-10 w-10 flex items-center justify-center rounded-xl bg-indigo-500 text-white hover:bg-indigo-600 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
-              title="发送"
-            >
-              {sending ? <LoadingSpinner size="small" inline /> : <Send size={18} />}
-            </button>
+            <div className="absolute bottom-2 left-2 right-2 flex items-center justify-between">
+              <button
+                type="button"
+                onClick={() => imageInputRef.current?.click()}
+                disabled={uploadingImage || sending}
+                className="h-8 w-8 flex items-center justify-center rounded-lg text-gray-500 hover:bg-gray-100 hover:text-gray-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                title="上传图片"
+              >
+                {uploadingImage ? <LoadingSpinner size="small" inline /> : <ImagePlus size={18} />}
+              </button>
+              <button
+                type="button"
+                onClick={() => void handleSend()}
+                disabled={sending || uploadingImage || !draft.trim()}
+                className="h-8 w-8 flex items-center justify-center rounded-lg bg-indigo-500 text-white hover:bg-indigo-600 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                title="发送"
+              >
+                {sending ? <LoadingSpinner size="small" inline /> : <Send size={16} />}
+              </button>
+            </div>
           </div>
         </div>
       </div>
