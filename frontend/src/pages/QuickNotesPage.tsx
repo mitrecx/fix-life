@@ -402,9 +402,9 @@ export default function QuickNotesPage() {
             notes.map((note) => {
               const selected = selectedIds.has(note.id);
               return (
-                <div key={note.id} className="flex justify-end items-start gap-2">
+                <div key={note.id} className="flex justify-start items-start gap-2">
                   {selectionMode && (
-                    <label className="mt-7 inline-flex items-center">
+                    <label className="mt-5 inline-flex items-center">
                       <input
                         type="checkbox"
                         checked={selected}
@@ -414,7 +414,7 @@ export default function QuickNotesPage() {
                     </label>
                   )}
                   <div
-                    className={`max-w-[85%] min-w-0 ${selectionMode ? "cursor-pointer" : ""}`}
+                    className={`w-full min-w-0 ${selectionMode ? "cursor-pointer" : ""}`}
                     onClick={selectionMode ? () => toggleNoteSelection(note.id) : undefined}
                   >
                     <div className="flex items-center gap-2 mb-2">
@@ -424,23 +424,21 @@ export default function QuickNotesPage() {
                       <div className="h-px flex-1 bg-gray-200" />
                     </div>
                     <div
-                      className={`relative rounded-2xl rounded-br-md bg-white text-gray-800 border px-4 py-2.5 transition-colors ${
-                        selected
-                          ? "border-indigo-300 bg-indigo-50/40 ring-1 ring-indigo-200"
-                          : "border-gray-200/80"
+                      className={`relative text-gray-800 ${
+                        selected ? "rounded-md bg-indigo-50/40 ring-1 ring-indigo-200 px-1 -mx-1" : ""
                       } ${selectionMode ? "" : "group"}`}
                     >
                       {!selectionMode && (
                         <button
                           type="button"
                           onClick={() => handleDeleteNote(note)}
-                          className="absolute -top-2 -right-2 h-7 w-7 inline-flex items-center justify-center rounded-full border border-gray-200 bg-white text-gray-400 opacity-0 group-hover:opacity-100 hover:text-red-500 hover:border-red-200 transition-all shadow-sm"
+                          className="absolute -top-1 right-0 h-7 w-7 inline-flex items-center justify-center rounded-full border border-gray-200 bg-white text-gray-400 opacity-0 group-hover:opacity-100 hover:text-red-500 hover:border-red-200 transition-all shadow-sm"
                           title="删除"
                         >
                           <Trash2 size={14} />
                         </button>
                       )}
-                      <div className="text-sm break-words">
+                      <div className="text-sm break-words pr-8">
                         <QuickNoteMarkdown content={note.content} />
                       </div>
                     </div>
