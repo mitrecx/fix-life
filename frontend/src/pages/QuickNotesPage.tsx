@@ -414,9 +414,9 @@ export default function QuickNotesPage() {
                     </label>
                   )}
                   <div
-                    className={`relative max-w-[85%] rounded-2xl rounded-br-md bg-gray-50 text-gray-800 border px-4 py-2.5 transition-colors ${
+                    className={`relative max-w-[85%] rounded-2xl rounded-br-md bg-white text-gray-800 border px-4 py-2.5 transition-colors ${
                       selected
-                        ? "border-indigo-300 bg-indigo-50/50 ring-1 ring-indigo-200"
+                        ? "border-indigo-300 bg-indigo-50/40 ring-1 ring-indigo-200"
                         : "border-gray-200/80"
                     } ${selectionMode ? "cursor-pointer" : "group"}`}
                     onClick={selectionMode ? () => toggleNoteSelection(note.id) : undefined}

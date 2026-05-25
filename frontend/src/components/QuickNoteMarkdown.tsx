@@ -44,7 +44,7 @@ const markdownComponents: Components = {
   hr: () => <hr className="my-3 border-gray-200" />,
   strong: ({ children }) => <strong className="font-semibold">{children}</strong>,
   pre: ({ children }) => (
-    <pre className="overflow-x-auto rounded-md bg-white border border-gray-200 p-3 my-2 text-xs font-mono leading-relaxed">
+    <pre className="overflow-x-auto rounded-md bg-gray-50 border border-gray-200 p-3 my-2 text-xs font-mono leading-relaxed">
       {children}
     </pre>
   ),
@@ -54,7 +54,7 @@ const markdownComponents: Components = {
       return <code className={className}>{children}</code>;
     }
     return (
-      <code className="rounded bg-gray-100 px-1 py-0.5 text-xs font-mono text-gray-700">
+      <code className="rounded bg-gray-100 border border-gray-200/80 px-1 py-0.5 text-xs font-mono text-gray-800">
         {children}
       </code>
     );
