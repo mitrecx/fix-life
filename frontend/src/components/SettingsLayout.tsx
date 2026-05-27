@@ -4,6 +4,7 @@ import { Button, Input, Modal } from "antd";
 import { Copy, BookOpen } from "lucide-react";
 import { LoadingSpinner } from "@/components/LoadingSpinner";
 import { McpImportGuideModal, getMcpServerUrl } from "@/components/McpImportGuideModal";
+import { NamingMigrationNotice } from "@/components/NamingMigrationNotice";
 import { SettingsProvider, useSettingsContext } from "@/contexts/SettingsContext";
 import { useAuthStore } from "@/store/authStore";
 
@@ -152,6 +153,7 @@ function SettingsLayoutContent() {
             </div>
           ) : (
             <div className="bg-white rounded-xl border border-gray-200 p-6">
+              {isSettingsContent ? <NamingMigrationNotice /> : null}
               <Outlet />
             </div>
           )}

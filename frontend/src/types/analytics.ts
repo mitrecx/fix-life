@@ -5,6 +5,7 @@ export interface DashboardStats {
   completed_goals: number;
   total_monthly_plans: number;
   total_daily_plans: number;
+  total_daily_progress_days: number;
   total_tasks: number;
   completed_tasks: number;
   overall_completion_rate: number;
@@ -66,6 +67,7 @@ export interface MonthlyStats {
   month: number;
   total_plans: number;
   total_daily_plans: number;
+  total_daily_progress_days: number;
   total_tasks: number;
   completed_tasks: number;
   task_completion_rate: number;
