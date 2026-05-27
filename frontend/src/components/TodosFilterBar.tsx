@@ -3,20 +3,14 @@ import { ChevronDown, SlidersHorizontal } from "lucide-react";
 import { DatePicker } from "antd";
 import dayjs from "dayjs";
 import type {
-  BacklogContextFilter,
   BacklogListFilters,
   BacklogPriorityFilter,
   BacklogTimeField,
 } from "@/types/backlogTask";
-import { TASK_CONTEXT } from "@/types/taskContext";
 import { TASK_PRIORITY } from "@/types/taskPriority";
+import { TaskContextFilterGroup } from "@/components/TaskContextFilterGroup";
 import { MobileBottomSheet } from "@/components/MobileBottomSheet";
 import { useIsMobile } from "@/hooks/useMediaQuery";
-
-const CONTEXT_FILTERS: { value: BacklogContextFilter; label: string }[] = [
-  { value: "all", label: "全部" },
-  ...TASK_CONTEXT.map((c) => ({ value: c.value, label: c.label })),
-];
 
 const PRIORITY_FILTERS: { value: BacklogPriorityFilter; label: string; color?: string }[] = [
   { value: "all", label: "全部" },
@@ -70,42 +64,61 @@ interface TodosFilterFieldsProps {
   filters: BacklogListFilters;
   onChange: (patch: Partial<BacklogListFilters>) => void;
   moreOpen: boolean;
-  onMoreOpenChange: (open: boolean) => void;
   stackAdvanced?: boolean;
+}
+
+function FilterExpandToggle({
+  moreOpen,
+  onToggle,
+  advancedActive,
+}: {
+  moreOpen: boolean;
+  onToggle: () => void;
+  advancedActive: boolean;
+}) {
+  return (
+    <button
+      type="button"
+      aria-expanded={moreOpen}
+      aria-label={moreOpen ? "收起更多筛选" : "展开更多筛选"}
+      onClick={onToggle}
+      className={`relative shrink-0 hidden md:inline-flex items-center justify-center w-9 h-9 rounded-md transition-all ${
+        moreOpen || advancedActive
+          ? "text-indigo-600 bg-indigo-50 hover:bg-indigo-100"
+          : "text-gray-500 hover:text-gray-700 hover:bg-gray-100"
+      }`}
+    >
+      {advancedActive && !moreOpen && (
+        <span
+          className="absolute top-1 right-1 w-1.5 h-1.5 rounded-full bg-indigo-500"
+          aria-hidden
+        />
+      )}
+      <ChevronDown
+        size={16}
+        className={`transition-transform duration-200 ${moreOpen ? "rotate-180" : ""}`}
+      />
+    </button>
+  );
 }
 
 function TodosFilterFields({
   filters,
   onChange,
   moreOpen,
-  onMoreOpenChange,
   stackAdvanced = false,
 }: TodosFilterFieldsProps) {
   const keyword = filters.q ?? "";
   const timeField = filters.timeField ?? "created";
   const context = filters.context ?? "all";
   const priority = filters.priority ?? "all";
-  const advancedActive = hasAdvancedFilters(filters);
 
   return (
     <>
-      <FilterGroup>
-        <label className={labelClassName}>分类:</label>
-        {CONTEXT_FILTERS.map((f) => (
-          <button
-            key={f.value}
-            type="button"
-            onClick={() => onChange({ context: f.value })}
-            className={`min-h-[44px] px-3 py-2 text-xs font-medium rounded-lg transition-all ${
-              context === f.value
-                ? "text-white shadow-md bg-gradient-to-r from-indigo-500 via-purple-500 to-pink-500 hover:from-indigo-600 hover:via-purple-600 hover:to-pink-600"
-                : "text-gray-600 bg-gray-100 hover:bg-gray-200"
-            }`}
-          >
-            {f.label}
-          </button>
-        ))}
-      </FilterGroup>
+      <TaskContextFilterGroup
+        value={context}
+        onChange={(value) => onChange({ context: value })}
+      />
 
       <FilterGroup>
         <label className={labelClassName}>关键词:</label>
@@ -188,31 +201,6 @@ function TodosFilterFields({
           </FilterGroup>
         </div>
       )}
-
-      {!stackAdvanced && (
-        <button
-          type="button"
-          aria-expanded={moreOpen}
-          aria-label={moreOpen ? "收起更多筛选" : "展开更多筛选"}
-          onClick={() => onMoreOpenChange(!moreOpen)}
-          className={`relative ml-auto hidden md:inline-flex items-center justify-center w-9 h-9 rounded-md transition-all ${
-            moreOpen || advancedActive
-              ? "text-indigo-600 bg-indigo-50 hover:bg-indigo-100"
-              : "text-gray-500 hover:text-gray-700 hover:bg-gray-100"
-          }`}
-        >
-          {advancedActive && !moreOpen && (
-            <span
-              className="absolute top-1 right-1 w-1.5 h-1.5 rounded-full bg-indigo-500"
-              aria-hidden
-            />
-          )}
-          <ChevronDown
-            size={16}
-            className={`transition-transform duration-200 ${moreOpen ? "rotate-180" : ""}`}
-          />
-        </button>
-      )}
     </>
   );
 }
@@ -230,6 +218,7 @@ export function TodosFilterBar({
   const [moreOpen, setMoreOpen] = useState(false);
   const [drawerOpen, setDrawerOpen] = useState(false);
   const active = hasActiveFilters(filters);
+  const advancedActive = hasAdvancedFilters(filters);
 
   const actionButtons = (
     <>
@@ -301,7 +290,6 @@ export function TodosFilterBar({
               filters={filters}
               onChange={onChange}
               moreOpen
-              onMoreOpenChange={() => undefined}
               stackAdvanced
             />
             <div className="flex flex-wrap gap-2 pt-2 border-t border-gray-100">{actionButtons}</div>
@@ -313,14 +301,20 @@ export function TodosFilterBar({
 
   return (
     <div className="p-3 sm:p-4 bg-white/80 backdrop-blur-sm rounded-xl shadow-sm border border-gray-100 shrink-0">
-      <div className="flex flex-wrap items-center gap-2 sm:gap-2.5">
-        <TodosFilterFields
-          filters={filters}
-          onChange={onChange}
+      <div className="flex flex-wrap items-center gap-2 sm:gap-2.5 w-full">
+        <div className="flex flex-wrap items-center gap-2 sm:gap-2.5 flex-1 min-w-0">
+          <TodosFilterFields
+            filters={filters}
+            onChange={onChange}
+            moreOpen={moreOpen}
+          />
+          <div className="inline-flex flex-wrap items-center gap-2 shrink-0 py-1">{actionButtons}</div>
+        </div>
+        <FilterExpandToggle
           moreOpen={moreOpen}
-          onMoreOpenChange={setMoreOpen}
+          onToggle={() => setMoreOpen((open) => !open)}
+          advancedActive={advancedActive}
         />
-        <div className="inline-flex flex-wrap items-center gap-2 shrink-0 py-1">{actionButtons}</div>
       </div>
     </div>
   );

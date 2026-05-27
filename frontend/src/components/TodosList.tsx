@@ -6,7 +6,7 @@ import dayjs from "dayjs";
 import { useSearchParams } from "react-router-dom";
 import { useNavigate } from "react-router-dom";
 import { backlogTaskService } from "@/services/backlogTaskService";
-import { dailyPlanService } from "@/services/dailyPlanService";
+import { dailyProgressService } from "@/services/dailyProgressService";
 import { TodosFilterBar } from "@/components/TodosFilterBar";
 import { LoadingSpinner } from "@/components/LoadingSpinner";
 import { TaskFormPanel } from "@/components/TaskFormPanel";
@@ -44,7 +44,12 @@ import {
   urlHasBacklogFilterParams,
   writeBacklogFilters,
 } from "@/utils/listFiltersStorage";
+import {
+  readSharedTaskContextFilter,
+  writeSharedTaskContextFilter,
+} from "@/utils/sharedTaskContextFilter";
 import { useIsMobile } from "@/hooks/useMediaQuery";
+import { TaskCardFillProgress } from "@/components/TaskCardFillProgress";
 
 const COLUMNS: { id: KanbanColumnId; title: string; accent: string }[] = [
   { id: "pending", title: "待办", accent: "border-t-blue-500" },
@@ -134,7 +139,11 @@ function resolveAppliedFilters(params: URLSearchParams): BacklogListFilters {
   if (urlHasBacklogFilterParams(params)) {
     return parseFilters(params);
   }
-  return readBacklogFilters(DEFAULT_FILTERS);
+  const stored = readBacklogFilters(DEFAULT_FILTERS);
+  return {
+    ...stored,
+    context: readSharedTaskContextFilter(),
+  };
 }
 
 function filtersToSearchParams(filters: BacklogListFilters, taskId?: string | null): URLSearchParams {
@@ -214,7 +223,9 @@ function KanbanCardProgressSlider({
   const draggingRef = useRef(false);
 
   useEffect(() => {
-    setValue(task.progress ?? 0);
+    if (!draggingRef.current) {
+      setValue(task.progress ?? 0);
+    }
   }, [task.id, task.progress]);
 
   const commit = (next: number) => {
@@ -225,69 +236,22 @@ function KanbanCardProgressSlider({
     }
   };
 
-  const beginInteraction = (event: React.SyntheticEvent) => {
-    event.stopPropagation();
-    if (!draggingRef.current) {
-      draggingRef.current = true;
-      onInteractStart();
-    }
-  };
-
-  const endInteraction = (event: React.SyntheticEvent, nextValue?: number) => {
-    event.stopPropagation();
-    if (draggingRef.current) {
-      draggingRef.current = false;
-      onInteractEnd();
-    }
-    if (nextValue != null) {
-      commit(nextValue);
-    }
-  };
-
-  const trackStyle = {
-    background: `linear-gradient(to right, #6366f1 0%, #6366f1 ${value}%, #e5e7eb ${value}%, #e5e7eb 100%)`,
-  };
-
   return (
-    <div
-      data-kanban-progress-slider
-      className="w-full mt-1.5 flex items-center gap-2 touch-none"
-      onMouseDown={beginInteraction}
-      onPointerDown={beginInteraction}
-      onTouchStart={beginInteraction}
-      onClick={(e) => e.stopPropagation()}
-      onDragStart={(e) => e.preventDefault()}
-    >
-      <input
-        type="range"
-        min={0}
-        max={100}
-        step={1}
-        value={value}
-        draggable={false}
-        style={trackStyle}
-        onDragStart={(e) => e.preventDefault()}
-        onChange={(e) => setValue(Number(e.target.value))}
-        onMouseUp={(e) => endInteraction(e, Number(e.currentTarget.value))}
-        onTouchEnd={(e) => endInteraction(e, Number(e.currentTarget.value))}
-        onPointerUp={(e) => endInteraction(e, Number(e.currentTarget.value))}
-        onPointerCancel={(e) => endInteraction(e)}
-        onBlur={(e) => endInteraction(e, Number(e.currentTarget.value))}
-        onKeyUp={(e) => endInteraction(e, Number(e.currentTarget.value))}
-        className="kanban-progress-range flex-1 h-1.5 rounded-full appearance-none cursor-pointer
-          [&::-webkit-slider-runnable-track]:h-1.5 [&::-webkit-slider-runnable-track]:rounded-full [&::-webkit-slider-runnable-track]:appearance-none
-          [&::-webkit-slider-thumb]:appearance-none [&::-webkit-slider-thumb]:h-3 [&::-webkit-slider-thumb]:w-3
-          [&::-webkit-slider-thumb]:rounded-full [&::-webkit-slider-thumb]:bg-indigo-500 [&::-webkit-slider-thumb]:border-2 [&::-webkit-slider-thumb]:border-white
-          [&::-webkit-slider-thumb]:shadow-sm [&::-webkit-slider-thumb]:-mt-[3px]
-          [&::-moz-range-track]:h-1.5 [&::-moz-range-track]:rounded-full [&::-moz-range-track]:bg-transparent
-          [&::-moz-range-progress]:h-1.5 [&::-moz-range-progress]:rounded-full [&::-moz-range-progress]:bg-indigo-500
-          [&::-moz-range-thumb]:h-3 [&::-moz-range-thumb]:w-3 [&::-moz-range-thumb]:rounded-full [&::-moz-range-thumb]:border-2 [&::-moz-range-thumb]:border-white [&::-moz-range-thumb]:bg-indigo-500"
-        aria-label={`${task.title} 进度`}
-      />
-      <span className="text-sm text-indigo-600 font-medium tabular-nums shrink-0 w-10 text-right">
-        {value}%
-      </span>
-    </div>
+    <TaskCardFillProgress
+      value={value}
+      ariaLabel={`${task.title} 进度`}
+      sliderDataAttr="data-kanban-progress-slider"
+      onValueChange={setValue}
+      onCommit={commit}
+      onInteractStart={() => {
+        draggingRef.current = true;
+        onInteractStart();
+      }}
+      onInteractEnd={() => {
+        draggingRef.current = false;
+        onInteractEnd();
+      }}
+    />
   );
 }
 
@@ -358,6 +322,8 @@ function KanbanCard({
 
   useEffect(() => () => clearLongPressTimer(), []);
 
+  const showBottomProgress = column === "in_progress" && !!onProgressCommit;
+
   return (
     <div
       draggable={cardDraggable}
@@ -374,9 +340,11 @@ function KanbanCard({
         e.dataTransfer.effectAllowed = "move";
         onDragStart(task, column);
       }}
-      className={`group bg-white rounded-md border p-2 hover:border-gray-300 transition-all ${
-        selectionMode ? "cursor-pointer" : cardDraggable ? "cursor-grab active:cursor-grabbing" : ""
-      } ${selected ? "border-indigo-400 bg-indigo-50/40 ring-1 ring-indigo-200" : highlighted ? "border-indigo-300 ring-1 ring-indigo-100" : "border-gray-200"}`}
+      className={`group bg-white rounded-md border hover:border-gray-300 transition-all ${
+        showBottomProgress ? "overflow-hidden" : ""
+      } ${selectionMode ? "cursor-pointer" : cardDraggable ? "cursor-grab active:cursor-grabbing" : ""} ${
+        selected ? "border-indigo-400 bg-indigo-50/40 ring-1 ring-indigo-200" : highlighted ? "border-indigo-300 ring-1 ring-indigo-100" : "border-gray-200"
+      }`}
       onTouchStart={handleTouchStart}
       onTouchMove={handleTouchMove}
       onTouchEnd={handleTouchEnd}
@@ -389,7 +357,7 @@ function KanbanCard({
         if (selectionMode) onToggleSelect(task);
       }}
     >
-      <div className="flex items-start gap-1.5">
+      <div className={`flex items-start gap-1.5 ${showBottomProgress ? "p-2 pb-2" : "p-2"}`}>
         {selectionMode && (
           <input
             type="checkbox"
@@ -447,14 +415,6 @@ function KanbanCard({
               <span className="text-sm text-gray-400">{formatDateTime(task.completed_at)}</span>
             )}
           </div>
-          {column === "in_progress" && onProgressCommit && (
-            <KanbanCardProgressSlider
-              task={task}
-              onCommit={onProgressCommit}
-              onInteractStart={() => setProgressDragLocked(true)}
-              onInteractEnd={() => setProgressDragLocked(false)}
-            />
-          )}
           {isScheduled && task.last_plan_date && column !== "done" && (
             <div className="flex items-center flex-wrap gap-1.5 mt-1.5">
               <span className="text-sm text-blue-600 font-medium">
@@ -470,6 +430,14 @@ function KanbanCard({
           )}
         </div>
       </div>
+      {showBottomProgress && (
+        <KanbanCardProgressSlider
+          task={task}
+          onCommit={onProgressCommit!}
+          onInteractStart={() => setProgressDragLocked(true)}
+          onInteractEnd={() => setProgressDragLocked(false)}
+        />
+      )}
     </div>
   );
 }
@@ -547,16 +515,25 @@ export function TodosList() {
     filtersHydratedRef.current = true;
 
     const applied = resolveAppliedFilters(searchParams);
+    const synced: BacklogListFilters = {
+      ...applied,
+      context: readSharedTaskContextFilter(),
+    };
 
     if (urlHasBacklogFilterParams(searchParams)) {
-      writeBacklogFilters(applied);
-      setDraftFilters(applied);
+      writeBacklogFilters(synced);
+      writeSharedTaskContextFilter(synced.context ?? "all");
+      setDraftFilters(synced);
+      if (synced.context !== applied.context) {
+        skipNextFilterPersistRef.current = true;
+        setSearchParams(filtersToSearchParams(synced, searchParams.get("task")), { replace: true });
+      }
       return;
     }
 
     skipNextFilterPersistRef.current = true;
-    setDraftFilters(applied);
-    setSearchParams(filtersToSearchParams(applied, searchParams.get("task")), { replace: true });
+    setDraftFilters(synced);
+    setSearchParams(filtersToSearchParams(synced, searchParams.get("task")), { replace: true });
   }, [searchParams, setSearchParams]);
 
   useEffect(() => {
@@ -565,6 +542,7 @@ export function TodosList() {
       return;
     }
     writeBacklogFilters(parseFilters(searchParams));
+    writeSharedTaskContextFilter(parseFilters(searchParams).context ?? "all");
   }, [filterParamKey, searchParams]);
 
   useEffect(() => {
@@ -694,6 +672,7 @@ export function TodosList() {
       filterApplyTimerRef.current = undefined;
     }
     setDraftFilters(DEFAULT_FILTERS);
+    writeSharedTaskContextFilter("all");
     setSearchParams(filtersToSearchParams(DEFAULT_FILTERS, searchParams.get("task")), { replace: true });
   }, [searchParams, setSearchParams]);
 
@@ -1035,7 +1014,7 @@ export function TodosList() {
           setIsDeletingOccurrences(true);
           try {
             const results = await Promise.allSettled(
-              occurrences.map((occ) => dailyPlanService.deleteTask(occ.daily_task_id))
+              occurrences.map((occ) => dailyProgressService.deleteTask(occ.daily_task_id))
             );
             const failed = results.filter((result) => result.status === "rejected").length;
             if (failed === 0) {
@@ -1327,7 +1306,7 @@ export function TodosList() {
   };
 
   return (
-    <div className="relative flex flex-col h-full min-h-0 overflow-hidden px-3 py-3 sm:px-4 sm:py-4">
+    <div className="relative flex flex-col h-full min-h-0 overflow-hidden px-3 pt-3 sm:px-4 sm:pt-4">
       <TodosFilterBar
         filters={draftFilters}
         matchCount={matchCount}
@@ -1551,7 +1530,7 @@ export function TodosList() {
         }}
         onScheduleDateChange={setScheduleDate}
         onConfirmSchedule={handleConfirmSchedule}
-        onNavigateOccurrence={(occ) => navigate(`/daily-plans?focus=${occ.plan_date}`)}
+        onNavigateOccurrence={(occ) => navigate(`/daily-progress?focus=${occ.plan_date}`)}
         onDeleteOccurrences={handleDeleteOccurrences}
         isDeletingOccurrences={isDeletingOccurrences}
       />
