@@ -4,10 +4,28 @@ import { CheckSquare, Copy, GitMerge, ImagePlus, RotateCcw, Search, Send, Trash2
 import { type Dayjs } from "dayjs";
 import dayjs from "dayjs";
 import { LoadingSpinner } from "@/components/LoadingSpinner";
+import QuickNoteEditor, { type QuickNoteEditorHandle } from "@/components/QuickNoteEditor";
 import QuickNoteMarkdown from "@/components/QuickNoteMarkdown";
 import { quickNoteService } from "@/services/quickNoteService";
 import type { QuickNote, QuickNoteListFilters } from "@/types/quickNote";
 import { copyQuickNoteContent } from "@/utils/copyQuickNoteContent";
+import { readQuickNoteFilters, writeQuickNoteFilters } from "@/utils/listFiltersStorage";
+
+function readInitialQuickNoteFilters() {
+  const stored = readQuickNoteFilters({});
+  return {
+    queryInput: stored.q ?? "",
+    dateRange: [
+      stored.dateFrom ? dayjs(stored.dateFrom) : null,
+      stored.dateTo ? dayjs(stored.dateTo) : null,
+    ] as [Dayjs | null, Dayjs | null],
+    appliedFilters: {
+      q: stored.q,
+      dateFrom: stored.dateFrom,
+      dateTo: stored.dateTo,
+    } satisfies QuickNoteListFilters,
+  };
+}
 
 function formatMessageTime(iso: string) {
   return new Date(iso).toLocaleString("zh-CN", {
@@ -75,16 +93,21 @@ export default function QuickNotesPage() {
   const [loading, setLoading] = useState(true);
   const [sending, setSending] = useState(false);
   const [uploadingImage, setUploadingImage] = useState(false);
-  const [draft, setDraft] = useState("");
-  const [queryInput, setQueryInput] = useState("");
-  const [dateRange, setDateRange] = useState<[Dayjs | null, Dayjs | null]>([null, null]);
-  const [appliedFilters, setAppliedFilters] = useState<QuickNoteListFilters>({});
+  const [draftEmpty, setDraftEmpty] = useState(true);
+  const [queryInput, setQueryInput] = useState(() => readInitialQuickNoteFilters().queryInput);
+  const [dateRange, setDateRange] = useState<[Dayjs | null, Dayjs | null]>(
+    () => readInitialQuickNoteFilters().dateRange,
+  );
+  const [appliedFilters, setAppliedFilters] = useState<QuickNoteListFilters>(
+    () => readInitialQuickNoteFilters().appliedFilters,
+  );
   const [selectionMode, setSelectionMode] = useState(false);
   const [selectedIds, setSelectedIds] = useState<Set<string>>(() => new Set());
   const [deleting, setDeleting] = useState(false);
   const [merging, setMerging] = useState(false);
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const imageInputRef = useRef<HTMLInputElement>(null);
+  const editorRef = useRef<QuickNoteEditorHandle>(null);
 
   const scrollToBottom = useCallback((behavior: ScrollBehavior = "smooth") => {
     messagesEndRef.current?.scrollIntoView({ behavior });
@@ -106,6 +129,10 @@ export default function QuickNotesPage() {
   useEffect(() => {
     void loadNotes(appliedFilters);
   }, [appliedFilters, loadNotes]);
+
+  useEffect(() => {
+    writeQuickNoteFilters(appliedFilters);
+  }, [appliedFilters]);
 
   useEffect(() => {
     setSelectedIds(new Set());
@@ -133,7 +160,7 @@ export default function QuickNotesPage() {
   };
 
   const handleSend = async () => {
-    const content = draft.trim();
+    const content = editorRef.current?.getMarkdown() ?? "";
     if (!content || sending) {
       return;
     }
@@ -141,7 +168,8 @@ export default function QuickNotesPage() {
     try {
       setSending(true);
       const created = await quickNoteService.createNote({ content });
-      setDraft("");
+      editorRef.current?.clear();
+      setDraftEmpty(true);
 
       if (hasActiveFilters(appliedFilters)) {
         await loadNotes(appliedFilters);
@@ -154,13 +182,6 @@ export default function QuickNotesPage() {
       message.error("发送失败");
     } finally {
       setSending(false);
-    }
-  };
-
-  const handleKeyDown = (event: React.KeyboardEvent<HTMLTextAreaElement>) => {
-    if (event.key === "Enter" && !event.shiftKey) {
-      event.preventDefault();
-      void handleSend();
     }
   };
 
@@ -182,34 +203,13 @@ export default function QuickNotesPage() {
     try {
       setUploadingImage(true);
       const { url } = await quickNoteService.uploadImage(normalized);
-      const imageMarkdown = `![图片](${url})`;
-      setDraft((prev) => (prev.trim() ? `${prev.trim()}\n\n${imageMarkdown}` : imageMarkdown));
+      editorRef.current?.insertImage(url);
       message.success("图片已添加，点击发送即可保存");
     } catch (error) {
       console.error("Failed to upload quick note image:", error);
       message.error(error instanceof Error ? error.message : "图片上传失败");
     } finally {
       setUploadingImage(false);
-    }
-  };
-
-  const handlePaste = (event: React.ClipboardEvent<HTMLTextAreaElement>) => {
-    const items = event.clipboardData?.items;
-    if (!items) {
-      return;
-    }
-
-    for (const item of items) {
-      if (item.kind !== "file" || !item.type.startsWith("image/")) {
-        continue;
-      }
-      const file = item.getAsFile();
-      if (!file) {
-        continue;
-      }
-      event.preventDefault();
-      void uploadImageFile(file);
-      return;
     }
   };
 
@@ -560,23 +560,19 @@ export default function QuickNotesPage() {
             onChange={(event) => void handleImageSelect(event)}
           />
           <div className="relative rounded-xl border border-gray-300 bg-white transition-colors focus-within:border-indigo-400 focus-within:ring-2 focus-within:ring-indigo-100">
-            <Input.TextArea
-              value={draft}
-              onChange={(e) => setDraft(e.target.value)}
-              onKeyDown={handleKeyDown}
-              onPaste={handlePaste}
-              placeholder="输入想记录的内容…（Enter 发送，Shift+Enter 换行，可直接粘贴图片）"
-              autoSize={{ minRows: 1, maxRows: 8 }}
+            <QuickNoteEditor
+              ref={editorRef}
               disabled={sending || uploadingImage}
-              variant="borderless"
-              className="!px-3 !pt-3 !pb-11 !resize-none !shadow-none"
+              onEmptyChange={setDraftEmpty}
+              onSubmit={() => void handleSend()}
+              onUploadImage={(file) => void uploadImageFile(file)}
             />
-            <div className="absolute bottom-2 left-2 right-2 flex items-center justify-between">
+            <div className="absolute bottom-2 left-2 right-2 flex items-center justify-between pointer-events-none">
               <button
                 type="button"
                 onClick={() => imageInputRef.current?.click()}
                 disabled={uploadingImage || sending}
-                className="h-8 w-8 flex items-center justify-center rounded-lg text-gray-500 hover:bg-gray-100 hover:text-gray-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                className="pointer-events-auto h-8 w-8 flex items-center justify-center rounded-lg text-gray-500 hover:bg-gray-100 hover:text-gray-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
                 title="上传图片"
               >
                 {uploadingImage ? <LoadingSpinner size="small" inline /> : <ImagePlus size={18} />}
@@ -584,8 +580,8 @@ export default function QuickNotesPage() {
               <button
                 type="button"
                 onClick={() => void handleSend()}
-                disabled={sending || uploadingImage || !draft.trim()}
-                className="h-8 w-8 flex items-center justify-center rounded-lg bg-indigo-500 text-white hover:bg-indigo-600 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                disabled={sending || uploadingImage || draftEmpty}
+                className="pointer-events-auto h-8 w-8 flex items-center justify-center rounded-lg bg-indigo-500 text-white hover:bg-indigo-600 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
                 title="发送"
               >
                 {sending ? <LoadingSpinner size="small" inline /> : <Send size={16} />}

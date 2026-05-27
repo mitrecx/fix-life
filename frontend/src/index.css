@@ -1,1 +1,100 @@
 @import "tailwindcss";
+
+.quick-note-editor p {
+  margin: 0 0 0.5rem;
+}
+
+.quick-note-editor p:last-child {
+  margin-bottom: 0;
+}
+
+.quick-note-editor h1,
+.quick-note-editor h2,
+.quick-note-editor h3 {
+  font-weight: 600;
+  margin: 0.25rem 0 0.5rem;
+}
+
+.quick-note-editor h1 {
+  font-size: 1rem;
+}
+
+.quick-note-editor h2,
+.quick-note-editor h3 {
+  font-size: 0.875rem;
+}
+
+.quick-note-editor ul,
+.quick-note-editor ol {
+  margin: 0 0 0.5rem;
+  padding-left: 1.25rem;
+}
+
+.quick-note-editor li {
+  margin: 0.125rem 0;
+}
+
+.quick-note-editor blockquote {
+  border-left: 2px solid #e5e7eb;
+  color: #4b5563;
+  font-style: italic;
+  margin: 0 0 0.5rem;
+  padding-left: 0.75rem;
+}
+
+.quick-note-editor pre {
+  background: #f9fafb;
+  border: 1px solid #e5e7eb;
+  border-radius: 0.375rem;
+  font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+  font-size: 0.75rem;
+  margin: 0 0 0.5rem;
+  overflow-x: auto;
+  padding: 0.75rem;
+}
+
+.quick-note-editor code {
+  background: #f3f4f6;
+  border: 1px solid rgb(229 231 235 / 0.8);
+  border-radius: 0.25rem;
+  font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+  font-size: 0.75rem;
+  padding: 0.125rem 0.25rem;
+}
+
+.quick-note-editor pre code {
+  background: transparent;
+  border: 0;
+  padding: 0;
+}
+
+.quick-note-editor a {
+  color: #374151;
+  text-decoration: underline;
+  text-underline-offset: 2px;
+}
+
+.quick-note-editor img {
+  border: 1px solid rgb(229 231 235 / 0.8);
+  border-radius: 0.5rem;
+  cursor: pointer;
+  display: block;
+  height: auto;
+  margin: 0.5rem 0;
+  max-height: 270px;
+  max-width: 360px;
+  object-fit: contain;
+  width: auto;
+}
+
+.quick-note-editor p.is-editor-empty:first-child::before {
+  color: #9ca3af;
+  content: attr(data-placeholder);
+  float: left;
+  height: 0;
+  pointer-events: none;
+}
+
+.quick-note-editor:focus {
+  outline: none;
+}
