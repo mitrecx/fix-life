@@ -29,6 +29,12 @@ class DailyTaskStatus(str, enum.Enum):
 
 
 class DailyPlan(Base):
+    """One user's daily progress day container (每日进度).
+
+    ORM name is historical (``daily_plans`` table). Represents a **daily progress day**,
+    not a monthly/yearly plan.
+    """
+
     __tablename__ = "daily_plans"
 
     id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)

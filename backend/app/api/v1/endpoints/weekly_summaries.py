@@ -150,7 +150,7 @@ def generate_weekly_summary(
     if not summary:
         raise HTTPException(
             status_code=404,
-            detail=f"No daily plan data found for week {year}-{week_number}"
+            detail=f"No daily progress data found for week {year}-{week_number}"
         )
 
     return summary

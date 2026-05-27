@@ -1,3 +1,8 @@
+"""Daily plan service implementation.
+
+Deprecated import path: use ``DailyProgressService`` from
+``app.services.daily_progress_service`` instead.
+"""
 from typing import List, Optional, Tuple
 from datetime import date
 from sqlalchemy.orm import Session, load_only
@@ -8,7 +13,7 @@ from app.models.backlog_daily_link import BacklogDailyLink
 from app.models.backlog_task import BacklogTask
 from app.models.daily_plan import DailyPlan, DailyTask, DailyTaskPriority, DailyTaskStatus
 from app.models.task_context import TaskContext
-from app.schemas.daily_plan import (
+from app.schemas.daily_progress import (
     DailyPlanCreate,
     DailyPlanUpdate,
     DailyTaskCreate,
@@ -130,7 +135,7 @@ class DailyPlanService:
 
         # Set default title if not provided
         if not plan_data.get("title"):
-            plan_data["title"] = f"{plan_data['plan_date']} 日计划"
+            plan_data["title"] = f"{plan_data['plan_date']} 每日进度"
 
         plan = DailyPlan(**plan_data, user_id=user_id)
         self.db.add(plan)

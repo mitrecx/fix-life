@@ -29,7 +29,7 @@ def get_dashboard_stats(
     - Total yearly goals for current year
     - Active and completed goals
     - Monthly plans count
-    - Daily plans count for current month
+    - Daily progress count for current month
     - Total tasks and completion rate
     """
     service = AnalyticsService(db)

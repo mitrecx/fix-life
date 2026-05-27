@@ -19,8 +19,8 @@ from app.schemas.backlog_task import (
     BacklogOccurrence,
     progress_to_status,
 )
-from app.schemas.daily_plan import DailyPlanCreate, DailyTaskCreate, DailyTaskUpdate, DailyPlanTaskAdd
-from app.services.daily_plan_service import DailyPlanService
+from app.schemas.daily_progress import DailyPlanCreate, DailyTaskCreate, DailyTaskUpdate, DailyPlanTaskAdd
+from app.services.daily_progress_service import DailyProgressService
 
 BacklogTimeField = Literal["created", "scheduled", "completed"]
 BacklogTab = Literal["pending", "in_progress", "done", "active"]
@@ -335,7 +335,7 @@ class BacklogTaskService:
         }
 
     def _build_occurrence(self, link: BacklogDailyLink) -> BacklogOccurrence:
-        daily_service = DailyPlanService(self.db)
+        daily_service = DailyProgressService(self.db)
         daily = daily_service.get_task(str(link.daily_task_id))
         return BacklogOccurrence(
             daily_task_id=link.daily_task_id,
@@ -472,7 +472,7 @@ class BacklogTaskService:
     def _sync_completed_daily_task(self, user_id: str, task: BacklogTask) -> None:
         """Ensure a completed daily task exists for today and link it to the backlog task."""
         plan_date = self._completion_plan_date()
-        daily_service = DailyPlanService(self.db)
+        daily_service = DailyProgressService(self.db)
 
         existing_link = self.get_link_for_date(str(task.id), plan_date)
         if existing_link:
@@ -520,7 +520,7 @@ class BacklogTaskService:
         *,
         daily_status: DailyTaskStatus = DailyTaskStatus.TODO,
     ):
-        daily_service = DailyPlanService(self.db)
+        daily_service = DailyProgressService(self.db)
         existing_link = self.get_link_for_date(str(backlog.id), plan_date)
         if existing_link:
             daily_task = daily_service.get_task(str(existing_link.daily_task_id))
@@ -565,7 +565,7 @@ class BacklogTaskService:
             return
 
         target_date = plan_date or date.today()
-        daily_service = DailyPlanService(self.db)
+        daily_service = DailyProgressService(self.db)
         plan, _ = daily_service.create_or_merge_plan(
             user_id,
             DailyPlanCreate(plan_date=target_date),
@@ -710,7 +710,7 @@ class BacklogTaskService:
         if task.progress == 100:
             return None
 
-        daily_service = DailyPlanService(self.db)
+        daily_service = DailyProgressService(self.db)
         plan, _ = daily_service.create_or_merge_plan(
             user_id,
             DailyPlanCreate(plan_date=schedule_in.plan_date),
@@ -748,7 +748,7 @@ class BacklogTaskService:
         plan_id: str,
         data: DailyPlanTaskAdd,
     ):
-        daily_service = DailyPlanService(self.db)
+        daily_service = DailyProgressService(self.db)
         plan = daily_service.get_plan(plan_id)
         if not plan:
             return None

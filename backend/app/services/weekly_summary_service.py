@@ -228,7 +228,7 @@ class WeeklySummaryService:
         # 生成统计数据
         summary = self.generate_weekly_summary(user_id, data.year, data.week_number)
         if not summary:
-            raise ValueError(f"No daily plan data found for week {data.year}-{data.week_number}")
+            raise ValueError(f"No daily progress data found for week {data.year}-{data.week_number}")
 
         # 更新用户提供的总结文本
         if data.summary_text:

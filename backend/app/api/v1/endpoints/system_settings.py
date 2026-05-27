@@ -65,7 +65,7 @@ def update_system_settings(
     Update current user's system settings.
 
     Allows updating:
-    - show_daily_summary: Whether to show daily summary in daily plan cards
+    - show_daily_summary: Whether to show daily summary in daily progress cards
     - weekly_summary_email_enabled: Enable weekly summary email notifications
     - weekly_summary_email: Custom email for weekly summary notifications (defaults to user email)
     - weekly_summary_feishu_enabled: Enable weekly summary Feishu notifications

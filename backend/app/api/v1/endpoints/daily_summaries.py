@@ -22,7 +22,7 @@ def get_summary_by_plan(
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ) -> DailySummary:
-    """获取指定日计划的总结"""
+    """获取指定每日进度的总结"""
     # Verify plan belongs to current user
     plan = db.query(DailyPlan).filter(
         and_(DailyPlan.id == plan_id, DailyPlan.user_id == current_user.id)
@@ -30,7 +30,7 @@ def get_summary_by_plan(
     if not plan:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
-            detail="日计划不存在"
+            detail="每日进度不存在"
         )
 
     summary = db.query(DailySummary).filter(DailySummary.daily_plan_id == plan_id).first()
@@ -49,7 +49,7 @@ def create_summary(
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ) -> DailySummary:
-    """为指定日计划创建总结"""
+    """为指定每日进度创建总结"""
     # Verify plan belongs to current user
     plan = db.query(DailyPlan).filter(
         and_(DailyPlan.id == plan_id, DailyPlan.user_id == current_user.id)
@@ -57,7 +57,7 @@ def create_summary(
     if not plan:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
-            detail="日计划不存在"
+            detail="每日进度不存在"
         )
 
     # Check if summary already exists
@@ -65,7 +65,7 @@ def create_summary(
     if existing:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
-            detail="该日计划已有总结，请使用更新接口"
+            detail="该日已有总结，请使用更新接口"
         )
 
     summary = DailySummary(
