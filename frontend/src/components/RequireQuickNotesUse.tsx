@@ -10,7 +10,7 @@ export default function RequireQuickNotesUse({
 }) {
   const { user } = useAuthStore();
   if (!user?.permissions?.includes(QUICK_NOTES_USE)) {
-    return <Navigate to="/daily-plans" replace />;
+    return <Navigate to="/daily-progress" replace />;
   }
   return <>{children}</>;
 }

@@ -69,7 +69,7 @@ export function GenerateWeeklySummaryButton({
       console.error("Failed to generate weekly summary:", error);
       const status = (error as { response?: { status?: number } })?.response?.status;
       if (status === 404) {
-        message.warning("该周没有日计划数据");
+        message.warning("该周没有每日进度数据");
       } else {
         message.error("生成周总结失败");
       }

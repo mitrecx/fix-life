@@ -89,9 +89,9 @@ export function SystemSettingsModal({ onClose }: SystemSettingsModalProps) {
               {/* 显示每日总结 */}
               <div className="flex items-center justify-between p-4 bg-gray-50 rounded-xl border border-gray-200">
                 <div className="flex-1">
-                  <h3 className="text-sm font-semibold text-gray-800 mb-1">在日计划卡片中显示每日总结</h3>
+                  <h3 className="text-sm font-semibold text-gray-800 mb-1">在每日进度卡片中显示每日总结</h3>
                   <p className="text-xs text-gray-500">
-                    开启后，每日总结会显示在每个日计划卡片的最下方
+                    开启后，每日总结会显示在每个每日进度卡片的最下方
                   </p>
                 </div>
                 <Switch

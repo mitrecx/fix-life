@@ -2,8 +2,8 @@ import { useState, useMemo, useEffect } from "react";
 import { X } from "lucide-react";
 import { DatePicker } from "antd";
 import dayjs from "dayjs";
-import type { DailyPlanCreate, DailyPlanUpdate } from "@/types/dailyPlan";
-import { dailyPlanService } from "@/services/dailyPlanService";
+import type { DailyPlanCreate, DailyPlanUpdate } from "@/types/dailyProgress";
+import { dailyProgressService } from "@/services/dailyProgressService";
 
 interface DailyPlanFormProps {
   onSubmit: (data: DailyPlanCreate | DailyPlanUpdate) => void;
@@ -63,7 +63,7 @@ export function DailyPlanForm({
     const t = window.setTimeout(() => {
       (async () => {
         try {
-          const head = await dailyPlanService.getPlanHeadByDate(planDate);
+          const head = await dailyProgressService.getPlanHeadByDate(planDate);
           if (cancelled) return;
           if (head) {
             setMergeHint(
@@ -128,7 +128,7 @@ export function DailyPlanForm({
     <div className="fixed inset-0 bg-gray-900/60 backdrop-blur-sm flex items-center justify-center z-50">
       <div className="bg-white rounded-2xl shadow-2xl w-full max-w-md p-6 animate-in fade-in zoom-in duration-200">
         <div className="flex items-center justify-between mb-4">
-          <h2 className="text-xl font-semibold">{submitLabel}日计划</h2>
+          <h2 className="text-xl font-semibold">{submitLabel}每日进度</h2>
           <button
             onClick={onCancel}
             className="text-gray-400 hover:text-gray-600 transition-colors"

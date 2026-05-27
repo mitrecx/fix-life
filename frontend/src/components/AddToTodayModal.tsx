@@ -2,7 +2,7 @@ import { useCallback, useEffect, useMemo, useState } from "react";
 import { Modal, Input, message } from "antd";
 import { Search } from "lucide-react";
 import { backlogTaskService } from "@/services/backlogTaskService";
-import { dailyPlanService } from "@/services/dailyPlanService";
+import { dailyProgressService } from "@/services/dailyProgressService";
 import { TaskFormPanel } from "@/components/TaskFormPanel";
 import { LoadingSpinner } from "@/components/LoadingSpinner";
 import type { BacklogTask, TaskFormStatus } from "@/types/backlogTask";
@@ -11,7 +11,7 @@ import { DEFAULT_TASK_CONTEXT, getTaskContextConfig } from "@/types/taskContext"
 import type { TaskContext } from "@/types/taskContext";
 import { DEFAULT_TASK_PRIORITY, getTaskPriorityConfig } from "@/types/taskPriority";
 import type { TaskPriority } from "@/types/taskPriority";
-import type { DailyTaskStatus } from "@/types/dailyPlan";
+import type { DailyTaskStatus } from "@/types/dailyProgress";
 
 type AddMode = "pick" | "create";
 
@@ -111,7 +111,7 @@ export function AddToTodayModal({
     if (!selectedId || submitting) return;
     setSubmitting(true);
     try {
-      await dailyPlanService.createTask(planId, { backlog_task_id: selectedId });
+      await dailyProgressService.createTask(planId, { backlog_task_id: selectedId });
       message.success("已添加到当日");
       onSuccess();
       onClose();
@@ -128,7 +128,7 @@ export function AddToTodayModal({
     setSubmitting(true);
     const trimmedDescription = formDescription.trim();
     try {
-      await dailyPlanService.createTask(planId, {
+      await dailyProgressService.createTask(planId, {
         title: formTitle.trim(),
         description: trimmedDescription || undefined,
         priority: formPriority,

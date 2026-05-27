@@ -1,0 +1,753 @@
+import { useState, useEffect } from "react";
+import { ChevronDown, Download, SlidersHorizontal, X } from "lucide-react";
+import { message } from "antd";
+import type { DailyPlan, DailyTask } from "@/types/dailyProgress";
+import type { DailySummary } from "@/types/dailySummary";
+import { dailyProgressService } from "@/services/dailyProgressService";
+import { dailySummaryService } from "@/services/dailySummaryService";
+import { TASK_CONTEXT } from "@/types/taskContext";
+import {
+  buildDefaultDailyProgressFilters,
+  readDailyProgressFilters,
+  writeDailyProgressFilters,
+} from "@/utils/dailyProgressFiltersStorage";
+import {
+  readSharedTaskContextFilter,
+  writeSharedTaskContextFilter,
+  type SharedTaskContextFilter,
+} from "@/utils/sharedTaskContextFilter";
+import { TaskContextFilterGroup } from "@/components/TaskContextFilterGroup";
+import { MobileBottomSheet } from "@/components/MobileBottomSheet";
+import { useIsMobile } from "@/hooks/useMediaQuery";
+import { DailyProgressDayCard } from "./DailyProgressDayCard";
+import { GenerateWeeklySummaryButton } from "./GenerateWeeklySummaryButton";
+import { LoadingSpinner } from "@/components/LoadingSpinner";
+
+function readInitialDailyProgressFilters() {
+  return readDailyProgressFilters(buildDefaultDailyProgressFilters());
+}
+
+const labelClassName = "text-sm font-semibold text-gray-600 shrink-0";
+const selectClassName =
+  "px-3 py-1.5 text-sm border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent bg-white transition-all min-h-[44px]";
+const filterGroupClassName =
+  "inline-flex flex-wrap items-center gap-2 sm:gap-2.5 p-2 sm:p-2.5 rounded-lg border border-gray-200 bg-gray-50/90 w-full md:w-fit max-w-full";
+
+function hasCustomDateRange(
+  startDate: string,
+  endDate: string,
+  selectedYear: number,
+  selectedWeek: number,
+  getDateRangeByYearWeek: (year: number, week: number) => { start: string; end: string },
+): boolean {
+  const { start, end } = getDateRangeByYearWeek(selectedYear, selectedWeek);
+  return startDate !== start || endDate !== end;
+}
+
+function FilterExpandToggle({
+  moreOpen,
+  onToggle,
+  advancedActive,
+}: {
+  moreOpen: boolean;
+  onToggle: () => void;
+  advancedActive: boolean;
+}) {
+  return (
+    <button
+      type="button"
+      aria-expanded={moreOpen}
+      aria-label={moreOpen ? "收起更多筛选" : "展开更多筛选"}
+      onClick={onToggle}
+      className={`relative shrink-0 hidden md:inline-flex items-center justify-center w-9 h-9 rounded-md transition-all ${
+        moreOpen || advancedActive
+          ? "text-indigo-600 bg-indigo-50 hover:bg-indigo-100"
+          : "text-gray-500 hover:text-gray-700 hover:bg-gray-100"
+      }`}
+    >
+      {advancedActive && !moreOpen && (
+        <span
+          className="absolute top-1 right-1 w-1.5 h-1.5 rounded-full bg-indigo-500"
+          aria-hidden
+        />
+      )}
+      <ChevronDown
+        size={16}
+        className={`transition-transform duration-200 ${moreOpen ? "rotate-180" : ""}`}
+      />
+    </button>
+  );
+}
+
+export function DailyProgressList({ focusDate }: { focusDate?: string | null }) {
+  const isMobile = useIsMobile();
+  const [filterDrawerOpen, setFilterDrawerOpen] = useState(false);
+  const [moreOpen, setMoreOpen] = useState(false);
+  const [plans, setPlans] = useState<DailyPlan[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [showExportModal, setShowExportModal] = useState(false);
+  const [planSummaries, setPlanSummaries] = useState<Record<string, DailySummary>>({});
+
+  useEffect(() => {
+    if (!focusDate || !/^\d{4}-\d{2}-\d{2}$/.test(focusDate)) return;
+    const target = new Date(`${focusDate}T12:00:00`);
+    const day = target.getDay();
+    const diff = day === 0 ? -6 : 1 - day;
+    const monday = new Date(target);
+    monday.setDate(target.getDate() + diff);
+    const sunday = new Date(monday);
+    sunday.setDate(monday.getDate() + 6);
+    const fmt = (d: Date) => {
+      const y = d.getFullYear();
+      const m = String(d.getMonth() + 1).padStart(2, "0");
+      const dd = String(d.getDate()).padStart(2, "0");
+      return `${y}-${m}-${dd}`;
+    };
+    setStartDate(fmt(monday));
+    setEndDate(fmt(sunday));
+  }, [focusDate]);
+
+  const formatLocalYMD = (date: Date) => {
+    const y = date.getFullYear();
+    const m = String(date.getMonth() + 1).padStart(2, "0");
+    const d = String(date.getDate()).padStart(2, "0");
+    return `${y}-${m}-${d}`;
+  };
+
+  // 计算当前周的周一和周日
+  const getCurrentWeekRange = () => {
+    const today = new Date();
+    const currentDay = today.getDay();
+    const diff = currentDay === 0 ? -6 : 1 - currentDay;
+    const monday = new Date(today);
+    monday.setDate(today.getDate() + diff);
+    const sunday = new Date(monday);
+    sunday.setDate(monday.getDate() + 6);
+    return { monday, sunday };
+  };
+
+  const [startDate, setStartDate] = useState(() => readInitialDailyProgressFilters().startDate);
+  const [endDate, setEndDate] = useState(() => readInitialDailyProgressFilters().endDate);
+
+  // 计算当前是第几周
+  const getCurrentWeekNumber = () => {
+    const today = new Date();
+    const firstDay = new Date(today.getFullYear(), 0, 1);
+    const firstDayOfWeek = firstDay.getDay();
+    const firstMonday = new Date(firstDay);
+    if (firstDayOfWeek === 0) {
+      firstMonday.setDate(firstDay.getDate() + 1);
+    } else if (firstDayOfWeek !== 1) {
+      firstMonday.setDate(firstDay.getDate() + (8 - firstDayOfWeek) % 7);
+    }
+    const daysDiff = Math.floor((today.getTime() - firstMonday.getTime()) / (1000 * 60 * 60 * 24));
+    return Math.max(1, Math.floor(daysDiff / 7) + 1);
+  };
+
+  const [selectedYear, setSelectedYear] = useState(() => readInitialDailyProgressFilters().selectedYear);
+  const [selectedWeek, setSelectedWeek] = useState(() => readInitialDailyProgressFilters().selectedWeek);
+  const [contextFilter, setContextFilter] = useState<SharedTaskContextFilter>(() =>
+    readSharedTaskContextFilter(),
+  );
+
+  const handleContextFilterChange = (context: SharedTaskContextFilter) => {
+    setContextFilter(context);
+    writeSharedTaskContextFilter(context);
+  };
+
+  useEffect(() => {
+    writeDailyProgressFilters({
+      context: contextFilter,
+      startDate,
+      endDate,
+      selectedYear,
+      selectedWeek,
+    });
+  }, [contextFilter, startDate, endDate, selectedYear, selectedWeek]);
+
+  // 根据年份和周数获取日期范围
+  const getDateRangeByYearWeek = (year: number, week: number) => {
+    // 获取该年第一天（1月1日）
+    const firstDay = new Date(year, 0, 1);
+    // 计算第一天是星期几（0-6，0是周日）
+    const firstDayOfWeek = firstDay.getDay();
+    // 计算第一周的周一
+    const firstMonday = new Date(firstDay);
+    if (firstDayOfWeek === 0) {
+      // 如果1月1日是周日，第一周从下周一开始
+      firstMonday.setDate(firstDay.getDate() + 1);
+    } else if (firstDayOfWeek !== 1) {
+      // 如果1月1日不是周一，向前或向后找到第一个周一
+      firstMonday.setDate(firstDay.getDate() + (8 - firstDayOfWeek) % 7);
+    }
+    // 计算目标周的周一和周日
+    const targetMonday = new Date(firstMonday);
+    targetMonday.setDate(firstMonday.getDate() + (week - 1) * 7);
+    const targetSunday = new Date(targetMonday);
+    targetSunday.setDate(targetMonday.getDate() + 6);
+    // 使用本地日期格式化避免时区问题
+    const formatDate = (date: Date) => {
+      const year = date.getFullYear();
+      const month = String(date.getMonth() + 1).padStart(2, '0');
+      const day = String(date.getDate()).padStart(2, '0');
+      return `${year}-${month}-${day}`;
+    };
+    return {
+      start: formatDate(targetMonday),
+      end: formatDate(targetSunday)
+    };
+  };
+
+  /** 与「按周查询」下拉逻辑一致：根据本周一解析出年份 + 周序号 */
+  const getThisWeekYearWeek = (): { year: number; week: number } => {
+    const { monday } = getCurrentWeekRange();
+    const monStr = formatLocalYMD(monday);
+    const baseY = monday.getFullYear();
+    for (const y of [baseY - 1, baseY, baseY + 1]) {
+      for (let w = 1; w <= 53; w++) {
+        const { start } = getDateRangeByYearWeek(y, w);
+        if (start === monStr) return { year: y, week: w };
+      }
+    }
+    return { year: baseY, week: getCurrentWeekNumber() };
+  };
+
+  const handleThisWeek = () => {
+    const { year, week } = getThisWeekYearWeek();
+    setSelectedYear(year);
+    setSelectedWeek(week);
+    const { start, end } = getDateRangeByYearWeek(year, week);
+    setStartDate(start);
+    setEndDate(end);
+  };
+
+  // 上一周
+  const handlePreviousWeek = () => {
+    let newWeek = selectedWeek - 1;
+    let newYear = selectedYear;
+    if (newWeek < 1) {
+      newWeek = 53;
+      newYear = selectedYear - 1;
+    }
+    setSelectedYear(newYear);
+    setSelectedWeek(newWeek);
+    const { start, end } = getDateRangeByYearWeek(newYear, newWeek);
+    setStartDate(start);
+    setEndDate(end);
+  };
+
+  // 下一周
+  const handleNextWeek = () => {
+    let newWeek = selectedWeek + 1;
+    let newYear = selectedYear;
+    if (newWeek > 53) {
+      newWeek = 1;
+      newYear = selectedYear + 1;
+    }
+    setSelectedYear(newYear);
+    setSelectedWeek(newWeek);
+    const { start, end } = getDateRangeByYearWeek(newYear, newWeek);
+    setStartDate(start);
+    setEndDate(end);
+  };
+
+  // 生成周数选项（1-53）
+  const weekOptions = Array.from({ length: 53 }, (_, i) => i + 1);
+
+  // 生成年份选项（前后5年）
+  const currentYear = new Date().getFullYear();
+  const yearOptions = Array.from({ length: 11 }, (_, i) => currentYear - 5 + i);
+
+  useEffect(() => {
+    loadPlans();
+  }, [startDate, endDate, contextFilter]);
+
+  // Prevent body scroll when export modal is open
+  useEffect(() => {
+    if (showExportModal) {
+      document.body.style.overflow = "hidden";
+    } else {
+      document.body.style.overflow = "";
+    }
+    // Cleanup on unmount
+    return () => {
+      document.body.style.overflow = "";
+    };
+  }, [showExportModal]);
+
+  // Handle ESC key to close export modal
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === "Escape" && showExportModal) {
+        setShowExportModal(false);
+      }
+    };
+
+    window.addEventListener("keydown", handleKeyDown);
+    return () => {
+      window.removeEventListener("keydown", handleKeyDown);
+    };
+  }, [showExportModal]);
+
+  // 排序计划：今天 > 未来（递增） > 过去（递增）
+  const sortPlans = (plans: DailyPlan[]): DailyPlan[] => {
+    const today = new Date();
+    today.setHours(0, 0, 0, 0); // 重置时间为当天0点
+
+    return [...plans].sort((a, b) => {
+      const planDateA = new Date(a.plan_date);
+      planDateA.setHours(0, 0, 0, 0);
+      const planDateB = new Date(b.plan_date);
+      planDateB.setHours(0, 0, 0, 0);
+
+      const isTodayA = planDateA.getTime() === today.getTime();
+      const isTodayB = planDateB.getTime() === today.getTime();
+      const isFutureA = planDateA > today;
+      const isFutureB = planDateB > today;
+      const isPastA = planDateA < today;
+      const isPastB = planDateB < today;
+
+      // 今天的计划最优先
+      if (isTodayA && !isTodayB) return -1;
+      if (!isTodayA && isTodayB) return 1;
+
+      // 如果两个都是今天，保持原顺序
+      if (isTodayA && isTodayB) return 0;
+
+      // 未来的计划排在过去的计划前面
+      if (isFutureA && isPastB) return -1;
+      if (isPastA && isFutureB) return 1;
+
+      // 同类型（都是未来或都是过去），按日期递增排
+      return planDateA.getTime() - planDateB.getTime();
+    });
+  };
+
+  const loadPlans = async () => {
+    try {
+      setLoading(true);
+      const data = await dailyProgressService.getAll(startDate, endDate, contextFilter);
+      setPlans(sortPlans(data));
+    } catch (error) {
+      console.error("Failed to load daily progress:", error);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const patchDailyTask = (planId: string, updatedTask: DailyTask) => {
+    setPlans((prev) =>
+      sortPlans(
+        prev.map((plan) => {
+          if (plan.id !== planId) return plan;
+
+          const previousTask = plan.daily_tasks.find((t) => t.id === updatedTask.id);
+          const daily_tasks = plan.daily_tasks.map((t) =>
+            t.id === updatedTask.id ? updatedTask : t
+          );
+
+          let completed_tasks = plan.completed_tasks;
+          if (previousTask?.status !== "done" && updatedTask.status === "done") {
+            completed_tasks += 1;
+          } else if (previousTask?.status === "done" && updatedTask.status !== "done") {
+            completed_tasks -= 1;
+          }
+
+          const completion_rate =
+            plan.total_tasks > 0 ? (completed_tasks / plan.total_tasks) * 100 : 0;
+
+          return { ...plan, daily_tasks, completed_tasks, completion_rate };
+        })
+      )
+    );
+  };
+
+  const formatDateRange = () => {
+    const start = new Date(startDate);
+    const end = new Date(endDate);
+    const formatDate = (date: Date) => `${date.getMonth() + 1}月${date.getDate()}日`;
+    return `${formatDate(start)} - ${formatDate(end)}`;
+  };
+
+  // Generate markdown from plans
+  const generateMarkdown = () => {
+    const WEEKDAYS = ["周日", "周一", "周二", "周三", "周四", "周五", "周六"];
+    const SUMMARY_TYPE_LABELS: Record<string, string> = {
+      daily: "日常总结",
+      small: "小总结",
+      large: "大总结",
+    };
+
+    let markdown = `# 每日进度导出\n\n`;
+    markdown += `**日期范围**: ${startDate} ~ ${endDate}\n`;
+    if (contextFilter !== "all") {
+      const label = TASK_CONTEXT.find((item) => item.value === contextFilter)?.label ?? contextFilter;
+      markdown += `**任务分类**: ${label}\n`;
+    }
+    markdown += `\n---\n\n`;
+
+    if (plans.length === 0) {
+      markdown += `暂无计划\n`;
+    } else {
+      // Sort by chronological order (ascending date)
+      const sortedPlans = [...plans].sort((a, b) => {
+        const dateA = new Date(a.plan_date).getTime();
+        const dateB = new Date(b.plan_date).getTime();
+        return dateA - dateB;
+      });
+
+      sortedPlans.forEach((plan) => {
+        const date = new Date(plan.plan_date);
+        const weekday = WEEKDAYS[date.getDay()];
+        const dateStr = `${date.getMonth() + 1}月${date.getDate()}日`;
+
+        markdown += `## ${dateStr} ${weekday}\n\n`;
+
+        // 任务清单
+        if (plan.daily_tasks && plan.daily_tasks.length > 0) {
+          markdown += `### 任务清单\n\n`;
+          plan.daily_tasks.forEach((task) => {
+            const statusIcon = task.status === "done" ? "✅" : "⬜";
+            const priorityLabel = {
+              high: "【高】",
+              medium: "【中】",
+              low: "【低】",
+            }[task.priority] || "";
+            markdown += `${statusIcon} ${priorityLabel} ${task.title}\n`;
+          });
+          markdown += `\n`;
+        } else {
+          markdown += `### 任务清单\n暂无任务\n\n`;
+        }
+
+        // 备注
+        if (plan.notes) {
+          markdown += `### 备注\n${plan.notes}\n\n`;
+        }
+
+        // 日总结 - use loaded summaries
+        const summary = planSummaries[plan.id];
+        if (summary) {
+          const summaryType = SUMMARY_TYPE_LABELS[summary.summary_type] || "总结";
+          markdown += `### ${summaryType}\n${summary.content}\n\n`;
+        }
+
+        markdown += `---\n\n`;
+      });
+    }
+
+    return markdown;
+  };
+
+  // Handle copy to clipboard
+  const handleCopyToClipboard = () => {
+    const markdown = generateMarkdown();
+    navigator.clipboard.writeText(markdown).then(() => {
+      message.success("已复制到剪贴板");
+    }).catch(() => {
+      message.error("复制失败，请稍后重试");
+    });
+  };
+
+  // Handle export as MD file
+  const handleExportAsMD = () => {
+    const markdown = generateMarkdown();
+    const blob = new Blob([markdown], { type: "text/markdown;charset=utf-8" });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement("a");
+    link.href = url;
+    link.download = `每日进度_${startDate}_to_${endDate}.md`;
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+    URL.revokeObjectURL(url);
+    message.success("导出成功");
+  };
+
+  // Load summaries for export
+  const loadSummariesForExport = async () => {
+    const summaries: Record<string, DailySummary> = {};
+    for (const plan of plans) {
+      try {
+        const summary = await dailySummaryService.getByPlanId(plan.id);
+        summaries[plan.id] = summary;
+      } catch (error) {
+        // No summary for this plan, which is fine
+        summaries[plan.id] = null as any;
+      }
+    }
+    setPlanSummaries(summaries);
+  };
+
+  // Open export modal and load summaries
+  const handleOpenExportModal = () => {
+    setShowExportModal(true);
+    loadSummariesForExport();
+  };
+
+  const filtersActive = contextFilter !== "all";
+  const advancedActive = hasCustomDateRange(
+    startDate,
+    endDate,
+    selectedYear,
+    selectedWeek,
+    getDateRangeByYearWeek,
+  );
+
+  const weekQueryGroup = (
+    <div className={filterGroupClassName}>
+      <label className={labelClassName}>按周查询:</label>
+      <select
+        value={selectedYear}
+        onChange={(e) => setSelectedYear(Number(e.target.value))}
+        className={selectClassName}
+      >
+        {yearOptions.map((year) => (
+          <option key={year} value={year}>
+            {year}年
+          </option>
+        ))}
+      </select>
+      <select
+        value={selectedWeek}
+        onChange={(e) => setSelectedWeek(Number(e.target.value))}
+        className={selectClassName}
+      >
+        {weekOptions.map((week) => (
+          <option key={week} value={week}>
+            第{week}周
+          </option>
+        ))}
+      </select>
+      <button
+        type="button"
+        onClick={handlePreviousWeek}
+        className="min-h-[44px] px-3 py-2 text-xs font-medium text-gray-600 bg-gray-100 rounded-lg hover:bg-gray-200 transition-all"
+      >
+        上一周
+      </button>
+      <button
+        type="button"
+        onClick={handleThisWeek}
+        className="min-h-[44px] px-3 py-2 text-xs font-semibold text-white rounded-lg shadow-md bg-gradient-to-r from-indigo-500 via-purple-500 to-pink-500 hover:from-indigo-600 hover:via-purple-600 hover:to-pink-600 hover:shadow-lg transition-all"
+      >
+        本周第{getThisWeekYearWeek().week}周
+      </button>
+      <button
+        type="button"
+        onClick={handleNextWeek}
+        className="min-h-[44px] px-3 py-2 text-xs font-medium text-gray-600 bg-gray-100 rounded-lg hover:bg-gray-200 transition-all"
+      >
+        下一周
+      </button>
+    </div>
+  );
+
+  const advancedFilterFields = (
+    <div className="flex flex-wrap items-center gap-2 sm:gap-2.5">
+      <div className={filterGroupClassName}>
+        <label className={labelClassName}>开始日期:</label>
+        <input
+          type="date"
+          value={startDate}
+          onChange={(e) => setStartDate(e.target.value)}
+          className={`flex-1 sm:flex-none ${selectClassName}`}
+        />
+
+        <label className={labelClassName}>结束日期:</label>
+        <input
+          type="date"
+          value={endDate}
+          onChange={(e) => setEndDate(e.target.value)}
+          className={`flex-1 sm:flex-none ${selectClassName}`}
+        />
+
+        <button
+          type="button"
+          onClick={loadPlans}
+          className="min-h-[44px] px-4 py-2 text-sm font-medium text-white bg-indigo-600 rounded-lg hover:bg-indigo-700 transition-all"
+        >
+          查询
+        </button>
+      </div>
+    </div>
+  );
+
+  const filterActions = (
+    <div className="inline-flex flex-wrap items-center gap-2 shrink-0 py-1">
+      <GenerateWeeklySummaryButton defaultYear={selectedYear} defaultWeek={selectedWeek} />
+      <button
+        type="button"
+        onClick={handleOpenExportModal}
+        className="flex items-center gap-2 min-h-[44px] px-5 py-2.5 text-orange-700 bg-orange-50 rounded-xl hover:bg-orange-100 transition-all"
+      >
+        <Download size={20} />
+        <span className="font-medium">导出</span>
+      </button>
+    </div>
+  );
+
+  const filterFields = (options: { moreOpen?: boolean; stackAdvanced?: boolean }) => {
+    const { moreOpen: expanded = false, stackAdvanced = false } = options;
+
+    return (
+      <>
+        <TaskContextFilterGroup value={contextFilter} onChange={handleContextFilterChange} />
+        {weekQueryGroup}
+
+        {(stackAdvanced || expanded) && (
+          <div
+            className={`${
+              stackAdvanced ? "space-y-3" : "mt-3 pt-3 border-t border-gray-100"
+            } flex flex-col md:flex-row md:flex-wrap items-start gap-2 sm:gap-2.5 w-full`}
+          >
+            {advancedFilterFields}
+            {stackAdvanced && filterActions}
+          </div>
+        )}
+      </>
+    );
+  };
+
+  return (
+    <div className="space-y-6">
+      {/* Filters */}
+      {isMobile ? (
+        <>
+          <div className="p-3 bg-white/80 backdrop-blur-sm rounded-xl shadow-sm border border-gray-100 space-y-3">
+            <div className="flex items-center gap-2">
+              <div className="min-w-0 flex-1">
+                <p className="text-sm font-semibold text-gray-800">
+                  {selectedYear}年 第{selectedWeek}周
+                </p>
+                <p className="text-xs text-gray-500 truncate">
+                  {startDate} ~ {endDate}
+                  {contextFilter !== "all" &&
+                    ` · ${TASK_CONTEXT.find((item) => item.value === contextFilter)?.label ?? contextFilter}`}
+                </p>
+              </div>
+              <button
+                type="button"
+                onClick={() => setFilterDrawerOpen(true)}
+                className={`relative shrink-0 flex h-11 w-11 items-center justify-center rounded-lg border transition-all ${
+                  filtersActive
+                    ? "border-indigo-200 bg-indigo-50 text-indigo-600"
+                    : "border-gray-200 bg-white text-gray-600"
+                }`}
+                aria-label="筛选"
+              >
+                {filtersActive && (
+                  <span className="absolute top-2 right-2 h-2 w-2 rounded-full bg-indigo-500" aria-hidden />
+                )}
+                <SlidersHorizontal size={18} />
+              </button>
+            </div>
+            {filterActions}
+          </div>
+          <MobileBottomSheet
+            open={filterDrawerOpen}
+            onClose={() => setFilterDrawerOpen(false)}
+            title="筛选每日进度"
+          >
+            <div className="space-y-4">
+              {filterFields({ stackAdvanced: true })}
+            </div>
+          </MobileBottomSheet>
+        </>
+      ) : (
+        <div className="p-3 sm:p-4 bg-white/80 backdrop-blur-sm rounded-xl shadow-sm border border-gray-100 shrink-0">
+          <div className="flex flex-wrap items-center gap-2 sm:gap-2.5 w-full">
+            <div className="flex flex-wrap items-center gap-2 sm:gap-2.5 flex-1 min-w-0">
+              {filterFields({ moreOpen })}
+              {filterActions}
+            </div>
+            <FilterExpandToggle
+              moreOpen={moreOpen}
+              onToggle={() => setMoreOpen((open) => !open)}
+              advancedActive={advancedActive}
+            />
+          </div>
+        </div>
+      )}
+
+      {/* Loading */}
+      {loading && <LoadingSpinner size="large" block />}
+
+      {/* Plans List */}
+      {!loading && (
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 items-start">
+          {plans.length === 0 ? (
+            <div
+              className="col-span-full text-center py-16 px-8 rounded-2xl border-2 border-dashed border-gray-300"
+              style={{ background: 'linear-gradient(to bottom right, rgb(249 250 251), rgb(243 244 246))' }}
+            >
+              <div className="text-6xl mb-4">📝</div>
+              <p className="text-lg text-gray-600 font-medium">
+                {formatDateRange()} 还没有计划
+              </p>
+              <p className="text-sm text-gray-400 mt-2">可从待办安排任务到每日进度</p>
+            </div>
+          ) : (
+            plans.map((plan) => (
+              <DailyProgressDayCard
+                key={plan.id}
+                plan={plan}
+                onUpdate={loadPlans}
+                onTaskUpdate={(task) => patchDailyTask(plan.id, task)}
+              />
+            ))
+          )}
+        </div>
+      )}
+
+      {/* Export Modal */}
+      {showExportModal && (
+        <div className="fixed inset-0 bg-gray-900/60 backdrop-blur-sm flex items-center justify-center z-50 p-2 sm:p-4">
+          <div className="bg-white rounded-2xl sm:rounded-3xl shadow-2xl w-full max-w-full sm:max-w-3xl max-h-[90vh] sm:max-h-[85vh] overflow-hidden animate-in fade-in zoom-in duration-200 flex flex-col">
+            {/* Header */}
+            <div className="flex items-center justify-between p-3 sm:p-6 border-b bg-gradient-to-r from-orange-50 to-amber-50 rounded-t-2xl sm:rounded-t-3xl">
+              <div className="flex items-center gap-2 sm:gap-3">
+                <div className="p-1.5 sm:p-2 bg-gradient-to-br from-orange-500 to-amber-600 rounded-lg sm:rounded-xl">
+                  <Download className="text-white" size={16} />
+                </div>
+                <div>
+                  <h2 className="text-base sm:text-xl font-semibold text-gray-800">导出每日进度</h2>
+                  <p className="text-xs sm:text-sm text-gray-500">{startDate} ~ {endDate}</p>
+                </div>
+              </div>
+              <button
+                onClick={() => setShowExportModal(false)}
+                className="text-gray-400 hover:text-gray-600 transition-colors p-1"
+              >
+                <X size={20} />
+              </button>
+            </div>
+
+            {/* Content */}
+            <div className="flex-1 overflow-y-auto p-3 sm:p-6 bg-gray-50">
+              <pre className="bg-white border border-gray-200 rounded-lg sm:rounded-xl p-2 sm:p-4 text-xs sm:text-sm text-gray-700 whitespace-pre-wrap font-mono overflow-x-auto">
+                {generateMarkdown()}
+              </pre>
+            </div>
+
+            {/* Footer */}
+            <div className="flex justify-end gap-2 sm:gap-3 p-3 sm:p-6 border-t bg-white">
+              <button
+                onClick={handleCopyToClipboard}
+                className="px-3 sm:px-5 py-2 sm:py-2.5 text-gray-700 bg-white border border-gray-300 rounded-lg sm:rounded-xl hover:bg-gray-50 transition-colors font-medium text-xs sm:text-sm"
+              >
+                一键复制
+              </button>
+              <button
+                onClick={handleExportAsMD}
+                className="px-3 sm:px-5 py-2 sm:py-2.5 text-white bg-gradient-to-r from-orange-500 to-amber-600 rounded-lg sm:rounded-xl hover:from-orange-600 hover:to-amber-700 transition-all font-medium shadow-md text-xs sm:text-sm"
+              >
+                导出为MD文件
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}

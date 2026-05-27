@@ -97,7 +97,7 @@ export default function Layout() {
     }
     items.push(
       { path: "/todos", label: "待办", icon: ListTodo },
-      { path: "/daily-plans", label: "每日进度", icon: CalendarDays },
+      { path: "/daily-progress", label: "每日进度", icon: CalendarDays },
       { path: "/monthly-plans", label: "月度计划", icon: Calendar },
       { path: "/yearly-goals", label: "年度目标", icon: Target },
       { path: "/analytics", label: "数据统计", icon: BarChart3 },
@@ -115,7 +115,7 @@ export default function Layout() {
   );
 
   const mobileTabPaths = useMemo(() => {
-    const paths = ["/todos", "/daily-plans"];
+    const paths = ["/todos", "/daily-progress"];
     if (user?.permissions?.includes(QUICK_NOTES_USE)) {
       paths.unshift("/quick-notes");
     }
@@ -143,7 +143,7 @@ export default function Layout() {
     }
     items.push(
       { type: "link", path: "/todos", label: "待办", icon: ListTodo },
-      { type: "link", path: "/daily-plans", label: "每日", icon: CalendarDays },
+      { type: "link", path: "/daily-progress", label: "每日", icon: CalendarDays },
       {
         type: "menu",
         label: "更多",

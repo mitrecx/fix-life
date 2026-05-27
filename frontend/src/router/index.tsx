@@ -15,7 +15,7 @@ const RegisterPage = lazy(() => import("@/pages/RegisterPage"));
 const ForgotPasswordPage = lazy(() => import("@/pages/ForgotPasswordPage"));
 const YearlyGoalsPage = lazy(() => import("@/pages/YearlyGoalsPage"));
 const MonthlyPlansPage = lazy(() => import("@/pages/MonthlyPlansPage"));
-const DailyPlansPage = lazy(() => import("@/pages/DailyPlansPage"));
+const DailyProgressPage = lazy(() => import("@/pages/DailyProgressPage"));
 const TodosPage = lazy(() => import("@/pages/TodosPage"));
 const AnalyticsPage = lazy(() => import("@/pages/AnalyticsPage"));
 const WeeklySummaryDetailPage = lazy(() => import("@/pages/WeeklySummaryDetailPage"));
@@ -73,7 +73,7 @@ export const router = createBrowserRouter([
     children: [
       {
         index: true,
-        element: <Navigate to="/daily-plans" replace />,
+        element: <Navigate to="/daily-progress" replace />,
       },
       {
         path: "quick-notes",
@@ -86,8 +86,8 @@ export const router = createBrowserRouter([
         ),
       },
       {
-        path: "daily-plans",
-        element: <DailyPlansPage />,
+        path: "daily-progress",
+        element: <DailyProgressPage />,
       },
       {
         path: "todos",
@@ -103,7 +103,7 @@ export const router = createBrowserRouter([
       },
       {
         path: "weekly-summaries",
-        element: <Navigate to="/daily-plans" replace />,
+        element: <Navigate to="/daily-progress" replace />,
       },
       {
         path: "weekly-summaries/:summaryId",

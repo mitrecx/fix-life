@@ -4,9 +4,9 @@ import { DatePicker, message } from "antd";
 import { LoadingSpinner } from "@/components/LoadingSpinner";
 import type { Dayjs } from "dayjs";
 import dayjs from "dayjs";
-import { dailyPlanService } from "@/services/dailyPlanService";
-import type { DailyTaskPriority, TaskContext } from "@/types/dailyPlan";
-import { DAILY_TASK_PRIORITY } from "@/types/dailyPlan";
+import { dailyProgressService } from "@/services/dailyProgressService";
+import type { DailyTaskPriority, TaskContext } from "@/types/dailyProgress";
+import { DAILY_TASK_PRIORITY } from "@/types/dailyProgress";
 import { TASK_CONTEXT, DEFAULT_TASK_CONTEXT } from "@/types/taskContext";
 
 interface BatchCreateTasksModalProps {
@@ -44,8 +44,8 @@ export function BatchCreateTasksModal({ onClose, onSuccess }: BatchCreateTasksMo
         current = current.add(1, "day");
       }
 
-      // 获取现有的日计划
-      const existingPlans = await dailyPlanService.getAll(
+      // 获取现有的每日进度
+      const existingPlans = await dailyProgressService.getAll(
         startDate.format("YYYY-MM-DD"),
         endDate.format("YYYY-MM-DD")
       );
@@ -59,11 +59,11 @@ export function BatchCreateTasksModal({ onClose, onSuccess }: BatchCreateTasksMo
         let planId: string;
 
         if (existingDates.has(date)) {
-          // 日计划已存在，使用现有计划
+          // 该日已有每日进度，直接使用
           planId = existingPlans.find((plan) => plan.plan_date === date)!.id;
         } else {
-          // 日计划不存在，先创建日计划
-          const { plan: newPlan } = await dailyPlanService.create({
+          // 该日尚无每日进度，先创建
+          const { plan: newPlan } = await dailyProgressService.create({
             plan_date: date,
             notes: "",
           });
@@ -72,7 +72,7 @@ export function BatchCreateTasksModal({ onClose, onSuccess }: BatchCreateTasksMo
         }
 
         // 创建任务
-        await dailyPlanService.createTask(planId, {
+        await dailyProgressService.createTask(planId, {
           title: taskTitle,
           priority,
           context,
@@ -83,7 +83,7 @@ export function BatchCreateTasksModal({ onClose, onSuccess }: BatchCreateTasksMo
 
       message.success(
         `成功在 ${dates.length} 天创建 ${createdCount} 个任务` +
-          (createdPlanCount > 0 ? `（其中新建了 ${createdPlanCount} 个日计划）` : "")
+          (createdPlanCount > 0 ? `（其中新建了 ${createdPlanCount} 天的每日进度）` : "")
       );
 
       onSuccess();
@@ -226,7 +226,7 @@ export function BatchCreateTasksModal({ onClose, onSuccess }: BatchCreateTasksMo
           {/* 提示信息 */}
           <div className="p-4 bg-blue-50 rounded-xl border border-blue-100">
             <p className="text-sm text-blue-700">
-              💡 提示：如果选择的日期范围内某天还没有日计划，系统会自动创建该日的日计划。
+              💡 提示：如果选择的日期范围内某天还没有每日进度，系统会自动创建该日的进度记录。
             </p>
           </div>
         </div>

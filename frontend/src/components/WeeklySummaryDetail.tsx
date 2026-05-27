@@ -177,7 +177,7 @@ export function WeeklySummaryDetail() {
       <div className="mb-8">
         <Button
           icon={<ArrowLeft size={18} />}
-          onClick={() => navigate("/daily-plans")}
+          onClick={() => navigate("/daily-progress")}
           className="mb-4"
         >
           返回每日进度
