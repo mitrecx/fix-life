@@ -122,7 +122,7 @@ class WeeklySummaryService:
         for plan in daily_plans:
             # 获取该日的每日总结（如果有）
             daily_summary = self.db.query(DailySummary).filter(
-                DailySummary.daily_plan_id == plan.id
+                DailySummary.daily_progress_day_id == plan.id
             ).first()
 
             summary_data = None

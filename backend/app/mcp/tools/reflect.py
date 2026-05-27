@@ -46,7 +46,7 @@ def handle_reflect(payload: dict[str, Any]) -> dict[str, Any]:
             )
             if not plan:
                 tool_error(404, "NOT_FOUND", "Daily progress not found")
-            summary = db.query(DailySummary).filter(DailySummary.daily_plan_id == plan_id).first()
+            summary = db.query(DailySummary).filter(DailySummary.daily_progress_day_id == plan_id).first()
             if not summary:
                 tool_error(404, "NOT_FOUND", "Daily summary not found")
             return dump(summary)
@@ -62,11 +62,11 @@ def handle_reflect(payload: dict[str, Any]) -> dict[str, Any]:
             )
             if not plan:
                 tool_error(404, "NOT_FOUND", "Daily progress not found")
-            existing = db.query(DailySummary).filter(DailySummary.daily_plan_id == plan_id).first()
+            existing = db.query(DailySummary).filter(DailySummary.daily_progress_day_id == plan_id).first()
             if existing:
                 tool_error(400, "CONFLICT", "Daily summary already exists for this plan")
             body = DailySummaryCreate.model_validate(payload.get("data") or payload)
-            summary = DailySummary(daily_plan_id=plan_id, user_id=user_id, **body.model_dump())
+            summary = DailySummary(daily_progress_day_id=plan_id, user_id=user_id, **body.model_dump())
             db.add(summary)
             db.commit()
             db.refresh(summary)

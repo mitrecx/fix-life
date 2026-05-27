@@ -164,7 +164,7 @@ def handle_daily_progress(payload: dict[str, Any]) -> dict[str, Any]:
             task = service.get_task(task_id)
             if not task:
                 tool_error(404, "NOT_FOUND", NOT_FOUND_ENTRY)
-            plan = service.get_plan(str(task.daily_plan_id))
+            plan = service.get_plan(str(task.daily_progress_day_id))
             if not plan or str(plan.user_id) != user_id:
                 tool_error(403, "FORBIDDEN", "Not authorized")
             body = DailyTaskUpdate.model_validate(payload.get("data") or payload)
@@ -181,7 +181,7 @@ def handle_daily_progress(payload: dict[str, Any]) -> dict[str, Any]:
             task = service.get_task(task_id)
             if not task:
                 tool_error(404, "NOT_FOUND", NOT_FOUND_ENTRY)
-            plan = service.get_plan(str(task.daily_plan_id))
+            plan = service.get_plan(str(task.daily_progress_day_id))
             if not plan or str(plan.user_id) != user_id:
                 tool_error(403, "FORBIDDEN", "Not authorized")
             updated = service.update_task_status(task_id, DailyTaskStatus(status))
@@ -196,7 +196,7 @@ def handle_daily_progress(payload: dict[str, Any]) -> dict[str, Any]:
             task = service.get_task(task_id)
             if not task:
                 tool_error(404, "NOT_FOUND", NOT_FOUND_ENTRY)
-            plan = service.get_plan(str(task.daily_plan_id))
+            plan = service.get_plan(str(task.daily_progress_day_id))
             if not plan or str(plan.user_id) != user_id:
                 tool_error(403, "FORBIDDEN", "Not authorized")
             service.delete_task(task_id)

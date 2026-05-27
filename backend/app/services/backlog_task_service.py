@@ -337,9 +337,11 @@ class BacklogTaskService:
     def _build_occurrence(self, link: BacklogDailyLink) -> BacklogOccurrence:
         daily_service = DailyProgressService(self.db)
         daily = daily_service.get_task(str(link.daily_task_id))
+        day_id = daily.daily_progress_day_id if daily else None
         return BacklogOccurrence(
             daily_task_id=link.daily_task_id,
-            daily_plan_id=daily.daily_plan_id if daily else None,
+            daily_progress_day_id=day_id,
+            daily_plan_id=day_id,
             plan_date=link.plan_date,
             daily_status=daily.status if daily else None,
             daily_title=daily.title if daily else None,

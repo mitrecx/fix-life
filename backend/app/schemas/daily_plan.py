@@ -1,11 +1,29 @@
 from pydantic import BaseModel, Field, model_validator
 from datetime import date, datetime
-from typing import Optional, List
+from typing import Any, Optional, List
 from uuid import UUID
 
 from app.models.daily_plan import DailyTaskPriority, DailyTaskStatus
 from app.models.task_context import TaskContext
 from app.schemas.daily_summary import DailySummaryResponse
+
+
+def _mirror_daily_progress_day_id(data: Any) -> Any:
+    if isinstance(data, dict):
+        if "daily_progress_day_id" not in data and "daily_plan_id" in data:
+            data = {**data, "daily_progress_day_id": data["daily_plan_id"]}
+        elif "daily_plan_id" not in data and "daily_progress_day_id" in data:
+            data = {**data, "daily_plan_id": data["daily_progress_day_id"]}
+    return data
+
+
+def _mirror_daily_progress_entries(data: Any) -> Any:
+    if isinstance(data, dict):
+        if "daily_progress_entries" not in data and "daily_tasks" in data:
+            data = {**data, "daily_progress_entries": data["daily_tasks"]}
+        elif "daily_tasks" not in data and "daily_progress_entries" in data:
+            data = {**data, "daily_tasks": data["daily_progress_entries"]}
+    return data
 
 
 class DailyTaskBase(BaseModel):
@@ -41,13 +59,29 @@ class DailyTaskUpdate(BaseModel):
 
 class DailyTaskResponse(DailyTaskBase):
     id: UUID
-    daily_plan_id: UUID
+    daily_progress_day_id: UUID
+    daily_plan_id: Optional[UUID] = Field(
+        default=None,
+        description="Deprecated: use daily_progress_day_id",
+    )
     backlog_task_id: Optional[UUID] = None
     actual_minutes: int
     progress_after: Optional[int] = Field(None, ge=0, le=100)
     progress_delta: Optional[int] = Field(None, ge=0, le=100)
     created_at: datetime
     updated_at: datetime
+
+    @model_validator(mode="before")
+    @classmethod
+    def sync_day_id(cls, data: Any) -> Any:
+        return _mirror_daily_progress_day_id(data)
+
+    @model_validator(mode="after")
+    def ensure_deprecated_day_id(self) -> "DailyTaskResponse":
+        day_id = self.daily_progress_day_id or self.daily_plan_id
+        if day_id is None:
+            raise ValueError("daily_progress_day_id is required")
+        return self.model_copy(update={"daily_progress_day_id": day_id, "daily_plan_id": day_id})
 
     class Config:
         from_attributes = True
@@ -100,10 +134,24 @@ class DailyPlanResponse(DailyPlanBase):
     total_tasks: int
     completed_tasks: int
     completion_rate: float
-    daily_tasks: List[DailyTaskResponse] = []
+    daily_progress_entries: List[DailyTaskResponse] = []
+    daily_tasks: List[DailyTaskResponse] = Field(
+        default_factory=list,
+        description="Deprecated: use daily_progress_entries",
+    )
     daily_summary: Optional[DailySummaryResponse] = None
     created_at: datetime
     updated_at: datetime
+
+    @model_validator(mode="before")
+    @classmethod
+    def sync_entries(cls, data: Any) -> Any:
+        return _mirror_daily_progress_entries(data)
+
+    @model_validator(mode="after")
+    def ensure_deprecated_entries(self) -> "DailyPlanResponse":
+        entries = self.daily_progress_entries or self.daily_tasks
+        return self.model_copy(update={"daily_progress_entries": entries, "daily_tasks": entries})
 
     class Config:
         from_attributes = True

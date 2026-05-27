@@ -33,7 +33,7 @@ def get_summary_by_plan(
             detail="每日进度不存在"
         )
 
-    summary = db.query(DailySummary).filter(DailySummary.daily_plan_id == plan_id).first()
+    summary = db.query(DailySummary).filter(DailySummary.daily_progress_day_id == plan_id).first()
     if not summary:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
@@ -61,7 +61,7 @@ def create_summary(
         )
 
     # Check if summary already exists
-    existing = db.query(DailySummary).filter(DailySummary.daily_plan_id == plan_id).first()
+    existing = db.query(DailySummary).filter(DailySummary.daily_progress_day_id == plan_id).first()
     if existing:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
@@ -69,7 +69,7 @@ def create_summary(
         )
 
     summary = DailySummary(
-        daily_plan_id=plan_id,
+        daily_progress_day_id=plan_id,
         user_id=current_user.id,
         **summary_in.model_dump()
     )

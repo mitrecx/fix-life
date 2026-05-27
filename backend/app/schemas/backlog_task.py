@@ -63,13 +63,22 @@ class BacklogTaskSchedule(BaseModel):
 
 class BacklogOccurrence(BaseModel):
     daily_task_id: UUID
-    daily_plan_id: Optional[UUID] = None
+    daily_progress_day_id: Optional[UUID] = None
+    daily_plan_id: Optional[UUID] = Field(
+        default=None,
+        description="Deprecated: use daily_progress_day_id",
+    )
     plan_date: date
     daily_status: Optional[DailyTaskStatus] = None
     daily_title: Optional[str] = None
     progress_after: Optional[int] = Field(None, ge=0, le=100)
     progress_delta: Optional[int] = Field(None, ge=0, le=100)
     created_at: datetime
+
+    @model_validator(mode="after")
+    def sync_day_id(self) -> "BacklogOccurrence":
+        day_id = self.daily_progress_day_id or self.daily_plan_id
+        return self.model_copy(update={"daily_progress_day_id": day_id, "daily_plan_id": day_id})
 
     class Config:
         from_attributes = True

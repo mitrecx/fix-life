@@ -1,19 +1,38 @@
 from datetime import date
-from typing import List, Optional
+from typing import Any, List, Optional
 from uuid import UUID
 
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, model_validator
 
 from app.models.daily_plan import DailyTaskStatus
 
 
 class OrphanDailyItem(BaseModel):
     daily_task_id: UUID
-    daily_plan_id: UUID
+    daily_progress_day_id: UUID
+    daily_plan_id: Optional[UUID] = Field(
+        default=None,
+        description="Deprecated: use daily_progress_day_id",
+    )
     plan_date: date
     title: str
     daily_status: DailyTaskStatus
     suggested_action: str
+
+    @model_validator(mode="before")
+    @classmethod
+    def sync_day_id(cls, data: Any) -> Any:
+        if isinstance(data, dict):
+            if "daily_progress_day_id" not in data and "daily_plan_id" in data:
+                data = {**data, "daily_progress_day_id": data["daily_plan_id"]}
+            elif "daily_plan_id" not in data and "daily_progress_day_id" in data:
+                data = {**data, "daily_plan_id": data["daily_progress_day_id"]}
+        return data
+
+    @model_validator(mode="after")
+    def ensure_deprecated_day_id(self) -> "OrphanDailyItem":
+        day_id = self.daily_progress_day_id or self.daily_plan_id
+        return self.model_copy(update={"daily_progress_day_id": day_id, "daily_plan_id": day_id})
 
 
 class DuplicateBacklogGroup(BaseModel):

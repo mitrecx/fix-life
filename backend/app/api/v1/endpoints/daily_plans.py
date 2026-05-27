@@ -187,7 +187,7 @@ def update_daily_task(
         raise HTTPException(status_code=404, detail="Daily progress entry not found")
 
     # Check if user owns the parent plan
-    plan = service.get_plan(str(task.daily_plan_id))
+    plan = service.get_plan(str(task.daily_progress_day_id))
     if not plan or str(plan.user_id) != str(current_user.id):
         raise HTTPException(status_code=403, detail="Not authorized to update this task")
 
@@ -213,7 +213,7 @@ def delete_daily_task(
         raise HTTPException(status_code=404, detail="Daily progress entry not found")
 
     # Check if user owns the parent plan
-    plan = service.get_plan(str(task.daily_plan_id))
+    plan = service.get_plan(str(task.daily_progress_day_id))
     if not plan or str(plan.user_id) != str(current_user.id):
         raise HTTPException(status_code=403, detail="Not authorized to delete this task")
 
@@ -235,7 +235,7 @@ def update_task_status(
         raise HTTPException(status_code=404, detail="Daily progress entry not found")
 
     # Check if user owns the parent plan
-    plan = service.get_plan(str(task.daily_plan_id))
+    plan = service.get_plan(str(task.daily_progress_day_id))
     if not plan or str(plan.user_id) != str(current_user.id):
         raise HTTPException(status_code=403, detail="Not authorized to update this task")
 

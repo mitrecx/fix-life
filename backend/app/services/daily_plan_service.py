@@ -173,7 +173,7 @@ class DailyPlanService:
         """Get all tasks for a plan."""
         return (
             self.db.query(DailyTask)
-            .filter(DailyTask.daily_plan_id == plan_id)
+            .filter(DailyTask.daily_progress_day_id == plan_id)
             .order_by(DailyTask.time_slot, DailyTask.priority.desc(), DailyTask.created_at)
             .all()
         )
@@ -191,7 +191,7 @@ class DailyPlanService:
             return None
 
         task_data = task_in.model_dump(exclude_unset=True)
-        task = DailyTask(**task_data, daily_plan_id=plan_id)
+        task = DailyTask(**task_data, daily_progress_day_id=plan_id)
         if backlog_task_id:
             task.backlog_task_id = backlog_task_id
         self.db.add(task)
@@ -300,6 +300,7 @@ class DailyPlanService:
         base_plan = DailyPlanResponse.model_validate(plan)
         return base_plan.model_copy(
             update={
+                "daily_progress_entries": tasks,
                 "daily_tasks": tasks,
                 "total_tasks": total_tasks,
                 "completed_tasks": completed_tasks,

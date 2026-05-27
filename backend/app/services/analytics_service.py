@@ -79,7 +79,7 @@ class AnalyticsService:
         ).count()
 
         total_daily_tasks = self.db.query(DailyTask).join(
-            DailyPlan, DailyTask.daily_plan_id == DailyPlan.id
+            DailyPlan, DailyTask.daily_progress_day_id == DailyPlan.id
         ).filter(
             DailyPlan.user_id == user_id,
             func.extract('year', DailyPlan.plan_date) == current_year,
@@ -87,7 +87,7 @@ class AnalyticsService:
         ).count()
 
         completed_daily_tasks = self.db.query(DailyTask).join(
-            DailyPlan, DailyTask.daily_plan_id == DailyPlan.id
+            DailyPlan, DailyTask.daily_progress_day_id == DailyPlan.id
         ).filter(
             DailyPlan.user_id == user_id,
             func.extract('year', DailyPlan.plan_date) == current_year,
@@ -191,14 +191,14 @@ class AnalyticsService:
 
         # Add daily tasks
         daily_tasks_total = self.db.query(DailyTask).join(
-            DailyPlan, DailyTask.daily_plan_id == DailyPlan.id
+            DailyPlan, DailyTask.daily_progress_day_id == DailyPlan.id
         ).filter(
             DailyPlan.user_id == user_id,
             func.extract('year', DailyPlan.plan_date) == year
         ).count()
 
         daily_tasks_completed = self.db.query(DailyTask).join(
-            DailyPlan, DailyTask.daily_plan_id == DailyPlan.id
+            DailyPlan, DailyTask.daily_progress_day_id == DailyPlan.id
         ).filter(
             DailyPlan.user_id == user_id,
             func.extract('year', DailyPlan.plan_date) == year,
@@ -264,7 +264,7 @@ class AnalyticsService:
 
         # Task stats from daily plans
         total_daily_tasks = self.db.query(DailyTask).join(
-            DailyPlan, DailyTask.daily_plan_id == DailyPlan.id
+            DailyPlan, DailyTask.daily_progress_day_id == DailyPlan.id
         ).filter(
             DailyPlan.user_id == user_id,
             func.extract('year', DailyPlan.plan_date) == year,
@@ -272,7 +272,7 @@ class AnalyticsService:
         ).count()
 
         completed_daily_tasks = self.db.query(DailyTask).join(
-            DailyPlan, DailyTask.daily_plan_id == DailyPlan.id
+            DailyPlan, DailyTask.daily_progress_day_id == DailyPlan.id
         ).filter(
             DailyPlan.user_id == user_id,
             func.extract('year', DailyPlan.plan_date) == year,
@@ -291,7 +291,7 @@ class AnalyticsService:
         daily_completion_data = []
         for day in range(1, 32):
             day_tasks = self.db.query(DailyTask).join(
-                DailyPlan, DailyTask.daily_plan_id == DailyPlan.id
+                DailyPlan, DailyTask.daily_progress_day_id == DailyPlan.id
             ).filter(
                 DailyPlan.user_id == user_id,
                 func.extract('year', DailyPlan.plan_date) == year,
@@ -313,7 +313,7 @@ class AnalyticsService:
         priority_distribution = []
         for priority in ["low", "medium", "high"]:
             count = self.db.query(DailyTask).join(
-                DailyPlan, DailyTask.daily_plan_id == DailyPlan.id
+                DailyPlan, DailyTask.daily_progress_day_id == DailyPlan.id
             ).filter(
                 DailyPlan.user_id == user_id,
                 func.extract('year', DailyPlan.plan_date) == year,
@@ -333,7 +333,7 @@ class AnalyticsService:
             end_day = min(week * 7, 31)
 
             week_tasks = self.db.query(DailyTask).join(
-                DailyPlan, DailyTask.daily_plan_id == DailyPlan.id
+                DailyPlan, DailyTask.daily_progress_day_id == DailyPlan.id
             ).filter(
                 DailyPlan.user_id == user_id,
                 func.extract('year', DailyPlan.plan_date) == year,
@@ -381,7 +381,7 @@ class AnalyticsService:
             current = start_date
             while current <= end_date:
                 day_tasks = self.db.query(DailyTask).join(
-                    DailyPlan, DailyTask.daily_plan_id == DailyPlan.id
+                    DailyPlan, DailyTask.daily_progress_day_id == DailyPlan.id
                 ).filter(
                     DailyPlan.user_id == user_id,
                     DailyPlan.plan_date == current
@@ -406,7 +406,7 @@ class AnalyticsService:
                 week_end = min(current.replace(day=current.day + 6), end_date)
 
                 week_tasks = self.db.query(DailyTask).join(
-                    DailyPlan, DailyTask.daily_plan_id == DailyPlan.id
+                    DailyPlan, DailyTask.daily_progress_day_id == DailyPlan.id
                 ).filter(
                     DailyPlan.user_id == user_id,
                     DailyPlan.plan_date >= current,
@@ -431,7 +431,7 @@ class AnalyticsService:
             current = start_date
             while current <= end_date:
                 month_tasks = self.db.query(DailyTask).join(
-                    DailyPlan, DailyTask.daily_plan_id == DailyPlan.id
+                    DailyPlan, DailyTask.daily_progress_day_id == DailyPlan.id
                 ).filter(
                     DailyPlan.user_id == user_id,
                     func.extract('year', DailyPlan.plan_date) == current.year,
@@ -488,7 +488,7 @@ class AnalyticsService:
 
         while current <= end_date:
             day_tasks = self.db.query(DailyTask).join(
-                DailyPlan, DailyTask.daily_plan_id == DailyPlan.id
+                DailyPlan, DailyTask.daily_progress_day_id == DailyPlan.id
             ).filter(
                 DailyPlan.user_id == user_id,
                 DailyPlan.plan_date == current

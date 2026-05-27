@@ -34,7 +34,7 @@ class TaskDataRepairService:
     def _orphan_dailies(self, user_id: str) -> List[Tuple[DailyTask, DailyPlan]]:
         return (
             self.db.query(DailyTask, DailyPlan)
-            .join(DailyPlan, DailyTask.daily_plan_id == DailyPlan.id)
+            .join(DailyPlan, DailyTask.daily_progress_day_id == DailyPlan.id)
             .outerjoin(BacklogDailyLink, BacklogDailyLink.daily_task_id == DailyTask.id)
             .filter(DailyPlan.user_id == user_id, BacklogDailyLink.id.is_(None))
             .order_by(DailyPlan.plan_date.desc(), DailyTask.created_at.desc())
@@ -194,7 +194,7 @@ class TaskDataRepairService:
                 orphan_samples.append(
                     OrphanDailyItem(
                         daily_task_id=daily.id,
-                        daily_plan_id=plan.id,
+                        daily_progress_day_id=plan.id,
                         plan_date=plan.plan_date,
                         title=daily.title,
                         daily_status=daily.status,
