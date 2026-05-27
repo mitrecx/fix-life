@@ -6,8 +6,17 @@ import { useYearlyGoalStore } from "@/store/yearlyGoalStore";
 import YearlyGoalCard from "./YearlyGoalCard";
 import YearlyGoalForm from "./YearlyGoalForm";
 import ProgressModal from "./ProgressModal";
-import type { YearlyGoal as YearlyGoalType, YearlyGoalCreate } from "@/types/yearlyGoal";
+import type { YearlyGoal as YearlyGoalType, YearlyGoalCreate, GoalCategory } from "@/types/yearlyGoal";
 import { GOAL_CATEGORIES } from "@/types/yearlyGoal";
+import {
+  buildDefaultYearlyGoalFilters,
+  readYearlyGoalFilters,
+  writeYearlyGoalFilters,
+} from "@/utils/listFiltersStorage";
+
+function readInitialYearlyGoalFilters() {
+  return readYearlyGoalFilters(buildDefaultYearlyGoalFilters());
+}
 
 const YearlyGoalsList = () => {
   const {
@@ -22,8 +31,10 @@ const YearlyGoalsList = () => {
     clearError,
   } = useYearlyGoalStore();
 
-  const [selectedYear, setSelectedYear] = useState<number>(new Date().getFullYear());
-  const [selectedCategory, setSelectedCategory] = useState<string | undefined>();
+  const [selectedYear, setSelectedYear] = useState(() => readInitialYearlyGoalFilters().year);
+  const [selectedCategory, setSelectedCategory] = useState<GoalCategory | undefined>(
+    () => readInitialYearlyGoalFilters().category,
+  );
   const [formVisible, setFormVisible] = useState(false);
   const [editingGoal, setEditingGoal] = useState<YearlyGoalType | undefined>();
   const [progressModalVisible, setProgressModalVisible] = useState(false);
@@ -31,6 +42,13 @@ const YearlyGoalsList = () => {
 
   useEffect(() => {
     fetchGoals(selectedYear, selectedCategory);
+  }, [selectedYear, selectedCategory]);
+
+  useEffect(() => {
+    writeYearlyGoalFilters({
+      year: selectedYear,
+      category: selectedCategory,
+    });
   }, [selectedYear, selectedCategory]);
 
   const handleRefresh = () => {

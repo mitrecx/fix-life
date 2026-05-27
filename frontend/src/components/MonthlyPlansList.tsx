@@ -6,6 +6,15 @@ import { monthlyPlanService } from "@/services/monthlyPlanService";
 import { MonthlyPlanCard } from "./MonthlyPlanCard";
 import { MonthlyPlanForm } from "./MonthlyPlanForm";
 import { LoadingSpinner } from "@/components/LoadingSpinner";
+import {
+  buildDefaultMonthlyPlanFilters,
+  readMonthlyPlanFilters,
+  writeMonthlyPlanFilters,
+} from "@/utils/listFiltersStorage";
+
+function readInitialMonthlyPlanFilters() {
+  return readMonthlyPlanFilters(buildDefaultMonthlyPlanFilters());
+}
 
 // Custom sorting: current month first, then future months ascending, then past months ascending
 const sortPlans = (plans: MonthlyPlan[]): MonthlyPlan[] => {
@@ -43,7 +52,11 @@ export function MonthlyPlansList() {
   const [loading, setLoading] = useState(true);
   const [showForm, setShowForm] = useState(false);
   const [editingPlan, setEditingPlan] = useState<MonthlyPlan | null>(null);
-  const [year, setYear] = useState(new Date().getFullYear());
+  const [year, setYear] = useState(() => readInitialMonthlyPlanFilters().year);
+
+  useEffect(() => {
+    writeMonthlyPlanFilters({ year });
+  }, [year]);
 
   useEffect(() => {
     loadPlans();

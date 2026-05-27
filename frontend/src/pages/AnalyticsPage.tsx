@@ -18,6 +18,15 @@ import {
 } from "recharts";
 import { analyticsService } from "@/services/analyticsService";
 import type { DashboardStats, YearlyStats, CompletionRateTrend } from "@/types/analytics";
+import {
+  buildDefaultAnalyticsFilters,
+  readAnalyticsFilters,
+  writeAnalyticsFilters,
+} from "@/utils/listFiltersStorage";
+
+function readInitialAnalyticsFilters() {
+  return readAnalyticsFilters(buildDefaultAnalyticsFilters());
+}
 
 // Category colors for charts
 const CATEGORY_COLORS = {
@@ -46,10 +55,14 @@ export default function AnalyticsPage() {
   const [dashboardStats, setDashboardStats] = useState<DashboardStats | null>(null);
   const [yearlyStats, setYearlyStats] = useState<YearlyStats | null>(null);
   const [completionTrend, setCompletionTrend] = useState<CompletionRateTrend | null>(null);
-  const [selectedYear, setSelectedYear] = useState(new Date().getFullYear());
+  const [selectedYear, setSelectedYear] = useState(() => readInitialAnalyticsFilters().year);
 
   useEffect(() => {
     loadAnalytics();
+  }, [selectedYear]);
+
+  useEffect(() => {
+    writeAnalyticsFilters({ year: selectedYear });
   }, [selectedYear]);
 
   const loadAnalytics = async () => {
