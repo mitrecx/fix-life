@@ -54,8 +54,21 @@ body {
   padding-left: 1.25rem;
 }
 
+.quick-note-editor ul {
+  list-style-type: disc;
+}
+
+.quick-note-editor ol {
+  list-style-type: decimal;
+}
+
 .quick-note-editor li {
+  display: list-item;
   margin: 0.125rem 0;
+}
+
+.quick-note-editor li > p {
+  margin: 0;
 }
 
 .quick-note-editor blockquote {
