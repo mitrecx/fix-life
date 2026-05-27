@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback, useMemo, useRef } from "react";
+import { useState, useEffect, useLayoutEffect, useCallback, useMemo, useRef } from "react";
 import { Trash2, Plus, CheckSquare, X, Calendar } from "lucide-react";
 import { Modal, message } from "antd";
 import type { Dayjs } from "dayjs";
@@ -39,6 +39,11 @@ import {
   compareTaskPriority,
 } from "@/types/taskPriority";
 import type { TaskPriority } from "@/types/taskPriority";
+import {
+  readBacklogFilters,
+  urlHasBacklogFilterParams,
+  writeBacklogFilters,
+} from "@/utils/listFiltersStorage";
 
 const COLUMNS: { id: KanbanColumnId; title: string; accent: string }[] = [
   { id: "pending", title: "待办", accent: "border-t-blue-500" },
@@ -468,6 +473,35 @@ export function TodosList() {
 
   const taskId = searchParams.get("task");
   const drawerOpen = !!taskId;
+  const filtersHydratedRef = useRef(false);
+  const skipNextFilterPersistRef = useRef(false);
+
+  useLayoutEffect(() => {
+    if (filtersHydratedRef.current) {
+      return;
+    }
+    filtersHydratedRef.current = true;
+
+    if (urlHasBacklogFilterParams(searchParams)) {
+      writeBacklogFilters(parseFilters(searchParams));
+      return;
+    }
+
+    const stored = readBacklogFilters(DEFAULT_FILTERS);
+    skipNextFilterPersistRef.current = true;
+    setSearchParams(filtersToSearchParams(stored, searchParams.get("task")), { replace: true });
+  }, [searchParams, setSearchParams]);
+
+  useEffect(() => {
+    if (!filtersHydratedRef.current) {
+      return;
+    }
+    if (skipNextFilterPersistRef.current) {
+      skipNextFilterPersistRef.current = false;
+      return;
+    }
+    writeBacklogFilters(parseFilters(searchParams));
+  }, [filterParamKey, searchParams]);
 
   useEffect(() => {
     const main = document.querySelector("main");
@@ -1024,6 +1058,10 @@ export function TodosList() {
   ) => {
     const snapshot = task;
     const progress = progressForColumn(targetColumn, fromColumn, task.progress ?? 0);
+    const today =
+      fromColumn === "pending" && targetColumn === "in_progress"
+        ? dayjs().format("YYYY-MM-DD")
+        : undefined;
     const optimistic = {
       ...task,
       progress,
@@ -1033,6 +1071,13 @@ export function TodosList() {
           ? "in_progress"
           : "pending") as BacklogTask["status"],
       completed_at: targetColumn === "done" ? new Date().toISOString() : undefined,
+      ...(today
+        ? {
+            scheduled_date: today,
+            last_plan_date: today,
+            is_scheduled: true,
+          }
+        : {}),
     };
     if (taskMatchesFilters(optimistic, apiFilters)) {
       applyTaskToColumns(optimistic);
@@ -1046,9 +1091,14 @@ export function TodosList() {
       } else if (targetColumn === "pending") {
         updated = await backlogTaskService.revertToInbox(task.id);
       } else {
+        const today = dayjs().format("YYYY-MM-DD");
+        if (fromColumn === "pending") {
+          await backlogTaskService.schedule(task.id, today);
+        }
         updated = await backlogTaskService.update(task.id, {
           progress,
           status: "in_progress",
+          ...(fromColumn === "pending" ? { progress_plan_date: today } : {}),
         });
       }
       applyUpdatedTask(updated);
