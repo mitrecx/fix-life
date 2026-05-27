@@ -35,4 +35,5 @@ All notable user-facing and integration changes for Fix Life.
 
 ### Internal (unchanged for integrators)
 
-- PostgreSQL tables `daily_plans`, `daily_tasks` and ORM class `DailyPlan` — historical names; no DB rename in this release.
+- PostgreSQL tables renamed in Phase 5: `daily_progress_days`, `daily_progress_entries`, column `daily_progress_day_id`. Read-only views `daily_plans` / `daily_tasks` remain during deprecation.
+- ORM class names `DailyPlan` / `DailyTask` retained as Python aliases.
