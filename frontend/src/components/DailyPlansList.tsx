@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import { Download, X } from "lucide-react";
+import { Download, SlidersHorizontal, X } from "lucide-react";
 import { Modal, message } from "antd";
 import type { DailyPlan, DailyTask } from "@/types/dailyPlan";
 import type { DailySummary } from "@/types/dailySummary";
@@ -11,6 +11,8 @@ import {
   readDailyPlanFilters,
   writeDailyPlanFilters,
 } from "@/utils/dailyPlanFiltersStorage";
+import { MobileBottomSheet } from "@/components/MobileBottomSheet";
+import { useIsMobile } from "@/hooks/useMediaQuery";
 import { DailyPlanCard } from "./DailyPlanCard";
 import { GenerateWeeklySummaryButton } from "./GenerateWeeklySummaryButton";
 import { LoadingSpinner } from "@/components/LoadingSpinner";
@@ -20,6 +22,8 @@ function readInitialDailyPlanFilters() {
 }
 
 export function DailyPlansList({ focusDate }: { focusDate?: string | null }) {
+  const isMobile = useIsMobile();
+  const [filterDrawerOpen, setFilterDrawerOpen] = useState(false);
   const [plans, setPlans] = useState<DailyPlan[]>([]);
   const [loading, setLoading] = useState(true);
   const [showExportModal, setShowExportModal] = useState(false);
@@ -437,117 +441,167 @@ export function DailyPlansList({ focusDate }: { focusDate?: string | null }) {
     loadSummariesForExport();
   };
 
+  const filtersActive = contextFilter !== "all";
+
+  const filterFields = (
+    <>
+      <div className="flex flex-wrap items-center gap-2 sm:gap-4 mb-3">
+        <label className="text-sm font-semibold text-gray-600">按周查询:</label>
+        <select
+          value={selectedYear}
+          onChange={(e) => setSelectedYear(Number(e.target.value))}
+          className="px-3 py-2 text-sm border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent bg-white transition-all min-h-[44px]"
+        >
+          {yearOptions.map((year) => (
+            <option key={year} value={year}>
+              {year}年
+            </option>
+          ))}
+        </select>
+        <select
+          value={selectedWeek}
+          onChange={(e) => setSelectedWeek(Number(e.target.value))}
+          className="px-3 py-2 text-sm border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent bg-white transition-all min-h-[44px]"
+        >
+          {weekOptions.map((week) => (
+            <option key={week} value={week}>
+              第{week}周
+            </option>
+          ))}
+        </select>
+        <button
+          onClick={handlePreviousWeek}
+          className="min-h-[44px] px-3 py-2 text-xs font-medium text-gray-600 bg-gray-100 rounded-lg hover:bg-gray-200 transition-all"
+        >
+          上一周
+        </button>
+        <button
+          type="button"
+          onClick={handleThisWeek}
+          className="min-h-[44px] px-3 py-2 text-xs font-semibold text-white rounded-lg shadow-md bg-gradient-to-r from-indigo-500 via-purple-500 to-pink-500 hover:from-indigo-600 hover:via-purple-600 hover:to-pink-600 hover:shadow-lg transition-all"
+        >
+          本周第{getThisWeekYearWeek().week}周
+        </button>
+        <button
+          onClick={handleNextWeek}
+          className="min-h-[44px] px-3 py-2 text-xs font-medium text-gray-600 bg-gray-100 rounded-lg hover:bg-gray-200 transition-all"
+        >
+          下一周
+        </button>
+      </div>
+
+      <div className="flex flex-wrap items-center gap-2 sm:gap-4 mb-3">
+        <div className="flex items-center gap-2 w-full sm:w-auto">
+          <label className="text-sm font-semibold text-gray-600 shrink-0">任务分类:</label>
+          <select
+            value={contextFilter}
+            onChange={(e) => setContextFilter(e.target.value as DailyPlanContextFilter)}
+            className="flex-1 sm:flex-none px-3 py-2 text-sm border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent bg-white transition-all min-h-[44px]"
+          >
+            <option value="all">全部</option>
+            {TASK_CONTEXT.map((item) => (
+              <option key={item.value} value={item.value}>
+                {item.label}
+              </option>
+            ))}
+          </select>
+        </div>
+
+        <div className="flex items-center gap-2 w-full sm:w-auto">
+          <label className="text-sm font-semibold text-gray-600 shrink-0">开始日期:</label>
+          <input
+            type="date"
+            value={startDate}
+            onChange={(e) => setStartDate(e.target.value)}
+            className="flex-1 sm:flex-none px-3 py-2 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-transparent bg-white transition-all min-h-[44px]"
+          />
+        </div>
+
+        <div className="flex items-center gap-2 w-full sm:w-auto">
+          <label className="text-sm font-semibold text-gray-600 shrink-0">结束日期:</label>
+          <input
+            type="date"
+            value={endDate}
+            onChange={(e) => setEndDate(e.target.value)}
+            className="flex-1 sm:flex-none px-3 py-2 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-transparent bg-white transition-all min-h-[44px]"
+          />
+        </div>
+
+        <button
+          onClick={loadPlans}
+          className="min-h-[44px] px-4 py-2 text-sm font-medium text-gray-600 bg-gray-100 rounded-lg hover:bg-gray-200 transition-all"
+        >
+          查询
+        </button>
+      </div>
+    </>
+  );
+
+  const filterActions = (
+    <div className="flex flex-wrap items-center gap-2 sm:gap-4">
+      <GenerateWeeklySummaryButton defaultYear={selectedYear} defaultWeek={selectedWeek} />
+      <button
+        onClick={handleOpenExportModal}
+        className="flex items-center gap-2 min-h-[44px] px-5 py-2.5 text-orange-700 bg-orange-50 rounded-xl hover:bg-orange-100 transition-all"
+      >
+        <Download size={20} />
+        <span className="font-medium">导出</span>
+      </button>
+    </div>
+  );
+
   return (
     <div className="space-y-6">
       {/* Filters */}
-      <div className="p-3 sm:p-4 bg-white/80 backdrop-blur-sm rounded-xl shadow-sm border border-gray-100">
-        {/* Year and Week selection */}
-        <div className="flex flex-wrap items-center gap-2 sm:gap-4 mb-3">
-          <label className="text-sm font-semibold text-gray-600">按周查询:</label>
-          <select
-            value={selectedYear}
-            onChange={(e) => setSelectedYear(Number(e.target.value))}
-            className="px-3 py-1.5 text-sm border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent bg-white transition-all"
-          >
-            {yearOptions.map((year) => (
-              <option key={year} value={year}>
-                {year}年
-              </option>
-            ))}
-          </select>
-          <select
-            value={selectedWeek}
-            onChange={(e) => setSelectedWeek(Number(e.target.value))}
-            className="px-3 py-1.5 text-sm border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent bg-white transition-all"
-          >
-            {weekOptions.map((week) => (
-              <option key={week} value={week}>
-                第{week}周
-              </option>
-            ))}
-          </select>
-          <button
-            onClick={handlePreviousWeek}
-            className="px-3 py-1.5 text-xs font-medium text-gray-600 bg-gray-100 rounded-lg hover:bg-gray-200 transition-all"
-          >
-            上一周
-          </button>
-          <button
-            type="button"
-            onClick={handleThisWeek}
-            className="px-3 py-1.5 text-xs font-semibold text-white rounded-lg shadow-md bg-gradient-to-r from-indigo-500 via-purple-500 to-pink-500 hover:from-indigo-600 hover:via-purple-600 hover:to-pink-600 hover:shadow-lg transition-all"
-          >
-            本周第{getThisWeekYearWeek().week}周
-          </button>
-          <button
-            onClick={handleNextWeek}
-            className="px-3 py-1.5 text-xs font-medium text-gray-600 bg-gray-100 rounded-lg hover:bg-gray-200 transition-all"
-          >
-            下一周
-          </button>
-        </div>
-
-        {/* Date range selection */}
-        <div className="flex flex-wrap items-center gap-2 sm:gap-4 mb-3">
-          <div className="flex items-center gap-2">
-            <label className="text-sm font-semibold text-gray-600">任务分类:</label>
-            <select
-              value={contextFilter}
-              onChange={(e) => setContextFilter(e.target.value as DailyPlanContextFilter)}
-              className="px-3 py-1.5 text-sm border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent bg-white transition-all"
-            >
-              <option value="all">全部</option>
-              {TASK_CONTEXT.map((item) => (
-                <option key={item.value} value={item.value}>
-                  {item.label}
-                </option>
-              ))}
-            </select>
+      {isMobile ? (
+        <>
+          <div className="p-3 bg-white/80 backdrop-blur-sm rounded-xl shadow-sm border border-gray-100 space-y-3">
+            <div className="flex items-center gap-2">
+              <div className="min-w-0 flex-1">
+                <p className="text-sm font-semibold text-gray-800">
+                  {selectedYear}年 第{selectedWeek}周
+                </p>
+                <p className="text-xs text-gray-500 truncate">
+                  {startDate} ~ {endDate}
+                  {contextFilter !== "all" &&
+                    ` · ${TASK_CONTEXT.find((item) => item.value === contextFilter)?.label ?? contextFilter}`}
+                </p>
+              </div>
+              <button
+                type="button"
+                onClick={() => setFilterDrawerOpen(true)}
+                className={`relative shrink-0 flex h-11 w-11 items-center justify-center rounded-lg border transition-all ${
+                  filtersActive
+                    ? "border-indigo-200 bg-indigo-50 text-indigo-600"
+                    : "border-gray-200 bg-white text-gray-600"
+                }`}
+                aria-label="筛选"
+              >
+                {filtersActive && (
+                  <span className="absolute top-2 right-2 h-2 w-2 rounded-full bg-indigo-500" aria-hidden />
+                )}
+                <SlidersHorizontal size={18} />
+              </button>
+            </div>
+            {filterActions}
           </div>
-
-          <div className="flex items-center gap-2">
-            <label className="text-sm font-semibold text-gray-600">开始日期:</label>
-            <input
-              type="date"
-              value={startDate}
-              onChange={(e) => setStartDate(e.target.value)}
-              className="px-3 py-1.5 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-transparent bg-white transition-all"
-            />
-          </div>
-
-          <div className="flex items-center gap-2">
-            <label className="text-sm font-semibold text-gray-600">结束日期:</label>
-            <input
-              type="date"
-              value={endDate}
-              onChange={(e) => setEndDate(e.target.value)}
-              className="px-3 py-1.5 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-transparent bg-white transition-all"
-            />
-          </div>
-
-          <button
-            onClick={loadPlans}
-            className="px-4 py-1.5 text-sm font-medium text-gray-600 bg-gray-100 rounded-lg hover:bg-gray-200 transition-all"
+          <MobileBottomSheet
+            open={filterDrawerOpen}
+            onClose={() => setFilterDrawerOpen(false)}
+            title="筛选每日进度"
           >
-            查询
-          </button>
+            <div className="space-y-4">
+              {filterFields}
+              {filterActions}
+            </div>
+          </MobileBottomSheet>
+        </>
+      ) : (
+        <div className="p-3 sm:p-4 bg-white/80 backdrop-blur-sm rounded-xl shadow-sm border border-gray-100">
+          {filterFields}
+          {filterActions}
         </div>
-
-        {/* Actions */}
-        <div className="flex flex-wrap items-center gap-2 sm:gap-4">
-          <GenerateWeeklySummaryButton
-            defaultYear={selectedYear}
-            defaultWeek={selectedWeek}
-          />
-          <button
-            onClick={handleOpenExportModal}
-            className="flex items-center gap-2 px-5 py-2.5 text-orange-700 bg-orange-50 rounded-xl hover:bg-orange-100 transition-all"
-          >
-            <Download size={20} />
-            <span className="font-medium">导出</span>
-          </button>
-        </div>
-      </div>
+      )}
 
       {/* Loading */}
       {loading && <LoadingSpinner size="large" block />}

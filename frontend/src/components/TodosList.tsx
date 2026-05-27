@@ -44,6 +44,7 @@ import {
   urlHasBacklogFilterParams,
   writeBacklogFilters,
 } from "@/utils/listFiltersStorage";
+import { useIsMobile } from "@/hooks/useMediaQuery";
 
 const COLUMNS: { id: KanbanColumnId; title: string; accent: string }[] = [
   { id: "pending", title: "待办", accent: "border-t-blue-500" },
@@ -127,6 +128,13 @@ function parseFilters(params: URLSearchParams): BacklogListFilters {
     dateFrom: params.get("date_from") ?? undefined,
     dateTo: params.get("date_to") ?? undefined,
   };
+}
+
+function resolveAppliedFilters(params: URLSearchParams): BacklogListFilters {
+  if (urlHasBacklogFilterParams(params)) {
+    return parseFilters(params);
+  }
+  return readBacklogFilters(DEFAULT_FILTERS);
 }
 
 function filtersToSearchParams(filters: BacklogListFilters, taskId?: string | null): URLSearchParams {
@@ -287,11 +295,13 @@ interface KanbanCardProps {
   task: BacklogTask;
   column: KanbanColumnId;
   draggable: boolean;
+  enableLongPress?: boolean;
   selectionMode: boolean;
   selected: boolean;
   highlighted: boolean;
   onToggleSelect: (task: BacklogTask) => void;
   onDragStart: (task: BacklogTask, from: KanbanColumnId) => void;
+  onLongPress?: (task: BacklogTask, from: KanbanColumnId) => void;
   onOpenDetail: (task: BacklogTask) => void;
   onProgressCommit?: (task: BacklogTask, progress: number) => void;
 }
@@ -300,11 +310,13 @@ function KanbanCard({
   task,
   column,
   draggable,
+  enableLongPress = false,
   selectionMode,
   selected,
   highlighted,
   onToggleSelect,
   onDragStart,
+  onLongPress,
   onOpenDetail,
   onProgressCommit,
 }: KanbanCardProps) {
@@ -313,6 +325,38 @@ function KanbanCard({
   const isScheduled = task.is_scheduled ?? false;
   const [progressDragLocked, setProgressDragLocked] = useState(false);
   const cardDraggable = draggable && !selectionMode && !progressDragLocked;
+  const longPressTimerRef = useRef<number>();
+  const longPressTriggeredRef = useRef(false);
+
+  const clearLongPressTimer = () => {
+    if (longPressTimerRef.current !== undefined) {
+      window.clearTimeout(longPressTimerRef.current);
+      longPressTimerRef.current = undefined;
+    }
+  };
+
+  const handleTouchStart = () => {
+    if (!enableLongPress || selectionMode || progressDragLocked) {
+      return;
+    }
+    longPressTriggeredRef.current = false;
+    clearLongPressTimer();
+    longPressTimerRef.current = window.setTimeout(() => {
+      longPressTriggeredRef.current = true;
+      navigator.vibrate?.(10);
+      onLongPress?.(task, column);
+    }, 450);
+  };
+
+  const handleTouchMove = () => {
+    clearLongPressTimer();
+  };
+
+  const handleTouchEnd = () => {
+    clearLongPressTimer();
+  };
+
+  useEffect(() => () => clearLongPressTimer(), []);
 
   return (
     <div
@@ -333,7 +377,15 @@ function KanbanCard({
       className={`group bg-white rounded-md border p-2 hover:border-gray-300 transition-all ${
         selectionMode ? "cursor-pointer" : cardDraggable ? "cursor-grab active:cursor-grabbing" : ""
       } ${selected ? "border-indigo-400 bg-indigo-50/40 ring-1 ring-indigo-200" : highlighted ? "border-indigo-300 ring-1 ring-indigo-100" : "border-gray-200"}`}
+      onTouchStart={handleTouchStart}
+      onTouchMove={handleTouchMove}
+      onTouchEnd={handleTouchEnd}
+      onTouchCancel={handleTouchEnd}
       onClick={() => {
+        if (longPressTriggeredRef.current) {
+          longPressTriggeredRef.current = false;
+          return;
+        }
         if (selectionMode) onToggleSelect(task);
       }}
     >
@@ -353,6 +405,10 @@ function KanbanCard({
             } ${column === "done" ? "text-gray-500" : "text-gray-800"}`}
             onClick={(e) => {
               e.stopPropagation();
+              if (longPressTriggeredRef.current) {
+                longPressTriggeredRef.current = false;
+                return;
+              }
               if (!selectionMode) onOpenDetail(task);
             }}
           >
@@ -420,10 +476,17 @@ function KanbanCard({
 
 export function TodosList() {
   const navigate = useNavigate();
+  const isMobile = useIsMobile();
+  const [mobileColumn, setMobileColumn] = useState<KanbanColumnId>("pending");
+  const [moveTask, setMoveTask] = useState<{ task: BacklogTask; from: KanbanColumnId } | null>(
+    null,
+  );
   const [searchParams, setSearchParams] = useSearchParams();
   const filterParamKey = filterSearchParamKey(searchParams);
-  const filters = useMemo(() => parseFilters(searchParams), [filterParamKey]);
-  const [draftFilters, setDraftFilters] = useState<BacklogListFilters>(() => parseFilters(searchParams));
+  const filters = useMemo(() => resolveAppliedFilters(searchParams), [filterParamKey, searchParams]);
+  const [draftFilters, setDraftFilters] = useState<BacklogListFilters>(() =>
+    resolveAppliedFilters(searchParams),
+  );
   const hasLoadedOnceRef = useRef(false);
   const searchParamsRef = useRef(searchParams);
   searchParamsRef.current = searchParams;
@@ -475,6 +538,7 @@ export function TodosList() {
   const drawerOpen = !!taskId;
   const filtersHydratedRef = useRef(false);
   const skipNextFilterPersistRef = useRef(false);
+  const loadTasksRequestIdRef = useRef(0);
 
   useLayoutEffect(() => {
     if (filtersHydratedRef.current) {
@@ -482,20 +546,20 @@ export function TodosList() {
     }
     filtersHydratedRef.current = true;
 
+    const applied = resolveAppliedFilters(searchParams);
+
     if (urlHasBacklogFilterParams(searchParams)) {
-      writeBacklogFilters(parseFilters(searchParams));
+      writeBacklogFilters(applied);
+      setDraftFilters(applied);
       return;
     }
 
-    const stored = readBacklogFilters(DEFAULT_FILTERS);
     skipNextFilterPersistRef.current = true;
-    setSearchParams(filtersToSearchParams(stored, searchParams.get("task")), { replace: true });
+    setDraftFilters(applied);
+    setSearchParams(filtersToSearchParams(applied, searchParams.get("task")), { replace: true });
   }, [searchParams, setSearchParams]);
 
   useEffect(() => {
-    if (!filtersHydratedRef.current) {
-      return;
-    }
     if (skipNextFilterPersistRef.current) {
       skipNextFilterPersistRef.current = false;
       return;
@@ -697,37 +761,52 @@ export function TodosList() {
     });
   }, [setColumnState]);
 
-  const loadTasks = useCallback(async (options?: { silent?: boolean }) => {
-    const silent = options?.silent ?? false;
-    const columns: KanbanColumnId[] = ["pending", "in_progress", "done"];
-    const currentFilters = parseFilters(searchParamsRef.current);
+  const loadTasks = useCallback(
+    async (options?: { silent?: boolean; filters?: BacklogListFilters }) => {
+      const requestId = ++loadTasksRequestIdRef.current;
+      const silent = options?.silent ?? false;
+      const columns: KanbanColumnId[] = ["pending", "in_progress", "done"];
+      const currentFilters = options?.filters ?? parseFilters(searchParamsRef.current);
 
-    if (!silent) {
-      setLoadingColumns({ pending: true, in_progress: true, done: true });
-    }
+      if (!silent) {
+        setLoadingColumns({ pending: true, in_progress: true, done: true });
+      }
 
-    await Promise.all(
-      columns.map(async (column) => {
-        try {
-          const result = await backlogTaskService.list(column, currentFilters, {
-            limit: COLUMN_PAGE_SIZE,
-            offset: 0,
-          });
-          setColumnState(column, () => result.tasks);
-          setColumnTotals((prev) => ({ ...prev, [column]: result.total }));
-        } catch (error) {
-          console.error(`Failed to load ${column} backlog tasks:`, error);
-          if (!silent) message.error("加载待办失败");
-        } finally {
-          if (!silent) {
-            setLoadingColumns((prev) => ({ ...prev, [column]: false }));
+      await Promise.all(
+        columns.map(async (column) => {
+          try {
+            const result = await backlogTaskService.list(column, currentFilters, {
+              limit: COLUMN_PAGE_SIZE,
+              offset: 0,
+            });
+            if (requestId !== loadTasksRequestIdRef.current) {
+              return;
+            }
+            setColumnState(column, () => result.tasks);
+            setColumnTotals((prev) => ({ ...prev, [column]: result.total }));
+          } catch (error) {
+            console.error(`Failed to load ${column} backlog tasks:`, error);
+            if (requestId !== loadTasksRequestIdRef.current) {
+              return;
+            }
+            if (!silent) message.error("加载待办失败");
+          } finally {
+            if (requestId !== loadTasksRequestIdRef.current) {
+              return;
+            }
+            if (!silent) {
+              setLoadingColumns((prev) => ({ ...prev, [column]: false }));
+            }
           }
-        }
-      })
-    );
+        }),
+      );
 
-    hasLoadedOnceRef.current = true;
-  }, [filterParamKey, setColumnState]);
+      if (requestId === loadTasksRequestIdRef.current) {
+        hasLoadedOnceRef.current = true;
+      }
+    },
+    [setColumnState],
+  );
 
   const loadMoreColumn = useCallback(
     async (column: KanbanColumnId) => {
@@ -774,8 +853,8 @@ export function TodosList() {
   );
 
   useEffect(() => {
-    loadTasks();
-  }, [loadTasks]);
+    void loadTasks({ filters });
+  }, [loadTasks, filters, filterParamKey]);
 
   useEffect(() => {
     if (loadingColumns.pending || loadingColumns.in_progress || loadingColumns.done) return;
@@ -1160,7 +1239,7 @@ export function TodosList() {
           await backlogTaskService.delete(id);
           closeTaskDetail();
         } catch (error) {
-          await loadTasks({ silent: true });
+          await loadTasks({ silent: true, filters });
           console.error("Failed to delete task:", error);
           message.error("删除失败");
         }
@@ -1187,11 +1266,11 @@ export function TodosList() {
           if (failed === 0) {
             message.success(`已删除 ${ids.length} 条待办`);
           } else {
-            await loadTasks({ silent: true });
+            await loadTasks({ silent: true, filters });
             message.warning(`删除完成：成功 ${ids.length - failed} 条，失败 ${failed} 条`);
           }
         } catch (error) {
-          await loadTasks({ silent: true });
+          await loadTasks({ silent: true, filters });
           console.error("Failed to batch delete tasks:", error);
           message.error("批量删除失败");
         } finally {
@@ -1232,6 +1311,19 @@ export function TodosList() {
 
     if (target === from) return;
     await handleProgressChange(task, target, from);
+  };
+
+  const handleMoveToColumn = async (target: KanbanColumnId) => {
+    if (!moveTask || target === moveTask.from) {
+      setMoveTask(null);
+      return;
+    }
+    const snapshot = moveTask;
+    setMoveTask(null);
+    await handleProgressChange(snapshot.task, target, snapshot.from);
+    if (isMobile && target !== mobileColumn) {
+      setMobileColumn(target);
+    }
   };
 
   return (
@@ -1286,7 +1378,30 @@ export function TodosList() {
         </div>
       )}
 
-      <div className="flex-1 flex gap-2.5 min-h-0 mt-4 overflow-hidden">
+      {isMobile && (
+        <div className="md:hidden shrink-0 mt-3 space-y-2">
+          <div className="flex gap-1 rounded-lg bg-gray-100 p-1">
+            {COLUMNS.map((col) => (
+              <button
+                key={col.id}
+                type="button"
+                onClick={() => setMobileColumn(col.id)}
+                className={`flex-1 min-h-[44px] rounded-md px-2 py-2 text-xs font-medium transition-all ${
+                  mobileColumn === col.id
+                    ? "bg-white text-gray-900 shadow-sm"
+                    : "text-gray-600 hover:text-gray-900"
+                }`}
+              >
+                {col.title}
+                <span className="ml-1 tabular-nums text-gray-400">{columnTotals[col.id]}</span>
+              </button>
+            ))}
+          </div>
+          <p className="text-xs text-gray-400 px-1">长按任务可移动到其他列</p>
+        </div>
+      )}
+
+      <div className={`flex-1 flex gap-2.5 min-h-0 overflow-hidden ${isMobile ? "mt-3" : "mt-4"}`}>
           {COLUMNS.map((col) => {
             const tasks = columnTasks[col.id];
             const columnLoading = isColumnQueryLoading(col.id);
@@ -1295,7 +1410,7 @@ export function TodosList() {
             return (
               <div
                 key={col.id}
-                className={`flex-1 min-w-0 flex flex-col rounded-lg bg-gray-50 border border-gray-200 overflow-hidden border-t-2 ${col.accent}`}
+                className={`${isMobile && mobileColumn !== col.id ? "hidden" : "flex"} flex-1 min-w-0 flex-col rounded-lg bg-gray-50 border border-gray-200 overflow-hidden border-t-2 ${col.accent}`}
                 onDragOver={(e) => {
                   if (!dragging || dragging.from === col.id) return;
                   e.preventDefault();
@@ -1352,7 +1467,7 @@ export function TodosList() {
                   ref={(el) => {
                     columnScrollRefs.current[col.id] = el;
                   }}
-                  className={`flex-1 min-h-0 overflow-y-auto overscroll-contain p-2 space-y-2 transition-colors ${
+                  className={`flex-1 min-h-0 overflow-y-auto overscroll-contain p-2 space-y-2 transition-colors [-webkit-overflow-scrolling:touch] ${
                     isDropHighlight ? "bg-blue-50/60 ring-2 ring-inset ring-blue-200" : ""
                   }`}
                   onScroll={(event) => handleColumnScroll(col.id, event)}
@@ -1368,12 +1483,14 @@ export function TodosList() {
                           key={task.id}
                           task={task}
                           column={col.id}
-                          draggable={!selectionMode}
+                          draggable={!selectionMode && !isMobile}
+                          enableLongPress={isMobile && !selectionMode}
                           selectionMode={selectionMode}
                           selected={selectedIds.has(task.id)}
                           highlighted={taskId === task.id}
                           onToggleSelect={toggleTaskSelection}
                           onDragStart={(t, from) => setDragging({ task: t, from })}
+                          onLongPress={(t, from) => setMoveTask({ task: t, from })}
                           onOpenDetail={openTaskDetail}
                           onProgressCommit={
                             col.id === "in_progress" && !selectionMode
@@ -1438,6 +1555,31 @@ export function TodosList() {
         onDeleteOccurrences={handleDeleteOccurrences}
         isDeletingOccurrences={isDeletingOccurrences}
       />
+
+      <Modal
+        title="移动任务"
+        open={!!moveTask}
+        onCancel={() => setMoveTask(null)}
+        footer={null}
+        destroyOnClose
+      >
+        {moveTask && (
+          <div className="space-y-2">
+            <p className="text-sm text-gray-600 mb-3 break-words">{moveTask.task.title}</p>
+            {COLUMNS.filter((col) => col.id !== moveTask.from).map((col) => (
+              <button
+                key={col.id}
+                type="button"
+                onClick={() => void handleMoveToColumn(col.id)}
+                className="flex w-full min-h-[48px] items-center justify-between rounded-lg border border-gray-200 px-4 py-3 text-sm font-medium text-gray-800 hover:border-indigo-300 hover:bg-indigo-50 transition-all"
+              >
+                <span>移到{col.title}</span>
+                <span className="text-gray-400 tabular-nums">{columnTotals[col.id]}</span>
+              </button>
+            ))}
+          </div>
+        )}
+      </Modal>
 
       <Modal
         title={createAsCompleted ? "新增完成" : "新增待办"}

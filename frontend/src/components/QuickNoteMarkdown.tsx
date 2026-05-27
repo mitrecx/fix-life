@@ -38,46 +38,46 @@ const markdownComponents: Components = {
       alt={alt ?? "图片"}
       preview={{ mask: false }}
       className="!rounded-lg my-2 border border-gray-200/80 object-contain cursor-pointer"
-      style={{ maxWidth: 360, maxHeight: 270, width: "auto", height: "auto" }}
+      style={{ maxWidth: "100%", maxHeight: 270, width: "auto", height: "auto" }}
     />
   ),
   hr: () => <hr className="my-3 border-gray-200" />,
   strong: ({ children }) => <strong className="font-semibold">{children}</strong>,
   pre: ({ children }) => (
-    <pre className="overflow-x-auto rounded-md bg-gray-50 border border-gray-200 p-3 my-2 text-xs font-mono leading-relaxed">
+    <pre className="max-w-full overflow-x-hidden whitespace-pre-wrap break-words rounded-md bg-gray-50 border border-gray-200 p-3 my-2 text-xs font-mono leading-relaxed">
       {children}
     </pre>
   ),
   code: ({ className, children }) => {
     const isBlock = Boolean(className);
     if (isBlock) {
-      return <code className={className}>{children}</code>;
+      return <code className={`${className ?? ""} break-words whitespace-pre-wrap`}>{children}</code>;
     }
     return (
-      <code className="rounded bg-gray-100 border border-gray-200/80 px-1 py-0.5 text-xs font-mono text-gray-800">
+      <code className="rounded bg-gray-100 border border-gray-200/80 px-1 py-0.5 text-xs font-mono text-gray-800 break-all">
         {children}
       </code>
     );
   },
   table: ({ children }) => (
-    <div className="overflow-x-auto my-2">
-      <table className="min-w-full text-xs border-collapse">{children}</table>
+    <div className="my-2 max-w-full overflow-x-hidden">
+      <table className="w-full max-w-full table-fixed text-xs border-collapse break-words">{children}</table>
     </div>
   ),
   th: ({ children }) => (
-    <th className="border border-slate-200 bg-white/60 px-2 py-1 text-left font-medium">
+    <th className="border border-slate-200 bg-white/60 px-2 py-1 text-left font-medium break-words">
       {children}
     </th>
   ),
   td: ({ children }) => (
-    <td className="border border-slate-200 px-2 py-1 align-top">{children}</td>
+    <td className="border border-slate-200 px-2 py-1 align-top break-words">{children}</td>
   ),
 };
 
 export default function QuickNoteMarkdown({ content }: { content: string }) {
   return (
     <Image.PreviewGroup>
-      <div className="[&>*+*]:mt-4">
+      <div className="max-w-full overflow-x-hidden break-words [&>*+*]:mt-4">
         <ReactMarkdown remarkPlugins={[remarkGfmNoAutolink]} components={markdownComponents}>
           {content}
         </ReactMarkdown>

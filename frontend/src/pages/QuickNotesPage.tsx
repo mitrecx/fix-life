@@ -366,7 +366,7 @@ export default function QuickNotesPage() {
   };
 
   return (
-    <div className="w-full h-[calc(100dvh-1.5rem)] sm:h-[calc(100dvh-2rem)] flex flex-col -mb-3 sm:-mb-4">
+    <div className="w-full h-full min-h-0 flex flex-col">
       <div className="flex-1 min-h-0 bg-white rounded-xl border border-gray-200 flex flex-col overflow-hidden">
         <div className="border-b border-gray-200 p-3 bg-gray-50 space-y-2">
           <div className="flex flex-wrap items-center gap-2">
@@ -470,7 +470,7 @@ export default function QuickNotesPage() {
           )}
         </div>
 
-        <div className="flex-1 overflow-y-auto p-4 bg-white">
+        <div className="flex-1 min-w-0 overflow-y-auto overflow-x-hidden overscroll-x-none p-4 bg-white">
           {loading ? (
             <div className="py-16">
               <LoadingSpinner size="large" block />
@@ -537,7 +537,7 @@ export default function QuickNotesPage() {
                           </button>
                         </div>
                       )}
-                      <div className="text-sm break-words pr-16">
+                      <div className="text-sm break-words overflow-x-hidden max-w-full pr-16">
                         <QuickNoteMarkdown content={note.content} />
                       </div>
                     </div>

@@ -1,5 +1,5 @@
 import { useState, type ReactNode } from "react";
-import { ChevronDown } from "lucide-react";
+import { ChevronDown, SlidersHorizontal } from "lucide-react";
 import { DatePicker } from "antd";
 import dayjs from "dayjs";
 import type {
@@ -10,6 +10,8 @@ import type {
 } from "@/types/backlogTask";
 import { TASK_CONTEXT } from "@/types/taskContext";
 import { TASK_PRIORITY } from "@/types/taskPriority";
+import { MobileBottomSheet } from "@/components/MobileBottomSheet";
+import { useIsMobile } from "@/hooks/useMediaQuery";
 
 const CONTEXT_FILTERS: { value: BacklogContextFilter; label: string }[] = [
   { value: "all", label: "全部" },
@@ -29,10 +31,10 @@ const TIME_FIELD_OPTIONS: { value: BacklogTimeField; label: string }[] = [
 
 const labelClassName = "text-sm font-semibold text-gray-600 shrink-0";
 const selectClassName =
-  "px-3 py-1.5 text-sm border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent bg-white transition-all";
-const datePickerClassName = "!rounded-lg [&_.ant-picker-input>input]:text-sm";
+  "px-3 py-1.5 text-sm border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent bg-white transition-all min-h-[44px]";
+const datePickerClassName = "!rounded-lg [&_.ant-picker-input>input]:text-sm !min-h-[44px]";
 const filterGroupClassName =
-  "inline-flex flex-wrap items-center gap-2 sm:gap-2.5 p-2 sm:p-2.5 rounded-lg border border-gray-200 bg-gray-50/90 w-fit max-w-full";
+  "inline-flex flex-wrap items-center gap-2 sm:gap-2.5 p-2 sm:p-2.5 rounded-lg border border-gray-200 bg-gray-50/90 w-full md:w-fit max-w-full";
 
 interface TodosFilterBarProps {
   filters: BacklogListFilters;
@@ -56,17 +58,29 @@ function hasAdvancedFilters(filters: BacklogListFilters): boolean {
   );
 }
 
-export function TodosFilterBar({
-  filters,
-  matchCount,
-  onChange,
-  onSearch,
-  onReset,
-  selectionMode = false,
-  onToggleSelectionMode,
-}: TodosFilterBarProps) {
-  const [moreOpen, setMoreOpen] = useState(false);
+function hasActiveFilters(filters: BacklogListFilters): boolean {
+  return !!(
+    filters.q?.trim() ||
+    (filters.context && filters.context !== "all") ||
+    hasAdvancedFilters(filters)
+  );
+}
 
+interface TodosFilterFieldsProps {
+  filters: BacklogListFilters;
+  onChange: (patch: Partial<BacklogListFilters>) => void;
+  moreOpen: boolean;
+  onMoreOpenChange: (open: boolean) => void;
+  stackAdvanced?: boolean;
+}
+
+function TodosFilterFields({
+  filters,
+  onChange,
+  moreOpen,
+  onMoreOpenChange,
+  stackAdvanced = false,
+}: TodosFilterFieldsProps) {
   const keyword = filters.q ?? "";
   const timeField = filters.timeField ?? "created";
   const context = filters.context ?? "all";
@@ -74,97 +88,43 @@ export function TodosFilterBar({
   const advancedActive = hasAdvancedFilters(filters);
 
   return (
-    <div className="p-3 sm:p-4 bg-white/80 backdrop-blur-sm rounded-xl shadow-sm border border-gray-100 shrink-0">
-      <div className="flex flex-wrap items-center gap-2 sm:gap-2.5">
-        <FilterGroup>
-          <label className={labelClassName}>分类:</label>
-          {CONTEXT_FILTERS.map((f) => (
-            <button
-              key={f.value}
-              type="button"
-              onClick={() => onChange({ context: f.value })}
-              className={`px-3 py-1.5 text-xs font-medium rounded-lg transition-all ${
-                context === f.value
-                  ? "text-white shadow-md bg-gradient-to-r from-indigo-500 via-purple-500 to-pink-500 hover:from-indigo-600 hover:via-purple-600 hover:to-pink-600"
-                  : "text-gray-600 bg-gray-100 hover:bg-gray-200"
-              }`}
-            >
-              {f.label}
-            </button>
-          ))}
-        </FilterGroup>
-
-        <FilterGroup>
-          <label className={labelClassName}>关键词:</label>
-          <input
-            type="search"
-            value={keyword}
-            onChange={(e) => onChange({ q: e.target.value })}
-            onKeyDown={(e) => {
-              if (e.key === "Enter") onSearch();
-            }}
-            placeholder="搜索标题…"
-            className={`w-40 sm:w-52 ${selectClassName}`}
-          />
-        </FilterGroup>
-
-        <div className="inline-flex flex-wrap items-center gap-2 shrink-0 py-1">
+    <>
+      <FilterGroup>
+        <label className={labelClassName}>分类:</label>
+        {CONTEXT_FILTERS.map((f) => (
           <button
+            key={f.value}
             type="button"
-            onClick={onReset}
-            className="px-4 py-1.5 text-sm font-medium text-gray-600 bg-gray-100 rounded-lg hover:bg-gray-200 transition-all"
+            onClick={() => onChange({ context: f.value })}
+            className={`min-h-[44px] px-3 py-2 text-xs font-medium rounded-lg transition-all ${
+              context === f.value
+                ? "text-white shadow-md bg-gradient-to-r from-indigo-500 via-purple-500 to-pink-500 hover:from-indigo-600 hover:via-purple-600 hover:to-pink-600"
+                : "text-gray-600 bg-gray-100 hover:bg-gray-200"
+            }`}
           >
-            重置
+            {f.label}
           </button>
-          <button
-            type="button"
-            onClick={onSearch}
-            className="px-4 py-1.5 text-sm font-medium text-white bg-indigo-600 rounded-lg hover:bg-indigo-700 transition-all"
-          >
-            查询
-          </button>
-          <span className="text-sm text-gray-500 tabular-nums">{matchCount} 条匹配</span>
-          {onToggleSelectionMode && (
-            <button
-              type="button"
-              onClick={onToggleSelectionMode}
-              className={`px-3 py-1.5 text-xs font-medium rounded-lg transition-all ${
-                selectionMode
-                  ? "text-indigo-700 bg-indigo-100 hover:bg-indigo-200"
-                  : "text-gray-600 bg-gray-100 hover:bg-gray-200"
-              }`}
-            >
-              {selectionMode ? "多选中" : "多选"}
-            </button>
-          )}
-        </div>
+        ))}
+      </FilterGroup>
 
-        <button
-          type="button"
-          aria-expanded={moreOpen}
-          aria-label={moreOpen ? "收起更多筛选" : "展开更多筛选"}
-          onClick={() => setMoreOpen((open) => !open)}
-          className={`relative ml-auto inline-flex items-center justify-center w-7 h-7 rounded-md transition-all ${
-            moreOpen || advancedActive
-              ? "text-indigo-600 bg-indigo-50 hover:bg-indigo-100"
-              : "text-gray-500 hover:text-gray-700 hover:bg-gray-100"
-          }`}
-        >
-          {advancedActive && !moreOpen && (
-            <span
-              className="absolute top-1 right-1 w-1.5 h-1.5 rounded-full bg-indigo-500"
-              aria-hidden
-            />
-          )}
-          <ChevronDown
-            size={16}
-            className={`transition-transform duration-200 ${moreOpen ? "rotate-180" : ""}`}
-          />
-        </button>
-      </div>
+      <FilterGroup>
+        <label className={labelClassName}>关键词:</label>
+        <input
+          type="search"
+          value={keyword}
+          onChange={(e) => onChange({ q: e.target.value })}
+          onKeyDown={(e) => {
+            if (e.key === "Enter") {
+              e.preventDefault();
+            }
+          }}
+          placeholder="搜索标题…"
+          className={`flex-1 min-w-0 md:w-40 lg:w-52 ${selectClassName}`}
+        />
+      </FilterGroup>
 
-      {moreOpen && (
-        <div className="mt-3 pt-3 border-t border-gray-100 flex flex-wrap items-start gap-2 sm:gap-2.5">
+      {(stackAdvanced || moreOpen) && (
+        <div className={`${stackAdvanced ? "space-y-3" : "mt-3 pt-3 border-t border-gray-100"} flex flex-col md:flex-row md:flex-wrap items-start gap-2 sm:gap-2.5`}>
           <FilterGroup>
             <label className={labelClassName}>优先级:</label>
             {PRIORITY_FILTERS.map((f) => (
@@ -172,7 +132,7 @@ export function TodosFilterBar({
                 key={f.value}
                 type="button"
                 onClick={() => onChange({ priority: f.value })}
-                className={`px-3 py-1.5 text-xs font-medium rounded-lg transition-all ${
+                className={`min-h-[44px] px-3 py-2 text-xs font-medium rounded-lg transition-all ${
                   priority === f.value
                     ? f.value === "all"
                       ? "text-white shadow-md bg-gradient-to-r from-indigo-500 via-purple-500 to-pink-500 hover:from-indigo-600 hover:via-purple-600 hover:to-pink-600"
@@ -212,7 +172,7 @@ export function TodosFilterBar({
               format="YYYY-MM-DD"
               placeholder=""
               className={datePickerClassName}
-              style={{ width: 148 }}
+              style={{ width: "100%", maxWidth: 148 }}
             />
 
             <label className={labelClassName}>结束日期:</label>
@@ -223,11 +183,145 @@ export function TodosFilterBar({
               format="YYYY-MM-DD"
               placeholder=""
               className={datePickerClassName}
-              style={{ width: 148 }}
+              style={{ width: "100%", maxWidth: 148 }}
             />
           </FilterGroup>
         </div>
       )}
+
+      {!stackAdvanced && (
+        <button
+          type="button"
+          aria-expanded={moreOpen}
+          aria-label={moreOpen ? "收起更多筛选" : "展开更多筛选"}
+          onClick={() => onMoreOpenChange(!moreOpen)}
+          className={`relative ml-auto hidden md:inline-flex items-center justify-center w-9 h-9 rounded-md transition-all ${
+            moreOpen || advancedActive
+              ? "text-indigo-600 bg-indigo-50 hover:bg-indigo-100"
+              : "text-gray-500 hover:text-gray-700 hover:bg-gray-100"
+          }`}
+        >
+          {advancedActive && !moreOpen && (
+            <span
+              className="absolute top-1 right-1 w-1.5 h-1.5 rounded-full bg-indigo-500"
+              aria-hidden
+            />
+          )}
+          <ChevronDown
+            size={16}
+            className={`transition-transform duration-200 ${moreOpen ? "rotate-180" : ""}`}
+          />
+        </button>
+      )}
+    </>
+  );
+}
+
+export function TodosFilterBar({
+  filters,
+  matchCount,
+  onChange,
+  onSearch,
+  onReset,
+  selectionMode = false,
+  onToggleSelectionMode,
+}: TodosFilterBarProps) {
+  const isMobile = useIsMobile();
+  const [moreOpen, setMoreOpen] = useState(false);
+  const [drawerOpen, setDrawerOpen] = useState(false);
+  const active = hasActiveFilters(filters);
+
+  const actionButtons = (
+    <>
+      <button
+        type="button"
+        onClick={onReset}
+        className="min-h-[44px] px-4 py-2 text-sm font-medium text-gray-600 bg-gray-100 rounded-lg hover:bg-gray-200 transition-all"
+      >
+        重置
+      </button>
+      <button
+        type="button"
+        onClick={onSearch}
+        className="min-h-[44px] px-4 py-2 text-sm font-medium text-white bg-indigo-600 rounded-lg hover:bg-indigo-700 transition-all"
+      >
+        查询
+      </button>
+      <span className="text-sm text-gray-500 tabular-nums self-center">{matchCount} 条匹配</span>
+      {onToggleSelectionMode && (
+        <button
+          type="button"
+          onClick={onToggleSelectionMode}
+          className={`min-h-[44px] px-3 py-2 text-xs font-medium rounded-lg transition-all ${
+            selectionMode
+              ? "text-indigo-700 bg-indigo-100 hover:bg-indigo-200"
+              : "text-gray-600 bg-gray-100 hover:bg-gray-200"
+          }`}
+        >
+          {selectionMode ? "多选中" : "多选"}
+        </button>
+      )}
+    </>
+  );
+
+  if (isMobile) {
+    return (
+      <>
+        <div className="p-3 bg-white/80 backdrop-blur-sm rounded-xl shadow-sm border border-gray-100 shrink-0 space-y-3">
+          <div className="flex items-center gap-2">
+            <input
+              type="search"
+              value={filters.q ?? ""}
+              onChange={(e) => onChange({ q: e.target.value })}
+              placeholder="搜索标题…"
+              className={`flex-1 min-w-0 ${selectClassName}`}
+            />
+            <button
+              type="button"
+              onClick={() => setDrawerOpen(true)}
+              className={`relative shrink-0 flex h-11 w-11 items-center justify-center rounded-lg border transition-all ${
+                active
+                  ? "border-indigo-200 bg-indigo-50 text-indigo-600"
+                  : "border-gray-200 bg-white text-gray-600"
+              }`}
+              aria-label="筛选"
+            >
+              {active && (
+                <span className="absolute top-2 right-2 h-2 w-2 rounded-full bg-indigo-500" aria-hidden />
+              )}
+              <SlidersHorizontal size={18} />
+            </button>
+          </div>
+          <div className="flex flex-wrap items-center gap-2">{actionButtons}</div>
+        </div>
+
+        <MobileBottomSheet open={drawerOpen} onClose={() => setDrawerOpen(false)} title="筛选待办">
+          <div className="space-y-3">
+            <TodosFilterFields
+              filters={filters}
+              onChange={onChange}
+              moreOpen
+              onMoreOpenChange={() => undefined}
+              stackAdvanced
+            />
+            <div className="flex flex-wrap gap-2 pt-2 border-t border-gray-100">{actionButtons}</div>
+          </div>
+        </MobileBottomSheet>
+      </>
+    );
+  }
+
+  return (
+    <div className="p-3 sm:p-4 bg-white/80 backdrop-blur-sm rounded-xl shadow-sm border border-gray-100 shrink-0">
+      <div className="flex flex-wrap items-center gap-2 sm:gap-2.5">
+        <TodosFilterFields
+          filters={filters}
+          onChange={onChange}
+          moreOpen={moreOpen}
+          onMoreOpenChange={setMoreOpen}
+        />
+        <div className="inline-flex flex-wrap items-center gap-2 shrink-0 py-1">{actionButtons}</div>
+      </div>
     </div>
   );
 }

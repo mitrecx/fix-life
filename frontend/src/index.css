@@ -1,5 +1,29 @@
 @import "tailwindcss";
 
+:root {
+  --mobile-bottom-nav-height: 3.5rem;
+}
+
+html {
+  height: 100%;
+}
+
+body {
+  height: 100%;
+  overscroll-behavior: none;
+  -webkit-tap-highlight-color: transparent;
+}
+
+#root {
+  height: 100%;
+}
+
+@media (max-width: 767px) {
+  .mobile-shell-main {
+    padding-bottom: calc(var(--mobile-bottom-nav-height) + env(safe-area-inset-bottom));
+  }
+}
+
 .quick-note-editor p {
   margin: 0 0 0.5rem;
 }

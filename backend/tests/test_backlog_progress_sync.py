@@ -74,3 +74,30 @@ def test_record_progress_snapshot_with_plan_date_updates_single_link():
 
     assert link.progress_after == 45
     service.get_link_for_date.assert_called_once_with("backlog-1", target)
+
+
+def test_ensure_in_progress_daily_link_skips_when_links_exist():
+    service = BacklogTaskService(db=MagicMock())
+    service.get_links_for_backlog = MagicMock(return_value=[_make_link(plan_date=date.today(), progress_after=50)])
+
+    task = MagicMock()
+    task.id = "backlog-1"
+    task.status = "in_progress"
+    task.progress = 92
+
+    service._ensure_in_progress_daily_link("user-1", task)
+
+    service.get_links_for_backlog.assert_called_once_with("backlog-1")
+
+
+def test_ensure_in_progress_daily_link_skips_completed_or_pending():
+    service = BacklogTaskService(db=MagicMock())
+    service.get_links_for_backlog = MagicMock(return_value=[])
+
+    pending = MagicMock(id="backlog-1", status="pending", progress=0)
+    done = MagicMock(id="backlog-2", status="done", progress=100)
+
+    service._ensure_in_progress_daily_link("user-1", pending)
+    service._ensure_in_progress_daily_link("user-1", done)
+
+    service.get_links_for_backlog.assert_not_called()

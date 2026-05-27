@@ -549,14 +549,49 @@ class BacklogTaskService:
         self._create_link(backlog, str(daily_task.id), plan_date)
         return daily_task
 
+    def _ensure_in_progress_daily_link(
+        self,
+        user_id: str,
+        task: BacklogTask,
+        *,
+        plan_date: Optional[date] = None,
+    ) -> None:
+        """Backlog tasks in progress should always have at least one daily occurrence."""
+        if task.status != BacklogTaskStatus.IN_PROGRESS:
+            return
+        if task.progress <= 0 or task.progress >= 100:
+            return
+        if self.get_links_for_backlog(str(task.id)):
+            return
+
+        target_date = plan_date or date.today()
+        daily_service = DailyPlanService(self.db)
+        plan, _ = daily_service.create_or_merge_plan(
+            user_id,
+            DailyPlanCreate(plan_date=target_date),
+        )
+        self._link_backlog_to_plan(
+            user_id,
+            task,
+            str(plan.id),
+            target_date,
+            daily_status=DailyTaskStatus.IN_PROGRESS,
+        )
+        link = self.get_link_for_date(str(task.id), target_date)
+        if link is not None:
+            link.progress_after = task.progress
+
     def create_task(self, user_id: str, task_in: BacklogTaskCreate) -> BacklogTask:
         data = task_in.model_dump(exclude_unset=True)
         progress = data.pop("progress", 0)
         task = BacklogTask(**data, user_id=user_id, progress=progress)
         self.apply_progress(task, progress)
         self.db.add(task)
+        self.db.flush()
         if progress == 100:
             self._sync_completed_daily_task(user_id, task)
+        elif progress > 0:
+            self._ensure_in_progress_daily_link(user_id, task)
         self.db.commit()
         self.db.refresh(task)
         return task
@@ -598,6 +633,17 @@ class BacklogTaskService:
             self.apply_progress(task, new_progress)
             if new_progress == 100:
                 self._sync_completed_daily_task(str(task.user_id), task)
+
+        if (
+            task.status == BacklogTaskStatus.IN_PROGRESS
+            and 0 < task.progress < 100
+            and not self.get_links_for_backlog(str(task.id))
+        ):
+            self._ensure_in_progress_daily_link(
+                str(task.user_id),
+                task,
+                plan_date=progress_plan_date,
+            )
 
         if task.progress != old_progress:
             self._record_progress_snapshot(
