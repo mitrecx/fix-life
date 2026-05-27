@@ -7,6 +7,7 @@ from sqlalchemy.exc import IntegrityError
 from app.models.backlog_daily_link import BacklogDailyLink
 from app.models.backlog_task import BacklogTask
 from app.models.daily_plan import DailyPlan, DailyTask, DailyTaskPriority, DailyTaskStatus
+from app.models.task_context import TaskContext
 from app.schemas.daily_plan import (
     DailyPlanCreate,
     DailyPlanUpdate,
@@ -268,7 +269,12 @@ class DailyPlanService:
             return base
         return base.model_copy(update=meta)
 
-    def to_plan_response(self, plan: DailyPlan) -> DailyPlanResponse:
+    def to_plan_response(
+        self,
+        plan: DailyPlan,
+        *,
+        context: Optional[TaskContext] = None,
+    ) -> DailyPlanResponse:
         from app.services.backlog_task_service import BacklogTaskService
 
         daily_task_ids = [str(task.id) for task in plan.daily_tasks if task.backlog_task_id]
@@ -276,9 +282,22 @@ class DailyPlanService:
 
         tasks: List[DailyTaskResponse] = []
         for task in plan.daily_tasks:
+            if context is not None and task.context != context:
+                continue
             base = DailyTaskResponse.model_validate(task)
             meta = progress_map.get(str(task.id))
             tasks.append(base.model_copy(update=meta) if meta else base)
 
+        total_tasks = len(tasks)
+        completed_tasks = len([task for task in tasks if task.status == DailyTaskStatus.DONE])
+        completion_rate = round(completed_tasks / total_tasks * 100, 2) if total_tasks else 0.0
+
         base_plan = DailyPlanResponse.model_validate(plan)
-        return base_plan.model_copy(update={"daily_tasks": tasks})
+        return base_plan.model_copy(
+            update={
+                "daily_tasks": tasks,
+                "total_tasks": total_tasks,
+                "completed_tasks": completed_tasks,
+                "completion_rate": completion_rate,
+            }
+        )

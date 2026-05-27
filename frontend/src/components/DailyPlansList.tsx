@@ -3,11 +3,21 @@ import { Download, X } from "lucide-react";
 import { Modal, message } from "antd";
 import type { DailyPlan, DailyTask } from "@/types/dailyPlan";
 import type { DailySummary } from "@/types/dailySummary";
-import { dailyPlanService } from "@/services/dailyPlanService";
+import { dailyPlanService, type DailyPlanContextFilter } from "@/services/dailyPlanService";
 import { dailySummaryService } from "@/services/dailySummaryService";
+import { TASK_CONTEXT } from "@/types/taskContext";
+import {
+  buildDefaultDailyPlanFilters,
+  readDailyPlanFilters,
+  writeDailyPlanFilters,
+} from "@/utils/dailyPlanFiltersStorage";
 import { DailyPlanCard } from "./DailyPlanCard";
 import { GenerateWeeklySummaryButton } from "./GenerateWeeklySummaryButton";
 import { LoadingSpinner } from "@/components/LoadingSpinner";
+
+function readInitialDailyPlanFilters() {
+  return readDailyPlanFilters(buildDefaultDailyPlanFilters());
+}
 
 export function DailyPlansList({ focusDate }: { focusDate?: string | null }) {
   const [plans, setPlans] = useState<DailyPlan[]>([]);
@@ -53,26 +63,8 @@ export function DailyPlansList({ focusDate }: { focusDate?: string | null }) {
     return { monday, sunday };
   };
 
-  const { monday: currentMonday, sunday: currentSunday } = getCurrentWeekRange();
-
-  const [startDate, setStartDate] = useState<string>(() => {
-    const formatDate = (date: Date) => {
-      const year = date.getFullYear();
-      const month = String(date.getMonth() + 1).padStart(2, '0');
-      const day = String(date.getDate()).padStart(2, '0');
-      return `${year}-${month}-${day}`;
-    };
-    return formatDate(currentMonday);
-  });
-  const [endDate, setEndDate] = useState<string>(() => {
-    const formatDate = (date: Date) => {
-      const year = date.getFullYear();
-      const month = String(date.getMonth() + 1).padStart(2, '0');
-      const day = String(date.getDate()).padStart(2, '0');
-      return `${year}-${month}-${day}`;
-    };
-    return formatDate(currentSunday);
-  });
+  const [startDate, setStartDate] = useState(() => readInitialDailyPlanFilters().startDate);
+  const [endDate, setEndDate] = useState(() => readInitialDailyPlanFilters().endDate);
 
   // 计算当前是第几周
   const getCurrentWeekNumber = () => {
@@ -89,8 +81,21 @@ export function DailyPlansList({ focusDate }: { focusDate?: string | null }) {
     return Math.max(1, Math.floor(daysDiff / 7) + 1);
   };
 
-  const [selectedYear, setSelectedYear] = useState(new Date().getFullYear());
-  const [selectedWeek, setSelectedWeek] = useState(getCurrentWeekNumber());
+  const [selectedYear, setSelectedYear] = useState(() => readInitialDailyPlanFilters().selectedYear);
+  const [selectedWeek, setSelectedWeek] = useState(() => readInitialDailyPlanFilters().selectedWeek);
+  const [contextFilter, setContextFilter] = useState<DailyPlanContextFilter>(
+    () => readInitialDailyPlanFilters().context,
+  );
+
+  useEffect(() => {
+    writeDailyPlanFilters({
+      context: contextFilter,
+      startDate,
+      endDate,
+      selectedYear,
+      selectedWeek,
+    });
+  }, [contextFilter, startDate, endDate, selectedYear, selectedWeek]);
 
   // 根据年份和周数获取日期范围
   const getDateRangeByYearWeek = (year: number, week: number) => {
@@ -187,7 +192,7 @@ export function DailyPlansList({ focusDate }: { focusDate?: string | null }) {
 
   useEffect(() => {
     loadPlans();
-  }, [startDate, endDate]);
+  }, [startDate, endDate, contextFilter]);
 
   // Prevent body scroll when export modal is open
   useEffect(() => {
@@ -253,7 +258,7 @@ export function DailyPlansList({ focusDate }: { focusDate?: string | null }) {
   const loadPlans = async () => {
     try {
       setLoading(true);
-      const data = await dailyPlanService.getAll(startDate, endDate);
+      const data = await dailyPlanService.getAll(startDate, endDate, contextFilter);
       setPlans(sortPlans(data));
     } catch (error) {
       console.error("Failed to load daily plans:", error);
@@ -326,8 +331,12 @@ export function DailyPlansList({ focusDate }: { focusDate?: string | null }) {
     };
 
     let markdown = `# 每日进度导出\n\n`;
-    markdown += `**日期范围**: ${startDate} ~ ${endDate}\n\n`;
-    markdown += `---\n\n`;
+    markdown += `**日期范围**: ${startDate} ~ ${endDate}\n`;
+    if (contextFilter !== "all") {
+      const label = TASK_CONTEXT.find((item) => item.value === contextFilter)?.label ?? contextFilter;
+      markdown += `**任务分类**: ${label}\n`;
+    }
+    markdown += `\n---\n\n`;
 
     if (plans.length === 0) {
       markdown += `暂无计划\n`;
@@ -480,6 +489,22 @@ export function DailyPlansList({ focusDate }: { focusDate?: string | null }) {
 
         {/* Date range selection */}
         <div className="flex flex-wrap items-center gap-2 sm:gap-4 mb-3">
+          <div className="flex items-center gap-2">
+            <label className="text-sm font-semibold text-gray-600">任务分类:</label>
+            <select
+              value={contextFilter}
+              onChange={(e) => setContextFilter(e.target.value as DailyPlanContextFilter)}
+              className="px-3 py-1.5 text-sm border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent bg-white transition-all"
+            >
+              <option value="all">全部</option>
+              {TASK_CONTEXT.map((item) => (
+                <option key={item.value} value={item.value}>
+                  {item.label}
+                </option>
+              ))}
+            </select>
+          </div>
+
           <div className="flex items-center gap-2">
             <label className="text-sm font-semibold text-gray-600">开始日期:</label>
             <input

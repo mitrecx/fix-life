@@ -1,4 +1,4 @@
-from typing import List
+from typing import List, Optional
 from datetime import date
 from fastapi import APIRouter, Body, Depends, HTTPException, Query, Response
 from sqlalchemy.orm import Session
@@ -6,6 +6,7 @@ from sqlalchemy.orm import Session
 from app.api.v1.deps import get_db, get_current_user
 from app.models.user import User
 from app.models.daily_plan import DailyTaskStatus
+from app.models.task_context import TaskContext
 from app.schemas.daily_plan import (
     DailyPlanCreate,
     DailyPlanUpdate,
@@ -27,6 +28,7 @@ router = APIRouter()
 def get_daily_plans(
     start_date: date = Query(None, description="Filter by start date"),
     end_date: date = Query(None, description="Filter by end date"),
+    context: Optional[TaskContext] = Query(None, description="Filter tasks by context"),
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ):
@@ -37,9 +39,14 @@ def get_daily_plans(
         start_date=start_date,
         end_date=end_date,
     )
+    plan_responses = [
+        service.to_plan_response(plan, context=context) for plan in plans
+    ]
+    if context is not None:
+        plan_responses = [plan for plan in plan_responses if plan.total_tasks > 0]
     return DailyPlanList(
-        plans=[service.to_plan_response(plan) for plan in plans],
-        total=len(plans),
+        plans=plan_responses,
+        total=len(plan_responses),
     )
 
 

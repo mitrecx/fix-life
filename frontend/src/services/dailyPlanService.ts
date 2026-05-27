@@ -9,6 +9,9 @@ import type {
   DailyTaskStatus,
   DailyPlanHead,
 } from "@/types/dailyPlan";
+import type { TaskContext } from "@/types/taskContext";
+
+export type DailyPlanContextFilter = TaskContext | "all";
 
 interface DailyPlanListResponse {
   plans: DailyPlan[];
@@ -18,10 +21,15 @@ interface DailyPlanListResponse {
 class DailyPlanService {
   private baseUrl = "/daily-plans";
 
-  async getAll(startDate?: string, endDate?: string): Promise<DailyPlan[]> {
+  async getAll(
+    startDate?: string,
+    endDate?: string,
+    context: DailyPlanContextFilter = "all",
+  ): Promise<DailyPlan[]> {
     const params = new URLSearchParams();
     if (startDate) params.append("start_date", startDate);
     if (endDate) params.append("end_date", endDate);
+    if (context !== "all") params.append("context", context);
 
     const response = await api.get<DailyPlanListResponse>(
       `${this.baseUrl}/${params.toString() ? `?${params.toString()}` : ""}`
