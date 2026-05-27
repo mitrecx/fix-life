@@ -3,7 +3,9 @@ import type { BacklogTask } from "@/types/backlogTask";
 
 export interface OrphanDailyItem {
   daily_task_id: string;
-  daily_plan_id: string;
+  daily_progress_day_id: string;
+  /** @deprecated use daily_progress_day_id */
+  daily_plan_id?: string;
   plan_date: string;
   title: string;
   daily_status: string;

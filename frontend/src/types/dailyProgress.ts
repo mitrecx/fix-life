@@ -8,7 +8,9 @@ export type { TaskContext };
 
 export interface DailyTask {
   id: string;
-  daily_plan_id: string;
+  daily_progress_day_id: string;
+  /** @deprecated use daily_progress_day_id */
+  daily_plan_id?: string;
   backlog_task_id?: string;
   title: string;
   description?: string;
@@ -79,7 +81,9 @@ export interface DailyPlan {
   total_tasks: number;
   completed_tasks: number;
   completion_rate: number;
-  daily_tasks: DailyTask[];
+  daily_progress_entries: DailyTask[];
+  /** @deprecated use daily_progress_entries */
+  daily_tasks?: DailyTask[];
   daily_summary?: DailySummaryInPlan;
   created_at: string;
   updated_at: string;
@@ -87,7 +91,9 @@ export interface DailyPlan {
 
 export interface DailySummaryInPlan {
   id: string;
-  daily_plan_id: string;
+  daily_progress_day_id: string;
+  /** @deprecated use daily_progress_day_id */
+  daily_plan_id?: string;
   user_id: string;
   summary_type: "daily" | "small" | "large";
   content: string;
@@ -136,3 +142,13 @@ export type DailyProgressDayUpdate = DailyPlanUpdate;
 export type DailyProgressEntryAdd = DailyPlanTaskAdd;
 export type DailyProgressEntry = DailyTask;
 export type DailyProgressEntryUpdate = DailyTaskUpdate;
+
+export function dailyProgressEntries(plan: Pick<DailyPlan, "daily_progress_entries" | "daily_tasks">): DailyTask[] {
+  return plan.daily_progress_entries ?? plan.daily_tasks ?? [];
+}
+
+export function dailyProgressDayId(
+  value: Pick<DailyTask, "daily_progress_day_id" | "daily_plan_id">,
+): string {
+  return value.daily_progress_day_id ?? value.daily_plan_id ?? "";
+}

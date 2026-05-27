@@ -2,6 +2,7 @@ import { useState, useEffect } from "react";
 import { ChevronDown, Download, SlidersHorizontal, X } from "lucide-react";
 import { message } from "antd";
 import type { DailyPlan, DailyTask } from "@/types/dailyProgress";
+import { dailyProgressEntries } from "@/types/dailyProgress";
 import type { DailySummary } from "@/types/dailySummary";
 import { dailyProgressService } from "@/services/dailyProgressService";
 import { dailySummaryService } from "@/services/dailySummaryService";
@@ -341,8 +342,9 @@ export function DailyProgressList({ focusDate }: { focusDate?: string | null }) 
         prev.map((plan) => {
           if (plan.id !== planId) return plan;
 
-          const previousTask = plan.daily_tasks.find((t) => t.id === updatedTask.id);
-          const daily_tasks = plan.daily_tasks.map((t) =>
+          const entries = dailyProgressEntries(plan);
+          const previousTask = entries.find((t) => t.id === updatedTask.id);
+          const nextEntries = entries.map((t) =>
             t.id === updatedTask.id ? updatedTask : t
           );
 
@@ -356,7 +358,13 @@ export function DailyProgressList({ focusDate }: { focusDate?: string | null }) 
           const completion_rate =
             plan.total_tasks > 0 ? (completed_tasks / plan.total_tasks) * 100 : 0;
 
-          return { ...plan, daily_tasks, completed_tasks, completion_rate };
+          return {
+            ...plan,
+            daily_progress_entries: nextEntries,
+            daily_tasks: nextEntries,
+            completed_tasks,
+            completion_rate,
+          };
         })
       )
     );
@@ -404,9 +412,10 @@ export function DailyProgressList({ focusDate }: { focusDate?: string | null }) 
         markdown += `## ${dateStr} ${weekday}\n\n`;
 
         // 任务清单
-        if (plan.daily_tasks && plan.daily_tasks.length > 0) {
+        const entries = dailyProgressEntries(plan);
+        if (entries.length > 0) {
           markdown += `### 任务清单\n\n`;
-          plan.daily_tasks.forEach((task) => {
+          entries.forEach((task) => {
             const statusIcon = task.status === "done" ? "✅" : "⬜";
             const priorityLabel = {
               high: "【高】",

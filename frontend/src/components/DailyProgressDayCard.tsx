@@ -2,7 +2,7 @@ import { useState, useEffect, useRef } from "react";
 import { Trash2, CheckCircle, Circle, Clock, BookOpen } from "lucide-react";
 import { Modal, message } from "antd";
 import type { DailyPlan, DailyTask, DailyTaskStatus } from "@/types/dailyProgress";
-import { DAILY_TASK_PRIORITY } from "@/types/dailyProgress";
+import { DAILY_TASK_PRIORITY, dailyProgressEntries } from "@/types/dailyProgress";
 import { DEFAULT_TASK_CONTEXT, getTaskContextConfig } from "@/types/taskContext";
 import { dailyProgressService } from "@/services/dailyProgressService";
 import { backlogTaskService } from "@/services/backlogTaskService";
@@ -253,7 +253,7 @@ export function DailyProgressDayCard({ plan, onUpdate, onTaskUpdate }: DailyProg
         style={{ background: "linear-gradient(to bottom, rgb(249 250 251), rgb(255 255 255))" }}
       >
           <div className="space-y-3">
-            {sortTasks(plan.daily_tasks).map((task) => {
+            {sortTasks(dailyProgressEntries(plan)).map((task) => {
               const StatusIcon = STATUS_ICONS[task.status];
               const priorityConfig = DAILY_TASK_PRIORITY.find((p) => p.value === task.priority);
               const contextConfig = getTaskContextConfig(task.context ?? DEFAULT_TASK_CONTEXT);
@@ -340,7 +340,7 @@ export function DailyProgressDayCard({ plan, onUpdate, onTaskUpdate }: DailyProg
               );
             })}
 
-            {plan.daily_tasks.length === 0 && (
+            {dailyProgressEntries(plan).length === 0 && (
               <div className="text-center py-4 px-3 bg-gray-50 rounded-lg border-2 border-dashed border-gray-200">
                 <p className="text-xs text-gray-500">暂无任务</p>
               </div>
