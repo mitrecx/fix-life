@@ -1,7 +1,7 @@
 # Fix Life MCP Server — 设计说明
 
 **日期：** 2026-05-24  
-**状态：** 草案（待评审）  
+**状态：** 已定稿（M3 已实现；每日进度 Tool 见 [命名迁移 spec](./2026-05-24-daily-progress-naming-migration-design.md)）  
 **分支：** `docs/mcp-server-spec`
 
 ## 1. 背景与动机
@@ -219,22 +219,27 @@ fixlife (MCP Server @ /mcp)
 
 ---
 
-### 6.2 `daily` — 每日进度
+### 6.2 `daily_progress` — 每日进度
 
-**意图：** 围绕 **某一自然日** 查看计划、关联待办、更新当日执行状态。
+> **命名迁移：** 原 Tool 名 `daily` 已 deprecated，请使用 **`daily_progress`**。详见 [命名迁移 spec](./2026-05-24-daily-progress-naming-migration-design.md)。
 
-| action | 说明 | Service 等价 |
-|--------|------|--------------|
-| `get_by_date` | 按日期取计划 | `DailyPlanService.get_plan_by_date` |
-| `list` | 日期范围内计划 | `DailyPlanService.get_user_plans` |
-| `create` | 创建/合并某日计划 | `DailyPlanService.create_plan` |
-| `get` | 计划详情 | `DailyPlanService.get_plan` |
-| `update` / `delete` | 更新/删除计划 | 对应 Service 方法 |
-| `list_tasks` | 列出某日任务 | `DailyPlanService.get_tasks` |
-| `add_task` | 关联待办或创建并关联 | `BacklogTaskService.add_to_daily_plan` 等 |
-| `update_task` | 更新当日任务 | `DailyPlanService.update_task` |
-| `set_task_status` | 更新状态（同步 backlog） | `DailyPlanService.update_task_status` |
-| `remove_task` | 移除当日出现 | `DailyPlanService.delete_task` |
+**意图：** 围绕 **某一自然日** 查看执行进度、关联待办、更新当日推进（不是独立任务收件箱）。
+
+| action | 别名 | 说明 | Service 等价 |
+|--------|------|------|--------------|
+| `get_by_date` | — | 按日期取进度（含任务、聚合字段） | `DailyPlanService.to_plan_response` |
+| `list` | `list_by_range` | 日期范围内进度；支持 `context` 筛选 | `DailyPlanService.get_user_plans` |
+| `create` | `ensure_day` | 创建/合并某日进度容器 | `DailyPlanService.create_or_merge_plan` |
+| `get` / `update` / `delete` | — | 进度 CRUD | 对应 Service |
+| `list_tasks` | `list_entries` | 列出当日条目 | `DailyPlanService.get_plan_tasks` |
+| `add_task` | `link_entry` | 从待办关联 | `BacklogTaskService.add_to_daily_plan` |
+| `update_task` / `set_task_status` / `remove_task` | `unlink_entry`（remove） | 条目操作 | 对应 Service |
+
+**list / get / get_by_date 参数：** `start_date`, `end_date`, `context` (`work` \| `learning` \| `life` \| `all`)
+
+**REST 等价路径：** `/api/v1/daily-progress/*`（旧 `/daily-plans` 已移除）
+
+**Deprecated：** Tool `daily`（wrapper，计划移除）
 
 ---
 
@@ -242,7 +247,8 @@ fixlife (MCP Server @ /mcp)
 
 | action | 说明 |
 |--------|------|
-| `get_daily` / `create_daily` / `update_daily` / `delete_daily` | 日总结 |
+| `get_daily_summary` / `create_daily_summary` / `update_daily_summary` / `delete_daily_summary` | 日总结（推荐） |
+| `get_daily` / `create_daily` / `update_daily` / `delete_daily` | 日总结（deprecated 别名） |
 | `list_weekly` / `get_weekly` / `create_weekly` / `generate_weekly` / `update_weekly` / `delete_weekly` / `send_weekly` | 周总结 |
 
 对应 `DailySummaryService`、`WeeklySummaryService`、`NotificationService`。
@@ -413,9 +419,9 @@ sequenceDiagram
 
 ### 9.2 「今日执行」
 
-1. `daily.get_by_date` — 今日任务  
+1. `daily_progress.get_by_date` — 今日进度  
 2. `todo.update` — 更新进度  
-3. `reflect.create_daily` — 日总结  
+3. `reflect.create_daily_summary` — 日总结  
 
 ### 9.3 「周回顾」
 

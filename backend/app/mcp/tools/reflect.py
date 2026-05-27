@@ -14,12 +14,24 @@ from app.services.notification_service import NotificationService
 from app.services.weekly_summary_service import WeeklySummaryService
 from sqlalchemy import and_
 
+REFLECT_ACTION_ALIASES: dict[str, str] = {
+    "get_daily_summary": "get_daily",
+    "create_daily_summary": "create_daily",
+    "update_daily_summary": "update_daily",
+    "delete_daily_summary": "delete_daily",
+}
+
+
+def normalize_reflect_action(action: str) -> str:
+    return REFLECT_ACTION_ALIASES.get(action, action)
+
 
 def handle_reflect(payload: dict[str, Any]) -> dict[str, Any]:
     action = payload.get("action")
     if not action:
         tool_error(422, "VALIDATION_ERROR", "action is required")
 
+    action = normalize_reflect_action(str(action))
     user_id = get_user_id()
 
     with db_session() as db:
@@ -33,7 +45,7 @@ def handle_reflect(payload: dict[str, Any]) -> dict[str, Any]:
                 .first()
             )
             if not plan:
-                tool_error(404, "NOT_FOUND", "Daily plan not found")
+                tool_error(404, "NOT_FOUND", "Daily progress not found")
             summary = db.query(DailySummary).filter(DailySummary.daily_plan_id == plan_id).first()
             if not summary:
                 tool_error(404, "NOT_FOUND", "Daily summary not found")
@@ -49,7 +61,7 @@ def handle_reflect(payload: dict[str, Any]) -> dict[str, Any]:
                 .first()
             )
             if not plan:
-                tool_error(404, "NOT_FOUND", "Daily plan not found")
+                tool_error(404, "NOT_FOUND", "Daily progress not found")
             existing = db.query(DailySummary).filter(DailySummary.daily_plan_id == plan_id).first()
             if existing:
                 tool_error(400, "CONFLICT", "Daily summary already exists for this plan")
@@ -138,7 +150,7 @@ def handle_reflect(payload: dict[str, Any]) -> dict[str, Any]:
                     )
             summary = service.generate_weekly_summary(user_id, year, week_number)
             if not summary:
-                tool_error(404, "NOT_FOUND", f"No daily plan data found for week {year}-{week_number}")
+                tool_error(404, "NOT_FOUND", f"No daily progress data found for week {year}-{week_number}")
             return dump(summary)
 
         if action == "update_weekly":
