@@ -1,0 +1,19 @@
+---
+description: Split git commits by logical change area; never bundle unrelated work in one commit
+alwaysApply: true
+---
+
+# Categorized git commits
+
+When the user asks to commit (or you finish work and they want changes saved):
+
+1. **Never** commit all modified files in a single commit if changes span unrelated areas (e.g. bug fix + mobile UI + PWA + unrelated refactor).
+2. **Group by purpose** — one commit per logical unit, matching existing repo style:
+   - `fix(...)` — bug fixes
+   - `feat(...)` — new features
+   - `refactor(...)` / `chore(...)` — as appropriate
+3. **Before committing**, inspect `git status` and `git diff`; list the planned commits (files + message) when multiple commits are needed.
+4. **Stage selectively** (`git add` per group), commit sequentially, verify clean tree after each commit.
+5. **Do not push** unless the user explicitly asks.
+
+If a session touched many areas, prefer **several small commits** over one large commit—even when the user says “提交一下” without specifying split.
