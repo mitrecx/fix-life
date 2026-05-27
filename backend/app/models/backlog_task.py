@@ -43,7 +43,7 @@ class BacklogTask(Base):
     progress = Column(Integer, default=0, nullable=False)
     origin = Column(String(20), default="inbox", nullable=False)
     scheduled_date = Column(Date)
-    daily_task_id = Column(UUID(as_uuid=True), ForeignKey("daily_tasks.id", ondelete="SET NULL"))
+    daily_task_id = Column(UUID(as_uuid=True), ForeignKey("daily_progress_entries.id", ondelete="SET NULL"))
     completed_at = Column(DateTime)
     created_at = Column(DateTime, default=datetime.utcnow)
     updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)

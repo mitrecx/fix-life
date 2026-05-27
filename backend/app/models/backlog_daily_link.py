@@ -27,7 +27,7 @@ class BacklogDailyLink(Base):
     )
     daily_task_id = Column(
         UUID(as_uuid=True),
-        ForeignKey("daily_tasks.id", ondelete="CASCADE"),
+            ForeignKey("daily_progress_entries.id", ondelete="CASCADE"),
         nullable=False,
     )
     plan_date = Column(Date, nullable=False)

@@ -29,13 +29,9 @@ class DailyTaskStatus(str, enum.Enum):
 
 
 class DailyPlan(Base):
-    """One user's daily progress day container (每日进度).
+    """One user's daily progress day container (每日进度)."""
 
-    ORM name is historical (``daily_plans`` table). Represents a **daily progress day**,
-    not a monthly/yearly plan.
-    """
-
-    __tablename__ = "daily_plans"
+    __tablename__ = "daily_progress_days"
 
     id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
     user_id = Column(UUID(as_uuid=True), ForeignKey("users.id", ondelete="CASCADE"), nullable=False)
@@ -71,10 +67,14 @@ class DailyPlan(Base):
 
 
 class DailyTask(Base):
-    __tablename__ = "daily_tasks"
+    __tablename__ = "daily_progress_entries"
 
     id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
-    daily_plan_id = Column(UUID(as_uuid=True), ForeignKey("daily_plans.id", ondelete="CASCADE"), nullable=False)
+    daily_progress_day_id = Column(
+        UUID(as_uuid=True),
+        ForeignKey("daily_progress_days.id", ondelete="CASCADE"),
+        nullable=False,
+    )
     backlog_task_id = Column(
         UUID(as_uuid=True),
         ForeignKey("backlog_tasks.id", ondelete="SET NULL"),
@@ -108,7 +108,11 @@ class DailySummary(Base):
     __tablename__ = "daily_summaries"
 
     id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
-    daily_plan_id = Column(UUID(as_uuid=True), ForeignKey("daily_plans.id", ondelete="CASCADE"), nullable=False)
+    daily_progress_day_id = Column(
+        UUID(as_uuid=True),
+        ForeignKey("daily_progress_days.id", ondelete="CASCADE"),
+        nullable=False,
+    )
     user_id = Column(UUID(as_uuid=True), ForeignKey("users.id", ondelete="CASCADE"), nullable=False)
     summary_type = Column(Enum(SummaryType, values_callable=lambda x: [e.value for e in x]), nullable=False)
     content = Column(Text, nullable=False)
@@ -120,4 +124,4 @@ class DailySummary(Base):
     user = relationship("User")
 
     def __repr__(self):
-        return f"<DailySummary {self.daily_plan_id}: {self.summary_type}>"
+        return f"<DailySummary {self.daily_progress_day_id}: {self.summary_type}>"
