@@ -506,6 +506,7 @@ export function TodosList() {
   const drawerOpen = !!taskId;
   const filtersHydratedRef = useRef(false);
   const skipNextFilterPersistRef = useRef(false);
+  const skipNextFilterLoadRef = useRef(false);
   const loadTasksRequestIdRef = useRef(0);
 
   useLayoutEffect(() => {
@@ -625,56 +626,19 @@ export function TodosList() {
   }, [columnTasks]);
 
   const updateDraftFilters = useCallback((patch: Partial<BacklogListFilters>) => {
-    setDraftFilters((prev) => ({ ...prev, ...patch }));
-  }, []);
-
-  const filterApplyTimerRef = useRef<ReturnType<typeof setTimeout>>();
-
-  const applySearch = useCallback(() => {
-    if (filterApplyTimerRef.current) {
-      clearTimeout(filterApplyTimerRef.current);
-      filterApplyTimerRef.current = undefined;
-    }
-    setSearchParams(filtersToSearchParams(draftFilters, searchParams.get("task")), { replace: true });
-  }, [draftFilters, searchParams, setSearchParams]);
-
-  useEffect(() => {
-    const appliedKey = filterSearchParamKey(searchParams);
-    const draftKey = filterSearchParamKey(filtersToSearchParams(draftFilters));
-    if (draftKey === appliedKey) return;
-
-    const appliedFilters = parseFilters(searchParams);
-    const onlyKeywordDirty =
-      (draftFilters.q ?? "") !== (appliedFilters.q ?? "") &&
-      draftFilters.context === appliedFilters.context &&
-      draftFilters.priority === appliedFilters.priority &&
-      draftFilters.timeField === appliedFilters.timeField &&
-      draftFilters.dateFrom === appliedFilters.dateFrom &&
-      draftFilters.dateTo === appliedFilters.dateTo;
-    const delay = onlyKeywordDirty ? 350 : 0;
-
-    filterApplyTimerRef.current = setTimeout(() => {
-      filterApplyTimerRef.current = undefined;
-      setSearchParams(filtersToSearchParams(draftFilters, searchParams.get("task")), { replace: true });
-    }, delay);
-
-    return () => {
-      if (filterApplyTimerRef.current) {
-        clearTimeout(filterApplyTimerRef.current);
-        filterApplyTimerRef.current = undefined;
+    setDraftFilters((prev) => {
+      const next = { ...prev, ...patch };
+      if (!("q" in patch)) {
+        queueMicrotask(() => {
+          setSearchParams(
+            filtersToSearchParams(next, searchParamsRef.current.get("task")),
+            { replace: true },
+          );
+        });
       }
-    };
-  }, [draftFilters, searchParams, setSearchParams]);
-
-  const resetFilters = useCallback(() => {
-    if (filterApplyTimerRef.current) {
-      clearTimeout(filterApplyTimerRef.current);
-      filterApplyTimerRef.current = undefined;
-    }
-    setDraftFilters(DEFAULT_FILTERS);
-    writeSharedTaskContextFilter("all");
-    setSearchParams(filtersToSearchParams(DEFAULT_FILTERS, searchParams.get("task")), { replace: true });
-  }, [searchParams, setSearchParams]);
+      return next;
+    });
+  }, [setSearchParams]);
 
   const setColumnState = useCallback(
     (column: KanbanColumnId, updater: (prev: BacklogTask[]) => BacklogTask[]) => {
@@ -787,6 +751,20 @@ export function TodosList() {
     [setColumnState],
   );
 
+  const applySearch = useCallback(() => {
+    skipNextFilterLoadRef.current = true;
+    setSearchParams(filtersToSearchParams(draftFilters, searchParams.get("task")), { replace: true });
+    void loadTasks({ filters: draftFilters });
+  }, [draftFilters, searchParams, setSearchParams, loadTasks]);
+
+  const resetFilters = useCallback(() => {
+    skipNextFilterLoadRef.current = true;
+    setDraftFilters(DEFAULT_FILTERS);
+    writeSharedTaskContextFilter("all");
+    setSearchParams(filtersToSearchParams(DEFAULT_FILTERS, searchParams.get("task")), { replace: true });
+    void loadTasks({ filters: DEFAULT_FILTERS });
+  }, [searchParams, setSearchParams, loadTasks]);
+
   const loadMoreColumn = useCallback(
     async (column: KanbanColumnId) => {
       const loadedCount = columnTasks[column].length;
@@ -832,6 +810,10 @@ export function TodosList() {
   );
 
   useEffect(() => {
+    if (skipNextFilterLoadRef.current) {
+      skipNextFilterLoadRef.current = false;
+      return;
+    }
     void loadTasks({ filters });
   }, [loadTasks, filters, filterParamKey]);
 

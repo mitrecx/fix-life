@@ -63,6 +63,7 @@ function hasActiveFilters(filters: BacklogListFilters): boolean {
 interface TodosFilterFieldsProps {
   filters: BacklogListFilters;
   onChange: (patch: Partial<BacklogListFilters>) => void;
+  onSearch: () => void;
   moreOpen: boolean;
   stackAdvanced?: boolean;
 }
@@ -105,6 +106,7 @@ function FilterExpandToggle({
 function TodosFilterFields({
   filters,
   onChange,
+  onSearch,
   moreOpen,
   stackAdvanced = false,
 }: TodosFilterFieldsProps) {
@@ -129,6 +131,7 @@ function TodosFilterFields({
           onKeyDown={(e) => {
             if (e.key === "Enter") {
               e.preventDefault();
+              onSearch();
             }
           }}
           placeholder="搜索标题…"
@@ -262,6 +265,12 @@ export function TodosFilterBar({
               type="search"
               value={filters.q ?? ""}
               onChange={(e) => onChange({ q: e.target.value })}
+              onKeyDown={(e) => {
+                if (e.key === "Enter") {
+                  e.preventDefault();
+                  onSearch();
+                }
+              }}
               placeholder="搜索标题…"
               className={`flex-1 min-w-0 ${selectClassName}`}
             />
@@ -289,6 +298,7 @@ export function TodosFilterBar({
             <TodosFilterFields
               filters={filters}
               onChange={onChange}
+              onSearch={onSearch}
               moreOpen
               stackAdvanced
             />
@@ -306,6 +316,7 @@ export function TodosFilterBar({
           <TodosFilterFields
             filters={filters}
             onChange={onChange}
+            onSearch={onSearch}
             moreOpen={moreOpen}
           />
           <div className="inline-flex flex-wrap items-center gap-2 shrink-0 py-1">{actionButtons}</div>
