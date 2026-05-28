@@ -8,11 +8,11 @@ from fastmcp.exceptions import ToolError
 
 from app.mcp.auth import FixLifeApiKeyVerifier
 from app.mcp.prompts.github_issue_todo import register_github_issue_prompts
-from app.mcp.tools.account import handle_account
-from app.mcp.tools.admin import admin_tool_visible, handle_admin
 from app.mcp.tools.daily_progress import handle_daily_progress
-from app.mcp.tools.plan import handle_plan
 from app.mcp.tools.reflect import handle_reflect
+# from app.mcp.tools.account import handle_account
+# from app.mcp.tools.admin import admin_tool_visible, handle_admin
+# from app.mcp.tools.plan import handle_plan
 from app.mcp.tools.todo import handle_todo
 
 
@@ -32,9 +32,8 @@ def create_mcp_server() -> FastMCP:
     mcp = FastMCP(
         name="fixlife",
         instructions=(
-            "Fix Life MCP server for todos, daily progress (每日进度), planning, reflections, "
-            "account settings, and admin operations. Each tool accepts a JSON payload "
-            "with an `action` field plus action-specific parameters. "
+            "Fix Life MCP server for todos, daily progress (每日进度), and reflections. "
+            "Each tool accepts a JSON payload with an `action` field plus action-specific parameters. "
             "Todo category uses field `context`: work (工作), learning (学习), life (生活). "
             "Use `daily_progress` for execution-by-date views (not a separate task inbox). "
             "Daily progress IDs use `daily_progress_day_id`; same-day items use `entry_id`; "
@@ -94,25 +93,26 @@ def create_mcp_server() -> FastMCP:
     def reflect(payload: dict[str, Any]) -> dict[str, Any]:
         return _run_tool(handle_reflect, payload)
 
-    @mcp.tool(
-        description="Manage yearly goals and monthly plans.",
-    )
-    def plan(payload: dict[str, Any]) -> dict[str, Any]:
-        return _run_tool(handle_plan, payload)
-
-    @mcp.tool(
-        description="Manage current user profile and notification settings.",
-    )
-    def account(payload: dict[str, Any]) -> dict[str, Any]:
-        return _run_tool(handle_account, payload)
-
-    @mcp.tool(
-        description="Admin operations: users, roles, system status, and backlog data repair.",
-        auth=admin_tool_visible,
-        tags={"admin"},
-    )
-    def admin(payload: dict[str, Any]) -> dict[str, Any]:
-        return _run_tool(handle_admin, payload)
+    # Disabled temporarily: plan / account / admin
+    # @mcp.tool(
+    #     description="Manage yearly goals and monthly plans.",
+    # )
+    # def plan(payload: dict[str, Any]) -> dict[str, Any]:
+    #     return _run_tool(handle_plan, payload)
+    #
+    # @mcp.tool(
+    #     description="Manage current user profile and notification settings.",
+    # )
+    # def account(payload: dict[str, Any]) -> dict[str, Any]:
+    #     return _run_tool(handle_account, payload)
+    #
+    # @mcp.tool(
+    #     description="Admin operations: users, roles, system status, and backlog data repair.",
+    #     auth=admin_tool_visible,
+    #     tags={"admin"},
+    # )
+    # def admin(payload: dict[str, Any]) -> dict[str, Any]:
+    #     return _run_tool(handle_admin, payload)
 
     register_github_issue_prompts(mcp)
 
