@@ -7,7 +7,11 @@ from sqlalchemy.orm import Session
 
 from app.models.backlog_daily_link import BacklogDailyLink
 from app.models.backlog_task import BacklogTask, BacklogTaskStatus
-from app.models.daily_plan import DailyTask, DailyTaskPriority, DailyTaskStatus
+from app.models.daily_progress import (
+    DailyProgressEntry,
+    DailyProgressEntryPriority,
+    DailyProgressEntryStatus,
+)
 from app.models.task_context import TaskContext
 from app.models.task_priority import TaskPriority
 from app.schemas.backlog_task import (
@@ -19,7 +23,12 @@ from app.schemas.backlog_task import (
     BacklogOccurrence,
     progress_to_status,
 )
-from app.schemas.daily_progress import DailyPlanCreate, DailyTaskCreate, DailyTaskUpdate, DailyPlanTaskAdd
+from app.schemas.daily_progress import (
+    DailyProgressDayCreate,
+    DailyProgressEntryCreate,
+    DailyProgressEntryUpdate,
+    DailyProgressEntryAdd,
+)
 from app.services.daily_progress_service import DailyProgressService
 
 BacklogTimeField = Literal["created", "scheduled", "completed"]
@@ -336,12 +345,11 @@ class BacklogTaskService:
 
     def _build_occurrence(self, link: BacklogDailyLink) -> BacklogOccurrence:
         daily_service = DailyProgressService(self.db)
-        daily = daily_service.get_task(str(link.daily_task_id))
+        daily = daily_service.get_entry(str(link.daily_task_id))
         day_id = daily.daily_progress_day_id if daily else None
         return BacklogOccurrence(
             daily_task_id=link.daily_task_id,
             daily_progress_day_id=day_id,
-            daily_plan_id=day_id,
             plan_date=link.plan_date,
             daily_status=daily.status if daily else None,
             daily_title=daily.title if daily else None,
@@ -409,12 +417,12 @@ class BacklogTaskService:
             return
 
         daily_task = (
-            self.db.query(DailyTask).filter(DailyTask.id == link.daily_task_id).first()
+            self.db.query(DailyProgressEntry).filter(DailyProgressEntry.id == link.daily_task_id).first()
         )
         if daily_task is None:
             return
 
-        new_status = DailyTaskStatus.DONE if progress >= 100 else DailyTaskStatus.TODO
+        new_status = DailyProgressEntryStatus.DONE if progress >= 100 else DailyProgressEntryStatus.TODO
         if daily_task.status != new_status:
             daily_task.status = new_status
 
@@ -438,16 +446,16 @@ class BacklogTaskService:
         return date.today()
 
     @staticmethod
-    def _backlog_priority_to_daily(priority: TaskPriority) -> DailyTaskPriority:
-        return DailyTaskPriority(priority.value)
+    def _backlog_priority_to_daily(priority: TaskPriority) -> DailyProgressEntryPriority:
+        return DailyProgressEntryPriority(priority.value)
 
     def _daily_task_payload(
         self,
         task: BacklogTask,
         *,
-        status: DailyTaskStatus = DailyTaskStatus.TODO,
-    ) -> DailyTaskCreate:
-        return DailyTaskCreate(
+        status: DailyProgressEntryStatus = DailyProgressEntryStatus.TODO,
+    ) -> DailyProgressEntryCreate:
+        return DailyProgressEntryCreate(
             title=task.title,
             description=task.description,
             context=task.context,
@@ -478,16 +486,16 @@ class BacklogTaskService:
 
         existing_link = self.get_link_for_date(str(task.id), plan_date)
         if existing_link:
-            daily_task = daily_service.get_task(str(existing_link.daily_task_id))
+            daily_task = daily_service.get_entry(str(existing_link.daily_task_id))
             if daily_task:
-                daily_service.update_task(
+                daily_service.update_entry(
                     str(daily_task.id),
-                    DailyTaskUpdate(
+                    DailyProgressEntryUpdate(
                         title=task.title,
                         description=task.description,
                         context=task.context,
                         priority=self._backlog_priority_to_daily(task.priority),
-                        status=DailyTaskStatus.DONE,
+                        status=DailyProgressEntryStatus.DONE,
                     ),
                 )
                 existing_link.progress_after = task.progress
@@ -495,13 +503,13 @@ class BacklogTaskService:
                 task.daily_task_id = daily_task.id
                 return
 
-        plan, _ = daily_service.create_or_merge_plan(
+        day, _ = daily_service.create_or_merge_day(
             user_id,
-            DailyPlanCreate(plan_date=plan_date),
+            DailyProgressDayCreate(progress_date=plan_date),
         )
-        daily_task = daily_service.create_task(
-            str(plan.id),
-            self._daily_task_payload(task, status=DailyTaskStatus.DONE),
+        daily_task = daily_service.create_entry(
+            str(day.id),
+            self._daily_task_payload(task, status=DailyProgressEntryStatus.DONE),
             backlog_task_id=str(task.id),
         )
         if not daily_task:
@@ -520,16 +528,16 @@ class BacklogTaskService:
         plan_id: str,
         plan_date: date,
         *,
-        daily_status: DailyTaskStatus = DailyTaskStatus.TODO,
+        daily_status: DailyProgressEntryStatus = DailyProgressEntryStatus.TODO,
     ):
         daily_service = DailyProgressService(self.db)
         existing_link = self.get_link_for_date(str(backlog.id), plan_date)
         if existing_link:
-            daily_task = daily_service.get_task(str(existing_link.daily_task_id))
+            daily_task = daily_service.get_entry(str(existing_link.daily_task_id))
             if daily_task:
-                daily_service.update_task(
+                daily_service.update_entry(
                     str(daily_task.id),
-                    DailyTaskUpdate(
+                    DailyProgressEntryUpdate(
                         title=backlog.title,
                         description=backlog.description,
                         context=backlog.context,
@@ -540,7 +548,7 @@ class BacklogTaskService:
                 backlog.scheduled_date = plan_date
                 return daily_task
 
-        daily_task = daily_service.create_task(
+        daily_task = daily_service.create_entry(
             plan_id,
             self._daily_task_payload(backlog, status=daily_status),
             backlog_task_id=str(backlog.id),
@@ -568,16 +576,16 @@ class BacklogTaskService:
 
         target_date = plan_date or date.today()
         daily_service = DailyProgressService(self.db)
-        plan, _ = daily_service.create_or_merge_plan(
+        day, _ = daily_service.create_or_merge_day(
             user_id,
-            DailyPlanCreate(plan_date=target_date),
+            DailyProgressDayCreate(progress_date=target_date),
         )
         self._link_backlog_to_plan(
             user_id,
             task,
-            str(plan.id),
+            str(day.id),
             target_date,
-            daily_status=DailyTaskStatus.IN_PROGRESS,
+            daily_status=DailyProgressEntryStatus.IN_PROGRESS,
         )
         link = self.get_link_for_date(str(task.id), target_date)
         if link is not None:
@@ -673,14 +681,14 @@ class BacklogTaskService:
         daily_task_ids = {link.daily_task_id for link in links}
 
         linked_dailies = (
-            self.db.query(DailyTask.id)
-            .filter(DailyTask.backlog_task_id == task.id)
+            self.db.query(DailyProgressEntry.id)
+            .filter(DailyProgressEntry.backlog_task_id == task.id)
             .all()
         )
         daily_task_ids.update(row.id for row in linked_dailies)
 
         for daily_task_id in daily_task_ids:
-            daily = self.db.query(DailyTask).filter(DailyTask.id == daily_task_id).first()
+            daily = self.db.query(DailyProgressEntry).filter(DailyProgressEntry.id == daily_task_id).first()
             if daily is not None:
                 self.db.delete(daily)
 
@@ -713,15 +721,15 @@ class BacklogTaskService:
             return None
 
         daily_service = DailyProgressService(self.db)
-        plan, _ = daily_service.create_or_merge_plan(
+        day, _ = daily_service.create_or_merge_day(
             user_id,
-            DailyPlanCreate(plan_date=schedule_in.plan_date),
+            DailyProgressDayCreate(progress_date=schedule_in.plan_date),
         )
 
         self._link_backlog_to_plan(
             user_id,
             task,
-            str(plan.id),
+            str(day.id),
             schedule_in.plan_date,
         )
         self.db.commit()
@@ -744,15 +752,15 @@ class BacklogTaskService:
         self.db.refresh(task)
         return task
 
-    def add_to_daily_plan(
+    def add_to_daily_progress_day(
         self,
         user_id: str,
-        plan_id: str,
-        data: DailyPlanTaskAdd,
+        day_id: str,
+        data: DailyProgressEntryAdd,
     ):
         daily_service = DailyProgressService(self.db)
-        plan = daily_service.get_plan(plan_id)
-        if not plan:
+        day = daily_service.get_day(day_id)
+        if not day:
             return None
 
         daily_status = data.status
@@ -764,13 +772,13 @@ class BacklogTaskService:
             return self._link_backlog_to_plan(
                 user_id,
                 backlog,
-                plan_id,
-                plan.plan_date,
+                day_id,
+                day.progress_date,
                 daily_status=daily_status,
             )
 
-        progress = 100 if daily_status == DailyTaskStatus.DONE else 0
-        if daily_status == DailyTaskStatus.IN_PROGRESS:
+        progress = 100 if daily_status == DailyProgressEntryStatus.DONE else 0
+        if daily_status == DailyProgressEntryStatus.IN_PROGRESS:
             progress = 50
 
         backlog = BacklogTask(
@@ -789,8 +797,8 @@ class BacklogTaskService:
         daily_task = self._link_backlog_to_plan(
             user_id,
             backlog,
-            plan_id,
-            plan.plan_date,
+            day_id,
+            day.progress_date,
             daily_status=daily_status,
         )
         if progress == 100:
@@ -821,8 +829,8 @@ class BacklogTaskService:
             for link in reversed(links):
                 if link.progress_after is not None:
                     break
-                daily = self.db.query(DailyTask).filter(DailyTask.id == link.daily_task_id).first()
-                if daily and daily.status == DailyTaskStatus.DONE:
+                daily = self.db.query(DailyProgressEntry).filter(DailyProgressEntry.id == link.daily_task_id).first()
+                if daily and daily.status == DailyProgressEntryStatus.DONE:
                     last_backfill_link = link
                     break
             if last_backfill_link is None:

@@ -1,23 +1,20 @@
 import api, { rawApi } from "./api";
 import type {
-  DailyPlan,
-  DailyPlanCreate,
-  DailyPlanUpdate,
-  DailyTask,
-  DailyPlanTaskAdd,
-  DailyTaskUpdate,
-  DailyTaskStatus,
-  DailyPlanHead,
+  DailyProgressDay,
+  DailyProgressDayCreate,
+  DailyProgressDayUpdate,
+  DailyProgressEntry,
+  DailyProgressEntryAdd,
+  DailyProgressEntryUpdate,
+  DailyProgressEntryStatus,
+  DailyProgressDayHead,
 } from "@/types/dailyProgress";
 import type { TaskContext } from "@/types/taskContext";
 
 export type DailyProgressContextFilter = TaskContext | "all";
 
-/** @deprecated Use DailyProgressContextFilter */
-export type DailyPlanContextFilter = DailyProgressContextFilter;
-
 interface DailyProgressListResponse {
-  plans: DailyPlan[];
+  daily_progress_days: DailyProgressDay[];
   total: number;
 }
 
@@ -28,7 +25,7 @@ export class DailyProgressService {
     startDate?: string,
     endDate?: string,
     context: DailyProgressContextFilter = "all",
-  ): Promise<DailyPlan[]> {
+  ): Promise<DailyProgressDay[]> {
     const params = new URLSearchParams();
     if (startDate) params.append("start_date", startDate);
     if (endDate) params.append("end_date", endDate);
@@ -37,55 +34,62 @@ export class DailyProgressService {
     const response = await api.get<DailyProgressListResponse>(
       `${this.baseUrl}/${params.toString() ? `?${params.toString()}` : ""}`,
     );
-    return response.plans;
+    return response.daily_progress_days;
   }
 
-  /** No nested tasks; 404 → null */
-  async getPlanHeadByDate(planDate: string): Promise<DailyPlanHead | null> {
-    const res = await rawApi.get<DailyPlanHead>(`${this.baseUrl}/by-date/${planDate}`, {
+  /** No nested entries; 404 → null */
+  async getDayHeadByDate(progressDate: string): Promise<DailyProgressDayHead | null> {
+    const res = await rawApi.get<DailyProgressDayHead>(`${this.baseUrl}/by-date/${progressDate}`, {
       validateStatus: (s) => s === 200 || s === 404,
     });
     if (res.status === 404) return null;
     return res.data;
   }
 
-  async getById(id: string): Promise<DailyPlan> {
-    return await api.get<DailyPlan>(`${this.baseUrl}/${id}`);
+  async getById(id: string): Promise<DailyProgressDay> {
+    return await api.get<DailyProgressDay>(`${this.baseUrl}/${id}`);
   }
 
-  async create(data: DailyPlanCreate): Promise<{ plan: DailyPlan; created: boolean }> {
-    const res = await rawApi.post<DailyPlan>(`${this.baseUrl}/`, data, {
+  async create(
+    data: DailyProgressDayCreate,
+  ): Promise<{ day: DailyProgressDay; created: boolean }> {
+    const res = await rawApi.post<DailyProgressDay>(`${this.baseUrl}/`, data, {
       validateStatus: (s) => s === 200 || s === 201,
     });
-    return { plan: res.data, created: res.status === 201 };
+    return { day: res.data, created: res.status === 201 };
   }
 
-  async update(id: string, data: DailyPlanUpdate): Promise<DailyPlan> {
-    return await api.put<DailyPlan>(`${this.baseUrl}/${id}`, data);
+  async update(id: string, data: DailyProgressDayUpdate): Promise<DailyProgressDay> {
+    return await api.put<DailyProgressDay>(`${this.baseUrl}/${id}`, data);
   }
 
   async delete(id: string): Promise<void> {
     await api.delete(`${this.baseUrl}/${id}`);
   }
 
-  async getTasks(planId: string): Promise<DailyTask[]> {
-    return await api.get<DailyTask[]>(`${this.baseUrl}/${planId}/tasks`);
+  async getEntries(dayId: string): Promise<DailyProgressEntry[]> {
+    return await api.get<DailyProgressEntry[]>(`${this.baseUrl}/${dayId}/entries`);
   }
 
-  async createTask(planId: string, data: DailyPlanTaskAdd): Promise<DailyTask> {
-    return await api.post<DailyTask>(`${this.baseUrl}/${planId}/tasks`, data);
+  async createEntry(dayId: string, data: DailyProgressEntryAdd): Promise<DailyProgressEntry> {
+    return await api.post<DailyProgressEntry>(`${this.baseUrl}/${dayId}/entries`, data);
   }
 
-  async updateTask(taskId: string, data: DailyTaskUpdate): Promise<DailyTask> {
-    return await api.put<DailyTask>(`${this.baseUrl}/tasks/${taskId}`, data);
+  async updateEntry(entryId: string, data: DailyProgressEntryUpdate): Promise<DailyProgressEntry> {
+    return await api.put<DailyProgressEntry>(`${this.baseUrl}/entries/${entryId}`, data);
   }
 
-  async deleteTask(taskId: string): Promise<void> {
-    await api.delete(`${this.baseUrl}/tasks/${taskId}`);
+  async deleteEntry(entryId: string): Promise<void> {
+    await api.delete(`${this.baseUrl}/entries/${entryId}`);
   }
 
-  async updateTaskStatus(taskId: string, status: DailyTaskStatus): Promise<DailyTask> {
-    return await api.patch<DailyTask>(`${this.baseUrl}/tasks/${taskId}/status`, { status });
+  async updateEntryStatus(
+    entryId: string,
+    status: DailyProgressEntryStatus,
+  ): Promise<DailyProgressEntry> {
+    return await api.patch<DailyProgressEntry>(`${this.baseUrl}/entries/${entryId}/status`, {
+      status,
+    });
   }
 }
 

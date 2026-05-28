@@ -168,7 +168,7 @@ export default function AnalyticsPage() {
               <p className="text-xs text-gray-500 font-medium">月度计划</p>
               <p className="text-2xl font-bold text-gray-800">{dashboardStats.total_monthly_plans}</p>
               <p className="text-xs text-gray-500">
-                日进度 {dashboardStats.total_daily_progress_days ?? dashboardStats.total_daily_plans}
+                日进度 {dashboardStats.total_daily_progress_days}
               </p>
             </div>
           </div>

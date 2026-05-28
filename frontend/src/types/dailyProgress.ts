@@ -1,21 +1,19 @@
 import type { TaskContext } from "./taskContext";
 
-export type DailyTaskPriority = "low" | "medium" | "high";
+export type DailyProgressEntryPriority = "low" | "medium" | "high";
 
-export type DailyTaskStatus = "todo" | "in-progress" | "done" | "cancelled";
+export type DailyProgressEntryStatus = "todo" | "in-progress" | "done" | "cancelled";
 
 export type { TaskContext };
 
-export interface DailyTask {
+export interface DailyProgressEntry {
   id: string;
   daily_progress_day_id: string;
-  /** @deprecated use daily_progress_day_id */
-  daily_plan_id?: string;
   backlog_task_id?: string;
   title: string;
   description?: string;
-  priority: DailyTaskPriority;
-  status: DailyTaskStatus;
+  priority: DailyProgressEntryPriority;
+  status: DailyProgressEntryStatus;
   context: TaskContext;
   estimated_minutes?: number;
   actual_minutes: number;
@@ -26,74 +24,59 @@ export interface DailyTask {
   updated_at: string;
 }
 
-export interface DailyPlanTaskAdd {
+export interface DailyProgressEntryAdd {
   backlog_task_id?: string;
   title?: string;
   description?: string;
-  priority?: DailyTaskPriority;
-  status?: DailyTaskStatus;
+  priority?: DailyProgressEntryPriority;
+  status?: DailyProgressEntryStatus;
   context?: TaskContext;
   estimated_minutes?: number;
   time_slot?: string;
 }
 
-/** @deprecated Prefer DailyPlanTaskAdd for daily progress endpoints */
-export interface DailyTaskCreate {
-  title: string;
-  description?: string;
-  priority?: DailyTaskPriority;
-  status?: DailyTaskStatus;
-  context?: TaskContext;
-  estimated_minutes?: number;
-  time_slot?: string;
-}
-
-export interface DailyTaskUpdate {
+export interface DailyProgressEntryUpdate {
   title?: string;
   description?: string;
-  priority?: DailyTaskPriority;
-  status?: DailyTaskStatus;
+  priority?: DailyProgressEntryPriority;
+  status?: DailyProgressEntryStatus;
   context?: TaskContext;
   estimated_minutes?: number;
   actual_minutes?: number;
   time_slot?: string;
 }
 
-/** Lightweight row from GET /daily-progress/by-date/{date} (no tasks). */
-export interface DailyPlanHead {
+/** Lightweight row from GET /daily-progress/by-date/{progressDate} (no entries). */
+export interface DailyProgressDayHead {
   id: string;
   user_id: string;
   monthly_plan_id?: string;
-  plan_date: string;
+  progress_date: string;
   title?: string;
   notes?: string;
   created_at: string;
   updated_at: string;
 }
 
-export interface DailyPlan {
+export interface DailyProgressDay {
   id: string;
   user_id: string;
   monthly_plan_id?: string;
-  plan_date: string;
+  progress_date: string;
   title?: string;
   notes?: string;
   total_tasks: number;
   completed_tasks: number;
   completion_rate: number;
-  daily_progress_entries: DailyTask[];
-  /** @deprecated use daily_progress_entries */
-  daily_tasks?: DailyTask[];
-  daily_summary?: DailySummaryInPlan;
+  daily_progress_entries: DailyProgressEntry[];
+  daily_summary?: DailySummaryInDay;
   created_at: string;
   updated_at: string;
 }
 
-export interface DailySummaryInPlan {
+export interface DailySummaryInDay {
   id: string;
   daily_progress_day_id: string;
-  /** @deprecated use daily_progress_day_id */
-  daily_plan_id?: string;
   user_id: string;
   summary_type: "daily" | "small" | "large";
   content: string;
@@ -101,25 +84,33 @@ export interface DailySummaryInPlan {
   updated_at: string;
 }
 
-export interface DailyPlanCreate {
-  plan_date: string;
+export interface DailyProgressDayCreate {
+  progress_date: string;
   title?: string;
   notes?: string;
   monthly_plan_id?: string;
 }
 
-export interface DailyPlanUpdate {
+export interface DailyProgressDayUpdate {
   title?: string;
   notes?: string;
 }
 
-export const DAILY_TASK_PRIORITY: { value: DailyTaskPriority; label: string; color: string }[] = [
+export const DAILY_PROGRESS_ENTRY_PRIORITY: {
+  value: DailyProgressEntryPriority;
+  label: string;
+  color: string;
+}[] = [
   { value: "low", label: "低", color: "#10B981" },
   { value: "medium", label: "中", color: "#F59E0B" },
   { value: "high", label: "高", color: "#EF4444" },
 ];
 
-export const DAILY_TASK_STATUS: { value: DailyTaskStatus; label: string; color: string }[] = [
+export const DAILY_PROGRESS_ENTRY_STATUS: {
+  value: DailyProgressEntryStatus;
+  label: string;
+  color: string;
+}[] = [
   { value: "todo", label: "待办", color: "#9CA3AF" },
   { value: "in-progress", label: "进行中", color: "#3B82F6" },
   { value: "done", label: "已完成", color: "#10B981" },
@@ -134,21 +125,3 @@ export const TIME_SLOTS: { value: string; label: string }[] = [
   { value: "evening", label: "晚上" },
   { value: "night", label: "深夜" },
 ];
-
-export type DailyProgressDay = DailyPlan;
-export type DailyProgressDayHead = DailyPlanHead;
-export type DailyProgressDayCreate = DailyPlanCreate;
-export type DailyProgressDayUpdate = DailyPlanUpdate;
-export type DailyProgressEntryAdd = DailyPlanTaskAdd;
-export type DailyProgressEntry = DailyTask;
-export type DailyProgressEntryUpdate = DailyTaskUpdate;
-
-export function dailyProgressEntries(plan: Pick<DailyPlan, "daily_progress_entries" | "daily_tasks">): DailyTask[] {
-  return plan.daily_progress_entries ?? plan.daily_tasks ?? [];
-}
-
-export function dailyProgressDayId(
-  value: Pick<DailyTask, "daily_progress_day_id" | "daily_plan_id">,
-): string {
-  return value.daily_progress_day_id ?? value.daily_plan_id ?? "";
-}

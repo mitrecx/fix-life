@@ -3,8 +3,6 @@ export type SummaryType = "daily" | "small" | "large";
 export interface DailySummary {
   id: string;
   daily_progress_day_id: string;
-  /** @deprecated use daily_progress_day_id */
-  daily_plan_id?: string;
   user_id: string;
   summary_type: SummaryType;
   content: string;

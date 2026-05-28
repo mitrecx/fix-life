@@ -1,8 +1,8 @@
 from datetime import datetime
-from typing import Any, Optional
+from typing import Optional
 from uuid import UUID
-from pydantic import BaseModel, Field, computed_field, model_validator
-from app.models.daily_plan import SummaryType
+from pydantic import BaseModel, Field, computed_field
+from app.models.daily_progress import SummaryType
 
 
 # Summary Type Labels for frontend
@@ -30,30 +30,9 @@ class DailySummaryUpdate(BaseModel):
 class DailySummaryResponse(DailySummaryBase):
     id: UUID
     daily_progress_day_id: UUID
-    daily_plan_id: Optional[UUID] = Field(
-        default=None,
-        description="Deprecated: use daily_progress_day_id",
-    )
     user_id: UUID
     created_at: datetime
     updated_at: datetime
-
-    @model_validator(mode="before")
-    @classmethod
-    def sync_day_id(cls, data: Any) -> Any:
-        if isinstance(data, dict):
-            if "daily_progress_day_id" not in data and "daily_plan_id" in data:
-                data = {**data, "daily_progress_day_id": data["daily_plan_id"]}
-            elif "daily_plan_id" not in data and "daily_progress_day_id" in data:
-                data = {**data, "daily_plan_id": data["daily_progress_day_id"]}
-        return data
-
-    @model_validator(mode="after")
-    def ensure_deprecated_day_id(self) -> "DailySummaryResponse":
-        day_id = self.daily_progress_day_id or self.daily_plan_id
-        if day_id is None:
-            raise ValueError("daily_progress_day_id is required")
-        return self.model_copy(update={"daily_progress_day_id": day_id, "daily_plan_id": day_id})
 
     class Config:
         from_attributes = True

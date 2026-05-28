@@ -2,7 +2,7 @@ from fastapi import APIRouter
 from app.api.v1.endpoints import (
     yearly_goals,
     monthly_plans,
-    daily_plans,
+    daily_progress,
     analytics,
     auth,
     users,
@@ -25,7 +25,7 @@ api_router.include_router(users.router, prefix="/users", tags=["users"])
 api_router.include_router(system_settings.router, prefix="/system-settings", tags=["system-settings"])
 api_router.include_router(yearly_goals.router, prefix="/yearly-goals", tags=["yearly-goals"])
 api_router.include_router(monthly_plans.router, prefix="/monthly-plans", tags=["monthly-plans"])
-api_router.include_router(daily_plans.router, prefix="/daily-progress", tags=["daily-progress"])
+api_router.include_router(daily_progress.router, prefix="/daily-progress", tags=["daily-progress"])
 api_router.include_router(backlog_tasks.router, prefix="/backlog-tasks", tags=["backlog-tasks"])
 api_router.include_router(quick_notes.router, prefix="/quick-notes", tags=["quick-notes"])
 api_router.include_router(daily_summaries.router, prefix="/daily-summaries", tags=["daily-summaries"])

@@ -49,7 +49,7 @@ class BacklogTask(Base):
     updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
 
     user = relationship("User", back_populates="backlog_tasks")
-    daily_task = relationship("DailyTask", foreign_keys=[daily_task_id])
+    daily_progress_entry = relationship("DailyProgressEntry", foreign_keys=[daily_task_id])
     daily_links = relationship(
         "BacklogDailyLink",
         back_populates="backlog_task",

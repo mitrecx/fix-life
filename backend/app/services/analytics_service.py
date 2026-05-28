@@ -6,7 +6,7 @@ from sqlalchemy import func, and_
 
 from app.models.yearly_goal import YearlyGoal, GoalStatus, GoalCategory
 from app.models.monthly_plan import MonthlyPlan, MonthlyTask, TaskStatus
-from app.models.daily_plan import DailyPlan, DailyTask, DailyTaskStatus
+from app.models.daily_progress import DailyProgressDay, DailyProgressEntry, DailyProgressEntryStatus
 from app.schemas.analytics import (
     DashboardStats,
     GoalCategoryStats,
@@ -54,10 +54,10 @@ class AnalyticsService:
         ).count()
 
         # Daily plans stats
-        total_daily_plans = self.db.query(DailyPlan).filter(
-            DailyPlan.user_id == user_id,
-            func.extract('year', DailyPlan.plan_date) == current_year,
-            func.extract('month', DailyPlan.plan_date) == current_month
+        total_daily_progress_days = self.db.query(DailyProgressDay).filter(
+            DailyProgressDay.user_id == user_id,
+            func.extract('year', DailyProgressDay.progress_date) == current_year,
+            func.extract('month', DailyProgressDay.progress_date) == current_month
         ).count()
 
         # Tasks stats (monthly + daily)
@@ -78,21 +78,21 @@ class AnalyticsService:
             MonthlyTask.status == TaskStatus.DONE
         ).count()
 
-        total_daily_tasks = self.db.query(DailyTask).join(
-            DailyPlan, DailyTask.daily_progress_day_id == DailyPlan.id
+        total_daily_tasks = self.db.query(DailyProgressEntry).join(
+            DailyProgressDay, DailyProgressEntry.daily_progress_day_id == DailyProgressDay.id
         ).filter(
-            DailyPlan.user_id == user_id,
-            func.extract('year', DailyPlan.plan_date) == current_year,
-            func.extract('month', DailyPlan.plan_date) == current_month
+            DailyProgressDay.user_id == user_id,
+            func.extract('year', DailyProgressDay.progress_date) == current_year,
+            func.extract('month', DailyProgressDay.progress_date) == current_month
         ).count()
 
-        completed_daily_tasks = self.db.query(DailyTask).join(
-            DailyPlan, DailyTask.daily_progress_day_id == DailyPlan.id
+        completed_daily_tasks = self.db.query(DailyProgressEntry).join(
+            DailyProgressDay, DailyProgressEntry.daily_progress_day_id == DailyProgressDay.id
         ).filter(
-            DailyPlan.user_id == user_id,
-            func.extract('year', DailyPlan.plan_date) == current_year,
-            func.extract('month', DailyPlan.plan_date) == current_month,
-            DailyTask.status == DailyTaskStatus.DONE
+            DailyProgressDay.user_id == user_id,
+            func.extract('year', DailyProgressDay.progress_date) == current_year,
+            func.extract('month', DailyProgressDay.progress_date) == current_month,
+            DailyProgressEntry.status == DailyProgressEntryStatus.DONE
         ).count()
 
         total_tasks = total_monthly_tasks + total_daily_tasks
@@ -107,8 +107,7 @@ class AnalyticsService:
             active_goals=active_goals,
             completed_goals=completed_goals,
             total_monthly_plans=total_monthly_plans,
-            total_daily_plans=total_daily_plans,
-            total_daily_progress_days=total_daily_plans,
+            total_daily_progress_days=total_daily_progress_days,
             total_tasks=total_tasks,
             completed_tasks=completed_tasks,
             overall_completion_rate=overall_completion_rate,
@@ -190,19 +189,19 @@ class AnalyticsService:
         ).count()
 
         # Add daily tasks
-        daily_tasks_total = self.db.query(DailyTask).join(
-            DailyPlan, DailyTask.daily_progress_day_id == DailyPlan.id
+        daily_tasks_total = self.db.query(DailyProgressEntry).join(
+            DailyProgressDay, DailyProgressEntry.daily_progress_day_id == DailyProgressDay.id
         ).filter(
-            DailyPlan.user_id == user_id,
-            func.extract('year', DailyPlan.plan_date) == year
+            DailyProgressDay.user_id == user_id,
+            func.extract('year', DailyProgressDay.progress_date) == year
         ).count()
 
-        daily_tasks_completed = self.db.query(DailyTask).join(
-            DailyPlan, DailyTask.daily_progress_day_id == DailyPlan.id
+        daily_tasks_completed = self.db.query(DailyProgressEntry).join(
+            DailyProgressDay, DailyProgressEntry.daily_progress_day_id == DailyProgressDay.id
         ).filter(
-            DailyPlan.user_id == user_id,
-            func.extract('year', DailyPlan.plan_date) == year,
-            DailyTask.status == DailyTaskStatus.DONE
+            DailyProgressDay.user_id == user_id,
+            func.extract('year', DailyProgressDay.progress_date) == year,
+            DailyProgressEntry.status == DailyProgressEntryStatus.DONE
         ).count()
 
         total_tasks += daily_tasks_total
@@ -236,13 +235,13 @@ class AnalyticsService:
         total_plans = len(monthly_plans)
 
         # Get daily plans
-        daily_plans = self.db.query(DailyPlan).filter(
-            DailyPlan.user_id == user_id,
-            func.extract('year', DailyPlan.plan_date) == year,
-            func.extract('month', DailyPlan.plan_date) == month
+        daily_plans = self.db.query(DailyProgressDay).filter(
+            DailyProgressDay.user_id == user_id,
+            func.extract('year', DailyProgressDay.progress_date) == year,
+            func.extract('month', DailyProgressDay.progress_date) == month
         ).all()
 
-        total_daily_plans = len(daily_plans)
+        total_daily_progress_days = len(daily_plans)
 
         # Task stats from monthly plans
         total_monthly_tasks = self.db.query(MonthlyTask).join(
@@ -263,21 +262,21 @@ class AnalyticsService:
         ).count()
 
         # Task stats from daily plans
-        total_daily_tasks = self.db.query(DailyTask).join(
-            DailyPlan, DailyTask.daily_progress_day_id == DailyPlan.id
+        total_daily_tasks = self.db.query(DailyProgressEntry).join(
+            DailyProgressDay, DailyProgressEntry.daily_progress_day_id == DailyProgressDay.id
         ).filter(
-            DailyPlan.user_id == user_id,
-            func.extract('year', DailyPlan.plan_date) == year,
-            func.extract('month', DailyPlan.plan_date) == month
+            DailyProgressDay.user_id == user_id,
+            func.extract('year', DailyProgressDay.progress_date) == year,
+            func.extract('month', DailyProgressDay.progress_date) == month
         ).count()
 
-        completed_daily_tasks = self.db.query(DailyTask).join(
-            DailyPlan, DailyTask.daily_progress_day_id == DailyPlan.id
+        completed_daily_tasks = self.db.query(DailyProgressEntry).join(
+            DailyProgressDay, DailyProgressEntry.daily_progress_day_id == DailyProgressDay.id
         ).filter(
-            DailyPlan.user_id == user_id,
-            func.extract('year', DailyPlan.plan_date) == year,
-            func.extract('month', DailyPlan.plan_date) == month,
-            DailyTask.status == DailyTaskStatus.DONE
+            DailyProgressDay.user_id == user_id,
+            func.extract('year', DailyProgressDay.progress_date) == year,
+            func.extract('month', DailyProgressDay.progress_date) == month,
+            DailyProgressEntry.status == DailyProgressEntryStatus.DONE
         ).count()
 
         total_tasks = total_monthly_tasks + total_daily_tasks
@@ -290,17 +289,17 @@ class AnalyticsService:
         # Daily completion data
         daily_completion_data = []
         for day in range(1, 32):
-            day_tasks = self.db.query(DailyTask).join(
-                DailyPlan, DailyTask.daily_progress_day_id == DailyPlan.id
+            day_tasks = self.db.query(DailyProgressEntry).join(
+                DailyProgressDay, DailyProgressEntry.daily_progress_day_id == DailyProgressDay.id
             ).filter(
-                DailyPlan.user_id == user_id,
-                func.extract('year', DailyPlan.plan_date) == year,
-                func.extract('month', DailyPlan.plan_date) == month,
-                func.extract('day', DailyPlan.plan_date) == day
+                DailyProgressDay.user_id == user_id,
+                func.extract('year', DailyProgressDay.progress_date) == year,
+                func.extract('month', DailyProgressDay.progress_date) == month,
+                func.extract('day', DailyProgressDay.progress_date) == day
             ).all()
 
             if day_tasks:
-                completed = len([t for t in day_tasks if t.status == DailyTaskStatus.DONE])
+                completed = len([t for t in day_tasks if t.status == DailyProgressEntryStatus.DONE])
                 rate = round((completed / len(day_tasks) * 100), 2)
                 daily_completion_data.append({
                     "day": day,
@@ -312,13 +311,13 @@ class AnalyticsService:
         # Priority distribution (for daily tasks)
         priority_distribution = []
         for priority in ["low", "medium", "high"]:
-            count = self.db.query(DailyTask).join(
-                DailyPlan, DailyTask.daily_progress_day_id == DailyPlan.id
+            count = self.db.query(DailyProgressEntry).join(
+                DailyProgressDay, DailyProgressEntry.daily_progress_day_id == DailyProgressDay.id
             ).filter(
-                DailyPlan.user_id == user_id,
-                func.extract('year', DailyPlan.plan_date) == year,
-                func.extract('month', DailyPlan.plan_date) == month,
-                DailyTask.priority == priority
+                DailyProgressDay.user_id == user_id,
+                func.extract('year', DailyProgressDay.progress_date) == year,
+                func.extract('month', DailyProgressDay.progress_date) == month,
+                DailyProgressEntry.priority == priority
             ).count()
 
             priority_distribution.append({
@@ -332,18 +331,18 @@ class AnalyticsService:
             start_day = (week - 1) * 7 + 1
             end_day = min(week * 7, 31)
 
-            week_tasks = self.db.query(DailyTask).join(
-                DailyPlan, DailyTask.daily_progress_day_id == DailyPlan.id
+            week_tasks = self.db.query(DailyProgressEntry).join(
+                DailyProgressDay, DailyProgressEntry.daily_progress_day_id == DailyProgressDay.id
             ).filter(
-                DailyPlan.user_id == user_id,
-                func.extract('year', DailyPlan.plan_date) == year,
-                func.extract('month', DailyPlan.plan_date) == month,
-                func.extract('day', DailyPlan.plan_date) >= start_day,
-                func.extract('day', DailyPlan.plan_date) <= end_day
+                DailyProgressDay.user_id == user_id,
+                func.extract('year', DailyProgressDay.progress_date) == year,
+                func.extract('month', DailyProgressDay.progress_date) == month,
+                func.extract('day', DailyProgressDay.progress_date) >= start_day,
+                func.extract('day', DailyProgressDay.progress_date) <= end_day
             ).all()
 
             if week_tasks:
-                completed = len([t for t in week_tasks if t.status == DailyTaskStatus.DONE])
+                completed = len([t for t in week_tasks if t.status == DailyProgressEntryStatus.DONE])
                 rate = round((completed / len(week_tasks) * 100), 2)
                 weekly_comparison.append({
                     "week": week,
@@ -356,8 +355,7 @@ class AnalyticsService:
             year=year,
             month=month,
             total_plans=total_plans,
-            total_daily_plans=total_daily_plans,
-            total_daily_progress_days=total_daily_plans,
+            total_daily_progress_days=total_daily_progress_days,
             total_tasks=total_tasks,
             completed_tasks=completed_tasks,
             task_completion_rate=task_completion_rate,
@@ -380,15 +378,15 @@ class AnalyticsService:
         if period == "daily":
             current = start_date
             while current <= end_date:
-                day_tasks = self.db.query(DailyTask).join(
-                    DailyPlan, DailyTask.daily_progress_day_id == DailyPlan.id
+                day_tasks = self.db.query(DailyProgressEntry).join(
+                    DailyProgressDay, DailyProgressEntry.daily_progress_day_id == DailyProgressDay.id
                 ).filter(
-                    DailyPlan.user_id == user_id,
-                    DailyPlan.plan_date == current
+                    DailyProgressDay.user_id == user_id,
+                    DailyProgressDay.progress_date == current
                 ).all()
 
                 if day_tasks:
-                    completed = len([t for t in day_tasks if t.status == DailyTaskStatus.DONE])
+                    completed = len([t for t in day_tasks if t.status == DailyProgressEntryStatus.DONE])
                     rate = round((completed / len(day_tasks) * 100), 2)
                     data.append({
                         "date": current.isoformat(),
@@ -405,16 +403,16 @@ class AnalyticsService:
             while current <= end_date:
                 week_end = min(current.replace(day=current.day + 6), end_date)
 
-                week_tasks = self.db.query(DailyTask).join(
-                    DailyPlan, DailyTask.daily_progress_day_id == DailyPlan.id
+                week_tasks = self.db.query(DailyProgressEntry).join(
+                    DailyProgressDay, DailyProgressEntry.daily_progress_day_id == DailyProgressDay.id
                 ).filter(
-                    DailyPlan.user_id == user_id,
-                    DailyPlan.plan_date >= current,
-                    DailyPlan.plan_date <= week_end
+                    DailyProgressDay.user_id == user_id,
+                    DailyProgressDay.progress_date >= current,
+                    DailyProgressDay.progress_date <= week_end
                 ).all()
 
                 if week_tasks:
-                    completed = len([t for t in week_tasks if t.status == DailyTaskStatus.DONE])
+                    completed = len([t for t in week_tasks if t.status == DailyProgressEntryStatus.DONE])
                     rate = round((completed / len(week_tasks) * 100), 2)
                     data.append({
                         "week": week_num,
@@ -430,16 +428,16 @@ class AnalyticsService:
         elif period == "monthly":
             current = start_date
             while current <= end_date:
-                month_tasks = self.db.query(DailyTask).join(
-                    DailyPlan, DailyTask.daily_progress_day_id == DailyPlan.id
+                month_tasks = self.db.query(DailyProgressEntry).join(
+                    DailyProgressDay, DailyProgressEntry.daily_progress_day_id == DailyProgressDay.id
                 ).filter(
-                    DailyPlan.user_id == user_id,
-                    func.extract('year', DailyPlan.plan_date) == current.year,
-                    func.extract('month', DailyPlan.plan_date) == current.month
+                    DailyProgressDay.user_id == user_id,
+                    func.extract('year', DailyProgressDay.progress_date) == current.year,
+                    func.extract('month', DailyProgressDay.progress_date) == current.month
                 ).all()
 
                 if month_tasks:
-                    completed = len([t for t in month_tasks if t.status == DailyTaskStatus.DONE])
+                    completed = len([t for t in month_tasks if t.status == DailyProgressEntryStatus.DONE])
                     rate = round((completed / len(month_tasks) * 100), 2)
                     data.append({
                         "month": current.month,
@@ -487,15 +485,15 @@ class AnalyticsService:
         current = start_date
 
         while current <= end_date:
-            day_tasks = self.db.query(DailyTask).join(
-                DailyPlan, DailyTask.daily_progress_day_id == DailyPlan.id
+            day_tasks = self.db.query(DailyProgressEntry).join(
+                DailyProgressDay, DailyProgressEntry.daily_progress_day_id == DailyProgressDay.id
             ).filter(
-                DailyPlan.user_id == user_id,
-                DailyPlan.plan_date == current
+                DailyProgressDay.user_id == user_id,
+                DailyProgressDay.progress_date == current
             ).all()
 
             if day_tasks:
-                completed = len([t for t in day_tasks if t.status == DailyTaskStatus.DONE])
+                completed = len([t for t in day_tasks if t.status == DailyProgressEntryStatus.DONE])
                 rate = round((completed / len(day_tasks) * 100), 2)
 
                 # Determine activity level

@@ -5,7 +5,7 @@ from sqlalchemy import and_
 
 from app.api.v1.deps import get_db, get_current_user
 from app.models.user import User
-from app.models.daily_plan import DailySummary, DailyPlan
+from app.models.daily_progress import DailySummary, DailyProgressDay
 from app.schemas.daily_summary import (
     DailySummaryCreate,
     DailySummaryUpdate,
@@ -16,24 +16,25 @@ from app.schemas.daily_summary import (
 router = APIRouter()
 
 
-@router.get("/plans/{plan_id}/summary", response_model=DailySummaryResponse)
-def get_summary_by_plan(
-    plan_id: str,
+@router.get("/days/{daily_progress_day_id}/summary", response_model=DailySummaryResponse)
+def get_summary_by_day(
+    daily_progress_day_id: str,
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ) -> DailySummary:
     """获取指定每日进度的总结"""
-    # Verify plan belongs to current user
-    plan = db.query(DailyPlan).filter(
-        and_(DailyPlan.id == plan_id, DailyPlan.user_id == current_user.id)
+    day = db.query(DailyProgressDay).filter(
+        and_(DailyProgressDay.id == daily_progress_day_id, DailyProgressDay.user_id == current_user.id)
     ).first()
-    if not plan:
+    if not day:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
             detail="每日进度不存在"
         )
 
-    summary = db.query(DailySummary).filter(DailySummary.daily_progress_day_id == plan_id).first()
+    summary = db.query(DailySummary).filter(
+        DailySummary.daily_progress_day_id == daily_progress_day_id
+    ).first()
     if not summary:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
@@ -42,26 +43,26 @@ def get_summary_by_plan(
     return summary
 
 
-@router.post("/plans/{plan_id}/summary", response_model=DailySummaryResponse, status_code=status.HTTP_201_CREATED)
+@router.post("/days/{daily_progress_day_id}/summary", response_model=DailySummaryResponse, status_code=status.HTTP_201_CREATED)
 def create_summary(
-    plan_id: str,
+    daily_progress_day_id: str,
     summary_in: DailySummaryCreate,
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ) -> DailySummary:
     """为指定每日进度创建总结"""
-    # Verify plan belongs to current user
-    plan = db.query(DailyPlan).filter(
-        and_(DailyPlan.id == plan_id, DailyPlan.user_id == current_user.id)
+    day = db.query(DailyProgressDay).filter(
+        and_(DailyProgressDay.id == daily_progress_day_id, DailyProgressDay.user_id == current_user.id)
     ).first()
-    if not plan:
+    if not day:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
             detail="每日进度不存在"
         )
 
-    # Check if summary already exists
-    existing = db.query(DailySummary).filter(DailySummary.daily_progress_day_id == plan_id).first()
+    existing = db.query(DailySummary).filter(
+        DailySummary.daily_progress_day_id == daily_progress_day_id
+    ).first()
     if existing:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
@@ -69,7 +70,7 @@ def create_summary(
         )
 
     summary = DailySummary(
-        daily_progress_day_id=plan_id,
+        daily_progress_day_id=daily_progress_day_id,
         user_id=current_user.id,
         **summary_in.model_dump()
     )

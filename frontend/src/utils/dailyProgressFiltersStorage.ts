@@ -45,7 +45,6 @@ export function buildDefaultDailyProgressFilters(): DailyProgressFiltersState {
 }
 
 const STORAGE_KEY = "fix-life-daily-progress-filters";
-const LEGACY_STORAGE_KEY = "fix-life-daily-plans-filters";
 
 export interface DailyProgressFiltersState {
   context: DailyProgressContextFilter;
@@ -65,12 +64,12 @@ function isValidDateString(value: unknown): value is string {
 
 export function readDailyProgressFilters(fallback: DailyProgressFiltersState): DailyProgressFiltersState {
   try {
-    const raw = localStorage.getItem(STORAGE_KEY) ?? localStorage.getItem(LEGACY_STORAGE_KEY);
+    const raw = localStorage.getItem(STORAGE_KEY);
     if (!raw) {
       return fallback;
     }
     const parsed = JSON.parse(raw) as Partial<DailyProgressFiltersState>;
-    const state = {
+    return {
       context: isDailyProgressContextFilter(parsed.context) ? parsed.context : fallback.context,
       startDate: isValidDateString(parsed.startDate) ? parsed.startDate : fallback.startDate,
       endDate: isValidDateString(parsed.endDate) ? parsed.endDate : fallback.endDate,
@@ -86,10 +85,6 @@ export function readDailyProgressFilters(fallback: DailyProgressFiltersState): D
           ? parsed.selectedWeek
           : fallback.selectedWeek,
     };
-    if (!localStorage.getItem(STORAGE_KEY) && localStorage.getItem(LEGACY_STORAGE_KEY)) {
-      writeDailyProgressFilters(state);
-    }
-    return state;
   } catch {
     return fallback;
   }

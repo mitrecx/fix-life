@@ -1,16 +1,7 @@
 """Analytics schemas for data statistics and analysis."""
 from datetime import date
-from typing import Any, Optional, List
-from pydantic import BaseModel, Field, model_validator
-
-
-def _mirror_daily_progress_day_fields(data: Any) -> Any:
-    if isinstance(data, dict):
-        if "total_daily_progress_days" not in data and "total_daily_plans" in data:
-            data = {**data, "total_daily_progress_days": data["total_daily_plans"]}
-        elif "total_daily_plans" not in data and "total_daily_progress_days" in data:
-            data = {**data, "total_daily_plans": data["total_daily_progress_days"]}
-    return data
+from typing import List
+from pydantic import BaseModel, Field
 
 
 class DashboardStats(BaseModel):
@@ -19,18 +10,10 @@ class DashboardStats(BaseModel):
     active_goals: int = Field(description="Number of active goals")
     completed_goals: int = Field(description="Number of completed goals")
     total_monthly_plans: int = Field(description="Total monthly plans this year")
-    total_daily_plans: int = Field(
-        description="Deprecated: use total_daily_progress_days",
-    )
     total_daily_progress_days: int = Field(description="Total daily progress days this month")
     total_tasks: int = Field(description="Total tasks across all plans")
     completed_tasks: int = Field(description="Total completed tasks")
     overall_completion_rate: float = Field(description="Overall task completion rate percentage")
-
-    @model_validator(mode="before")
-    @classmethod
-    def _sync_daily_progress_fields(cls, data: Any) -> Any:
-        return _mirror_daily_progress_day_fields(data)
 
 
 class GoalCategoryStats(BaseModel):
@@ -59,9 +42,6 @@ class MonthlyStats(BaseModel):
     year: int
     month: int
     total_plans: int = Field(description="Total monthly plans")
-    total_daily_plans: int = Field(
-        description="Deprecated: use total_daily_progress_days",
-    )
     total_daily_progress_days: int = Field(description="Total daily progress days in this month")
     total_tasks: int
     completed_tasks: int
@@ -69,11 +49,6 @@ class MonthlyStats(BaseModel):
     daily_completion_data: List[dict] = Field(description="Daily task completion data")
     priority_distribution: List[dict] = Field(description="Task distribution by priority")
     weekly_comparison: List[dict] = Field(description="Week by week comparison")
-
-    @model_validator(mode="before")
-    @classmethod
-    def _sync_daily_progress_fields(cls, data: Any) -> Any:
-        return _mirror_daily_progress_day_fields(data)
 
 
 class CompletionRateTrend(BaseModel):

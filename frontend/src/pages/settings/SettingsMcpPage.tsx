@@ -16,8 +16,11 @@ export default function SettingsMcpPage() {
       <div className="mb-6">
         <h2 className="text-xl font-semibold text-gray-800 mb-2">MCP 集成</h2>
         <p className="text-sm text-gray-500 mb-3">
-          通过 Streamable HTTP 连接 Fix Life MCP Server。每日进度请使用 <code className="text-xs bg-gray-100 px-1 py-0.5 rounded">daily_progress</code>{" "}
-          Tool（<code className="text-xs bg-gray-100 px-1 py-0.5 rounded">daily</code> 已弃用）；日总结请使用{" "}
+          通过 Streamable HTTP 连接 Fix Life MCP Server。每日进度请使用{" "}
+          <code className="text-xs bg-gray-100 px-1 py-0.5 rounded">daily_progress</code>（
+          <code className="text-xs bg-gray-100 px-1 py-0.5 rounded">daily_progress_day_id</code> /{" "}
+          <code className="text-xs bg-gray-100 px-1 py-0.5 rounded">entry_id</code> /{" "}
+          <code className="text-xs bg-gray-100 px-1 py-0.5 rounded">progress_date</code>）；日总结请使用{" "}
           <code className="text-xs bg-gray-100 px-1 py-0.5 rounded">reflect</code> 的{" "}
           <code className="text-xs bg-gray-100 px-1 py-0.5 rounded">get_daily_summary</code> 等 action。
         </p>

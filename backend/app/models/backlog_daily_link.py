@@ -35,4 +35,4 @@ class BacklogDailyLink(Base):
     created_at = Column(DateTime, default=datetime.utcnow)
 
     backlog_task = relationship("BacklogTask", back_populates="daily_links")
-    daily_task = relationship("DailyTask", back_populates="backlog_link")
+    daily_progress_entry = relationship("DailyProgressEntry", back_populates="backlog_link")

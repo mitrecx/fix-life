@@ -7,13 +7,18 @@ import { dailySummaryService } from "@/services/dailySummaryService";
 import { LoadingSpinner } from "@/components/LoadingSpinner";
 
 interface DailySummaryModalProps {
-  planId: string;
-  planDate: string;
+  dayId: string;
+  progressDate: string;
   onClose: () => void;
   onUpdate: () => void;
 }
 
-export function DailySummaryModal({ planId, planDate, onClose, onUpdate }: DailySummaryModalProps) {
+export function DailySummaryModal({
+  dayId,
+  progressDate,
+  onClose,
+  onUpdate,
+}: DailySummaryModalProps) {
   const [loading, setLoading] = useState(false);
   const [initialLoading, setInitialLoading] = useState(true);
   const [existingSummary, setExistingSummary] = useState<DailySummary | null>(null);
@@ -23,7 +28,7 @@ export function DailySummaryModal({ planId, planDate, onClose, onUpdate }: Daily
   // Load existing summary if any
   useEffect(() => {
     loadSummary();
-  }, [planId]);
+  }, [dayId]);
 
   // Prevent body scroll when modal is open
   useEffect(() => {
@@ -51,7 +56,7 @@ export function DailySummaryModal({ planId, planDate, onClose, onUpdate }: Daily
   const loadSummary = async () => {
     setInitialLoading(true);
     try {
-      const summary = await dailySummaryService.getByPlanId(planId);
+      const summary = await dailySummaryService.getByDayId(dayId);
       setExistingSummary(summary);
       setSummaryType(summary.summary_type);
       setContent(summary.content);
@@ -80,7 +85,7 @@ export function DailySummaryModal({ planId, planDate, onClose, onUpdate }: Daily
         await dailySummaryService.update(existingSummary.id, data);
         message.success("总结更新成功");
       } else {
-        await dailySummaryService.create(planId, data);
+        await dailySummaryService.create(dayId, data);
         message.success("总结创建成功");
       }
 
@@ -128,7 +133,7 @@ export function DailySummaryModal({ planId, planDate, onClose, onUpdate }: Daily
             </div>
             <div>
               <h2 className="text-xl font-semibold text-gray-800">每日总结</h2>
-              <p className="text-sm text-gray-500">{planDate}</p>
+              <p className="text-sm text-gray-500">{progressDate}</p>
             </div>
           </div>
           <button

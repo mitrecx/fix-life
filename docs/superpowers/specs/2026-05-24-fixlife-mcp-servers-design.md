@@ -221,25 +221,25 @@ fixlife (MCP Server @ /mcp)
 
 ### 6.2 `daily_progress` — 每日进度
 
-> **命名迁移：** 原 Tool 名 `daily` 已 deprecated，请使用 **`daily_progress`**。详见 [命名迁移 spec](./2026-05-24-daily-progress-naming-migration-design.md)。
+> **Breaking change (2026-05-24):** 仅保留 canonical action / 参数 / 响应字段；Tool `daily` 与 `plan_id` / `plan` / `tasks` 等旧名已移除。
 
 **意图：** 围绕 **某一自然日** 查看执行进度、关联待办、更新当日推进（不是独立任务收件箱）。
 
-| action | 别名 | 说明 | Service 等价 |
-|--------|------|------|--------------|
-| `get_by_date` | — | 按日期取进度（含任务、聚合字段） | `DailyPlanService.to_plan_response` |
-| `list` | `list_by_range` | 日期范围内进度；支持 `context` 筛选 | `DailyPlanService.get_user_plans` |
-| `create` | `ensure_day` | 创建/合并某日进度容器 | `DailyPlanService.create_or_merge_plan` |
-| `get` / `update` / `delete` | — | 进度 CRUD | 对应 Service |
-| `list_tasks` | `list_entries` | 列出当日条目 | `DailyPlanService.get_plan_tasks` |
-| `add_task` | `link_entry` | 从待办关联 | `BacklogTaskService.add_to_daily_plan` |
-| `update_task` / `set_task_status` / `remove_task` | `unlink_entry`（remove） | 条目操作 | 对应 Service |
+| action | 说明 | Service 等价 |
+|--------|------|--------------|
+| `get_by_date` | 按 `progress_date` 取进度（含条目、聚合字段） | `DailyProgressService.to_plan_response` |
+| `list_by_range` | 日期范围内进度；支持 `context` 筛选 | `DailyProgressService.get_user_plans` |
+| `ensure_day` | 创建/合并某日进度容器（body 用 `progress_date`） | `DailyProgressService.create_or_merge_plan` |
+| `get` / `update` / `delete` | 进度 CRUD（需 `daily_progress_day_id`） | 对应 Service |
+| `list_entries` | 列出当日条目 | `DailyProgressService.get_plan_tasks` |
+| `link_entry` | 从待办关联 | `BacklogTaskService.add_to_daily_plan` |
+| `update_entry` / `set_entry_status` / `unlink_entry` | 条目操作（需 `entry_id`） | 对应 Service |
 
-**list / get / get_by_date 参数：** `start_date`, `end_date`, `context` (`work` \| `learning` \| `life` \| `all`)
+**参数：** `daily_progress_day_id`, `entry_id`, `progress_date`, `start_date`, `end_date`, `context` (`work` \| `learning` \| `life` \| `all`)
 
-**REST 等价路径：** `/api/v1/daily-progress/*`（旧 `/daily-plans` 已移除）
+**响应 envelope：** `daily_progress_day`, `daily_progress_days`, `daily_progress_entries`, `progress_date`（MCP 响应不含 REST 双字段 `daily_plan_id` / `daily_tasks`）
 
-**Deprecated：** Tool `daily`（wrapper，计划移除）
+**REST 等价路径：** `/api/v1/daily-progress/*`
 
 ---
 
@@ -247,8 +247,7 @@ fixlife (MCP Server @ /mcp)
 
 | action | 说明 |
 |--------|------|
-| `get_daily_summary` / `create_daily_summary` / `update_daily_summary` / `delete_daily_summary` | 日总结（推荐） |
-| `get_daily` / `create_daily` / `update_daily` / `delete_daily` | 日总结（deprecated 别名） |
+| `get_daily_summary` / `create_daily_summary` / `update_daily_summary` / `delete_daily_summary` | 日总结（get/create 需 `daily_progress_day_id`） |
 | `list_weekly` / `get_weekly` / `create_weekly` / `generate_weekly` / `update_weekly` / `delete_weekly` / `send_weekly` | 周总结 |
 
 对应 `DailySummaryService`、`WeeklySummaryService`、`NotificationService`。

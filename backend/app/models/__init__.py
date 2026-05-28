@@ -10,11 +10,11 @@ from app.models.backlog_task import BacklogTask, BacklogTaskStatus
 from app.models.quick_note import QuickNote
 from app.models.backlog_daily_link import BacklogDailyLink
 from app.models.monthly_plan import MonthlyPlan, MonthlyTask, TaskPriority, TaskStatus
-from app.models.daily_plan import (
-    DailyPlan,
-    DailyTask,
-    DailyTaskPriority,
-    DailyTaskStatus,
+from app.models.daily_progress import (
+    DailyProgressDay,
+    DailyProgressEntry,
+    DailyProgressEntryPriority,
+    DailyProgressEntryStatus,
     DailySummary,
     SummaryType,
 )
@@ -40,10 +40,10 @@ __all__ = [
     "MonthlyTask",
     "TaskPriority",
     "TaskStatus",
-    "DailyPlan",
-    "DailyTask",
-    "DailyTaskPriority",
-    "DailyTaskStatus",
+    "DailyProgressDay",
+    "DailyProgressEntry",
+    "DailyProgressEntryPriority",
+    "DailyProgressEntryStatus",
     "DailySummary",
     "SummaryType",
     "WeeklySummary",

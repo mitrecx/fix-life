@@ -1014,7 +1014,7 @@ export function TodosList() {
           setIsDeletingOccurrences(true);
           try {
             const results = await Promise.allSettled(
-              occurrences.map((occ) => dailyProgressService.deleteTask(occ.daily_task_id))
+              occurrences.map((occ) => dailyProgressService.deleteEntry(occ.daily_task_id))
             );
             const failed = results.filter((result) => result.status === "rejected").length;
             if (failed === 0) {

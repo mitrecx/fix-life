@@ -3,7 +3,7 @@ from __future__ import annotations
 from typing import Any
 
 from app.mcp.helpers import db_session, dump, get_user_id, tool_error
-from app.models.daily_plan import DailySummary, DailyPlan
+from app.models.daily_progress import DailySummary, DailyProgressDay
 from app.schemas.daily_summary import DailySummaryCreate, DailySummaryUpdate
 from app.schemas.weekly_summary import (
     WeeklySummaryCreate,
@@ -14,16 +14,12 @@ from app.services.notification_service import NotificationService
 from app.services.weekly_summary_service import WeeklySummaryService
 from sqlalchemy import and_
 
-REFLECT_ACTION_ALIASES: dict[str, str] = {
-    "get_daily_summary": "get_daily",
-    "create_daily_summary": "create_daily",
-    "update_daily_summary": "update_daily",
-    "delete_daily_summary": "delete_daily",
-}
 
-
-def normalize_reflect_action(action: str) -> str:
-    return REFLECT_ACTION_ALIASES.get(action, action)
+def require_daily_progress_day_id(payload: dict[str, Any]) -> str:
+    day_id = payload.get("daily_progress_day_id")
+    if not day_id:
+        tool_error(422, "VALIDATION_ERROR", "daily_progress_day_id is required")
+    return str(day_id)
 
 
 def handle_reflect(payload: dict[str, Any]) -> dict[str, Any]:
@@ -31,48 +27,44 @@ def handle_reflect(payload: dict[str, Any]) -> dict[str, Any]:
     if not action:
         tool_error(422, "VALIDATION_ERROR", "action is required")
 
-    action = normalize_reflect_action(str(action))
+    action = str(action)
     user_id = get_user_id()
 
     with db_session() as db:
-        if action == "get_daily":
-            plan_id = payload.get("plan_id")
-            if not plan_id:
-                tool_error(422, "VALIDATION_ERROR", "plan_id is required")
-            plan = (
-                db.query(DailyPlan)
-                .filter(and_(DailyPlan.id == plan_id, DailyPlan.user_id == user_id))
+        if action == "get_daily_summary":
+            day_id = require_daily_progress_day_id(payload)
+            day = (
+                db.query(DailyProgressDay)
+                .filter(and_(DailyProgressDay.id == day_id, DailyProgressDay.user_id == user_id))
                 .first()
             )
-            if not plan:
+            if not day:
                 tool_error(404, "NOT_FOUND", "Daily progress not found")
-            summary = db.query(DailySummary).filter(DailySummary.daily_progress_day_id == plan_id).first()
+            summary = db.query(DailySummary).filter(DailySummary.daily_progress_day_id == day_id).first()
             if not summary:
                 tool_error(404, "NOT_FOUND", "Daily summary not found")
             return dump(summary)
 
-        if action == "create_daily":
-            plan_id = payload.get("plan_id")
-            if not plan_id:
-                tool_error(422, "VALIDATION_ERROR", "plan_id is required")
-            plan = (
-                db.query(DailyPlan)
-                .filter(and_(DailyPlan.id == plan_id, DailyPlan.user_id == user_id))
+        if action == "create_daily_summary":
+            day_id = require_daily_progress_day_id(payload)
+            day = (
+                db.query(DailyProgressDay)
+                .filter(and_(DailyProgressDay.id == day_id, DailyProgressDay.user_id == user_id))
                 .first()
             )
-            if not plan:
+            if not day:
                 tool_error(404, "NOT_FOUND", "Daily progress not found")
-            existing = db.query(DailySummary).filter(DailySummary.daily_progress_day_id == plan_id).first()
+            existing = db.query(DailySummary).filter(DailySummary.daily_progress_day_id == day_id).first()
             if existing:
-                tool_error(400, "CONFLICT", "Daily summary already exists for this plan")
+                tool_error(400, "CONFLICT", "Daily summary already exists for this daily progress day")
             body = DailySummaryCreate.model_validate(payload.get("data") or payload)
-            summary = DailySummary(daily_progress_day_id=plan_id, user_id=user_id, **body.model_dump())
+            summary = DailySummary(daily_progress_day_id=day_id, user_id=user_id, **body.model_dump())
             db.add(summary)
             db.commit()
             db.refresh(summary)
             return dump(summary)
 
-        if action == "update_daily":
+        if action == "update_daily_summary":
             summary_id = payload.get("summary_id")
             if not summary_id:
                 tool_error(422, "VALIDATION_ERROR", "summary_id is required")
@@ -90,7 +82,7 @@ def handle_reflect(payload: dict[str, Any]) -> dict[str, Any]:
             db.refresh(summary)
             return dump(summary)
 
-        if action == "delete_daily":
+        if action == "delete_daily_summary":
             summary_id = payload.get("summary_id")
             if not summary_id:
                 tool_error(422, "VALIDATION_ERROR", "summary_id is required")

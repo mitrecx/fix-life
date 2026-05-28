@@ -6,7 +6,13 @@ from sqlalchemy import and_
 import logging
 
 from app.models.weekly_summary import WeeklySummary
-from app.models.daily_plan import DailyPlan, DailyTask, DailyTaskStatus, DailySummary, SummaryType
+from app.models.daily_progress import (
+    DailyProgressDay,
+    DailyProgressEntry,
+    DailyProgressEntryStatus,
+    DailySummary,
+    SummaryType,
+)
 from app.schemas.weekly_summary import (
     WeeklySummaryCreate,
     WeeklySummaryUpdate,
@@ -99,16 +105,16 @@ class WeeklySummaryService:
         start_date, end_date = self.get_week_date_range(year, week_number)
 
         # 检查该周是否有日计划数据
-        daily_plans = self.db.query(DailyPlan).filter(
+        daily_progress_days = self.db.query(DailyProgressDay).filter(
             and_(
-                DailyPlan.user_id == user_id,
-                DailyPlan.plan_date >= start_date,
-                DailyPlan.plan_date <= end_date
+                DailyProgressDay.user_id == user_id,
+                DailyProgressDay.progress_date >= start_date,
+                DailyProgressDay.progress_date <= end_date
             )
         ).all()
 
-        if not daily_plans:
-            logger.info(f"User {user_id} has no daily plans for week {year}-{week_number}")
+        if not daily_progress_days:
+            logger.info(f"User {user_id} has no daily progress for week {year}-{week_number}")
             return None
 
         # 聚合每天的数据
@@ -119,10 +125,10 @@ class WeeklySummaryService:
                                   "medium": {"total": 0, "completed": 0},
                                   "low": {"total": 0, "completed": 0}}
 
-        for plan in daily_plans:
+        for day in daily_progress_days:
             # 获取该日的每日总结（如果有）
             daily_summary = self.db.query(DailySummary).filter(
-                DailySummary.daily_progress_day_id == plan.id
+                DailySummary.daily_progress_day_id == day.id
             ).first()
 
             summary_data = None
@@ -134,7 +140,7 @@ class WeeklySummaryService:
 
             # Get tasks for this day
             tasks_data = []
-            for task in plan.daily_tasks:
+            for task in day.daily_progress_entries:
                 tasks_data.append({
                     "title": task.title,
                     "status": task.status.value,
@@ -142,25 +148,25 @@ class WeeklySummaryService:
                 })
 
             daily_data.append({
-                "date": plan.plan_date.isoformat(),
-                "plan_id": str(plan.id),
-                "title": plan.title,
-                "total_tasks": plan.total_tasks,
-                "completed_tasks": plan.completed_tasks,
-                "completion_rate": plan.completion_rate,
+                "date": day.progress_date.isoformat(),
+                "daily_progress_day_id": str(day.id),
+                "title": day.title,
+                "total_tasks": day.total_tasks,
+                "completed_tasks": day.completed_tasks,
+                "completion_rate": day.completion_rate,
                 "daily_summary": summary_data,
                 "tasks": tasks_data
             })
 
-            total_tasks += plan.total_tasks
-            completed_tasks += plan.completed_tasks
+            total_tasks += day.total_tasks
+            completed_tasks += day.completed_tasks
 
             # 统计优先级分布
-            for task in plan.daily_tasks:
+            for task in day.daily_progress_entries:
                 priority = task.priority.value
                 if priority in priority_distribution:
                     priority_distribution[priority]["total"] += 1
-                    if task.status == DailyTaskStatus.DONE:
+                    if task.status == DailyProgressEntryStatus.DONE:
                         priority_distribution[priority]["completed"] += 1
 
         # 计算完成率
@@ -265,16 +271,16 @@ class WeeklySummaryService:
         self.db.commit()
         return True
 
-    def get_active_users_with_daily_plans(
+    def get_active_users_with_daily_progress_days(
         self,
         start_date: date,
         end_date: date
     ) -> List[str]:
-        """获取指定时间范围内有日计划的活跃用户ID列表"""
-        user_ids = self.db.query(DailyPlan.user_id).filter(
+        """获取指定时间范围内有每日进度的活跃用户ID列表"""
+        user_ids = self.db.query(DailyProgressDay.user_id).filter(
             and_(
-                DailyPlan.plan_date >= start_date,
-                DailyPlan.plan_date <= end_date
+                DailyProgressDay.progress_date >= start_date,
+                DailyProgressDay.progress_date <= end_date
             )
         ).distinct().all()
 

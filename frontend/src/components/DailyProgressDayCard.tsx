@@ -1,8 +1,12 @@
 import { useState, useEffect, useRef } from "react";
 import { Trash2, CheckCircle, Circle, Clock, BookOpen } from "lucide-react";
 import { Modal, message } from "antd";
-import type { DailyPlan, DailyTask, DailyTaskStatus } from "@/types/dailyProgress";
-import { DAILY_TASK_PRIORITY, dailyProgressEntries } from "@/types/dailyProgress";
+import type {
+  DailyProgressDay,
+  DailyProgressEntry,
+  DailyProgressEntryStatus,
+} from "@/types/dailyProgress";
+import { DAILY_PROGRESS_ENTRY_PRIORITY } from "@/types/dailyProgress";
 import { DEFAULT_TASK_CONTEXT, getTaskContextConfig } from "@/types/taskContext";
 import { dailyProgressService } from "@/services/dailyProgressService";
 import { backlogTaskService } from "@/services/backlogTaskService";
@@ -11,9 +15,9 @@ import { DailySummaryModal } from "@/components/DailySummaryModal";
 import { systemSettingsService } from "@/services/systemSettingsService";
 
 interface DailyProgressDayCardProps {
-  plan: DailyPlan;
+  day: DailyProgressDay;
   onUpdate: () => void;
-  onTaskUpdate: (task: DailyTask) => void;
+  onEntryUpdate: (entry: DailyProgressEntry) => void;
 }
 
 const STATUS_ICONS = {
@@ -39,9 +43,9 @@ const getWeekdayConfig = (dateStr: string) => {
   return WEEKDAY_CONFIG.find((w) => w.day === day) || WEEKDAY_CONFIG[6];
 };
 
-const sortTasks = (tasks: DailyTask[]) => {
+const sortEntries = (entries: DailyProgressEntry[]) => {
   const priorityOrder = { high: 3, medium: 2, low: 1 };
-  return [...tasks].sort((a, b) => {
+  return [...entries].sort((a, b) => {
     const priorityDiff = priorityOrder[b.priority] - priorityOrder[a.priority];
     if (priorityDiff !== 0) return priorityDiff;
     return new Date(a.created_at).getTime() - new Date(b.created_at).getTime();
@@ -62,36 +66,44 @@ const formatDate = (dateStr: string) => {
   return `${date.getMonth() + 1}月${date.getDate()}日`;
 };
 
-const getTaskProgressSegments = (task: DailyTask) => {
-  const total = task.progress_after ?? 0;
-  const today = task.progress_delta ?? 0;
+const formatProgressDateLabel = (progressDate: string) => {
+  const relativeDate = formatDate(progressDate);
+  const isRelative = relativeDate === "今天" || relativeDate === "昨天" || relativeDate === "明天";
+  return isRelative
+    ? `${relativeDate} ${new Date(progressDate).getMonth() + 1}月${new Date(progressDate).getDate()}日`
+    : relativeDate;
+};
+
+const getEntryProgressSegments = (entry: DailyProgressEntry) => {
+  const total = entry.progress_after ?? 0;
+  const today = entry.progress_delta ?? 0;
   const past = Math.max(0, total - today);
   return { total, today, past };
 };
 
-const isTaskComplete = (task: DailyTask) =>
-  task.status === "done" || (task.progress_after ?? 0) >= 100;
+const isEntryComplete = (entry: DailyProgressEntry) =>
+  entry.status === "done" || (entry.progress_after ?? 0) >= 100;
 
-function DailyTaskProgressSlider({
-  task,
+function DailyEntryProgressSlider({
+  entry,
   onCommit,
 }: {
-  task: DailyTask;
-  onCommit: (task: DailyTask, progress: number) => Promise<void>;
+  entry: DailyProgressEntry;
+  onCommit: (entry: DailyProgressEntry, progress: number) => Promise<void>;
 }) {
-  const { total, past } = getTaskProgressSegments(task);
+  const { total, past } = getEntryProgressSegments(entry);
   const [value, setValue] = useState(total);
   const [updating, setUpdating] = useState(false);
   const draggingRef = useRef(false);
   const floorRef = useRef(past);
 
   useEffect(() => {
-    const segments = getTaskProgressSegments(task);
+    const segments = getEntryProgressSegments(entry);
     if (!draggingRef.current) {
       setValue(segments.total);
       floorRef.current = segments.past;
     }
-  }, [task.id, task.progress_after, task.progress_delta]);
+  }, [entry.id, entry.progress_after, entry.progress_delta]);
 
   const minProgress = floorRef.current;
   const isLocked = minProgress >= 100;
@@ -102,13 +114,13 @@ function DailyTaskProgressSlider({
   const commit = async (next: number) => {
     const clamped = clampValue(next);
     setValue(clamped);
-    if (clamped === (task.progress_after ?? 0)) return;
+    if (clamped === (entry.progress_after ?? 0)) return;
 
     setUpdating(true);
     try {
-      await onCommit(task, clamped);
+      await onCommit(entry, clamped);
     } catch {
-      setValue(task.progress_after ?? 0);
+      setValue(entry.progress_after ?? 0);
     } finally {
       setUpdating(false);
     }
@@ -121,7 +133,7 @@ function DailyTaskProgressSlider({
       pastValue={minProgress}
       todayDelta={todayDelta}
       disabled={isLocked || updating}
-      ariaLabel={`${task.title} 进度`}
+      ariaLabel={`${entry.title} 进度`}
       sliderDataAttr="data-daily-progress-slider"
       title={
         isLocked
@@ -142,7 +154,7 @@ function DailyTaskProgressSlider({
   );
 }
 
-export function DailyProgressDayCard({ plan, onUpdate, onTaskUpdate }: DailyProgressDayCardProps) {
+export function DailyProgressDayCard({ day, onUpdate, onEntryUpdate }: DailyProgressDayCardProps) {
   const [showSummaryModal, setShowSummaryModal] = useState(false);
   const [showDailySummary, setShowDailySummary] = useState(false);
   const [expandedSummary, setExpandedSummary] = useState(false);
@@ -154,39 +166,39 @@ export function DailyProgressDayCard({ plan, onUpdate, onTaskUpdate }: DailyProg
     loadSettings();
   }, []);
 
-  const weekdayConfig = getWeekdayConfig(plan.plan_date);
+  const weekdayConfig = getWeekdayConfig(day.progress_date);
 
-  const updateDailyStatus = async (task: DailyTask, newStatus: DailyTaskStatus) => {
-    await dailyProgressService.updateTaskStatus(task.id, newStatus);
+  const updateDailyStatus = async (entry: DailyProgressEntry, newStatus: DailyProgressEntryStatus) => {
+    await dailyProgressService.updateEntryStatus(entry.id, newStatus);
     onUpdate();
   };
 
-  const handleToggleTaskStatus = async (task: DailyTask) => {
-    const newStatus: DailyTaskStatus = task.status === "done" ? "todo" : "done";
+  const handleToggleEntryStatus = async (entry: DailyProgressEntry) => {
+    const newStatus: DailyProgressEntryStatus = entry.status === "done" ? "todo" : "done";
 
     try {
-      await updateDailyStatus(task, newStatus);
+      await updateDailyStatus(entry, newStatus);
     } catch (error) {
-      console.error("Failed to update task status:", error);
+      console.error("Failed to update entry status:", error);
       message.error("更新失败");
     }
   };
 
-  const handleLinkedProgressCommit = async (task: DailyTask, progress: number) => {
-    if (!task.backlog_task_id) return;
+  const handleLinkedProgressCommit = async (entry: DailyProgressEntry, progress: number) => {
+    if (!entry.backlog_task_id) return;
 
-    const past = Math.max(0, (task.progress_after ?? 0) - (task.progress_delta ?? 0));
+    const past = Math.max(0, (entry.progress_after ?? 0) - (entry.progress_delta ?? 0));
     const progressDelta = Math.max(0, progress - past);
-    const nextStatus: DailyTaskStatus = progress >= 100 ? "done" : "todo";
+    const nextStatus: DailyProgressEntryStatus = progress >= 100 ? "done" : "todo";
 
     try {
-      await backlogTaskService.update(task.backlog_task_id, {
+      await backlogTaskService.update(entry.backlog_task_id, {
         progress,
-        progress_plan_date: plan.plan_date,
+        progress_plan_date: day.progress_date,
       });
 
-      onTaskUpdate({
-        ...task,
+      onEntryUpdate({
+        ...entry,
         status: nextStatus,
         progress_after: progress,
         progress_delta: progressDelta,
@@ -198,7 +210,7 @@ export function DailyProgressDayCard({ plan, onUpdate, onTaskUpdate }: DailyProg
     }
   };
 
-  const handleDeleteTask = async (taskId: string) => {
+  const handleDeleteEntry = async (entryId: string) => {
     Modal.confirm({
       title: "确认删除",
       content: "确定要删除这个任务吗？待办本身会保留。",
@@ -207,16 +219,18 @@ export function DailyProgressDayCard({ plan, onUpdate, onTaskUpdate }: DailyProg
       cancelText: "取消",
       onOk: async () => {
         try {
-          await dailyProgressService.deleteTask(taskId);
+          await dailyProgressService.deleteEntry(entryId);
           message.success("任务已删除");
           onUpdate();
         } catch (error) {
-          console.error("Failed to delete task:", error);
+          console.error("Failed to delete entry:", error);
           message.error("删除失败，请稍后重试");
         }
       },
     });
   };
+
+  const entries = day.daily_progress_entries;
 
   return (
     <div className={`rounded-xl shadow-md border-2 overflow-hidden mb-3 hover:shadow-lg transition-all duration-300 bg-gradient-to-br ${weekdayConfig.color} ${weekdayConfig.borderColor}`}>
@@ -224,13 +238,7 @@ export function DailyProgressDayCard({ plan, onUpdate, onTaskUpdate }: DailyProg
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-2 flex-1 min-w-0">
             <span className={`px-2 py-0.5 text-xs font-medium rounded-lg border flex-shrink-0 ${weekdayConfig.textColor} ${weekdayConfig.tagBg} ${weekdayConfig.borderColor}`}>
-              {(() => {
-                const relativeDate = formatDate(plan.plan_date);
-                const isRelative = relativeDate === "今天" || relativeDate === "昨天" || relativeDate === "明天";
-                return isRelative
-                  ? `${relativeDate} ${new Date(plan.plan_date).getMonth() + 1}月${new Date(plan.plan_date).getDate()}日`
-                  : relativeDate;
-              })()}
+              {formatProgressDateLabel(day.progress_date)}
             </span>
             <span className={`px-2 py-0.5 text-xs font-bold rounded-lg flex-shrink-0 ${weekdayConfig.textColor} ${weekdayConfig.tagBg} ${weekdayConfig.borderColor}`}>
               {weekdayConfig.label}
@@ -253,22 +261,22 @@ export function DailyProgressDayCard({ plan, onUpdate, onTaskUpdate }: DailyProg
         style={{ background: "linear-gradient(to bottom, rgb(249 250 251), rgb(255 255 255))" }}
       >
           <div className="space-y-3">
-            {sortTasks(dailyProgressEntries(plan)).map((task) => {
-              const StatusIcon = STATUS_ICONS[task.status];
-              const priorityConfig = DAILY_TASK_PRIORITY.find((p) => p.value === task.priority);
-              const contextConfig = getTaskContextConfig(task.context ?? DEFAULT_TASK_CONTEXT);
+            {sortEntries(entries).map((entry) => {
+              const StatusIcon = STATUS_ICONS[entry.status];
+              const priorityConfig = DAILY_PROGRESS_ENTRY_PRIORITY.find((p) => p.value === entry.priority);
+              const contextConfig = getTaskContextConfig(entry.context ?? DEFAULT_TASK_CONTEXT);
 
               return (
                 <div
-                  key={task.id}
+                  key={entry.id}
                   className="flex flex-col bg-white rounded-lg border border-gray-100 group hover:border-indigo-200 transition-all duration-200 overflow-hidden"
                 >
                   <div className="flex items-start gap-2 p-2">
-                    {!task.backlog_task_id && (
+                    {!entry.backlog_task_id && (
                       <button
-                        onClick={() => handleToggleTaskStatus(task)}
+                        onClick={() => handleToggleEntryStatus(entry)}
                         className={`flex-shrink-0 p-0.5 rounded transition-all mt-0.5 ${
-                          task.status === "done"
+                          entry.status === "done"
                             ? "text-emerald-500 bg-emerald-50"
                             : "text-gray-300 hover:text-emerald-400 hover:bg-emerald-50"
                         }`}
@@ -279,11 +287,11 @@ export function DailyProgressDayCard({ plan, onUpdate, onTaskUpdate }: DailyProg
                     <div className="flex-1 min-w-0">
                       <div className="flex items-start gap-2 flex-wrap">
                         <span className="flex-1 min-w-0 text-sm font-semibold break-words text-gray-700">
-                          {task.title}
+                          {entry.title}
                         </span>
-                        {task.time_slot && (
+                        {entry.time_slot && (
                           <span className="text-xs px-1.5 py-0.5 rounded bg-gray-100 text-gray-600 shrink-0">
-                            {task.time_slot}
+                            {entry.time_slot}
                           </span>
                         )}
                       </div>
@@ -316,7 +324,7 @@ export function DailyProgressDayCard({ plan, onUpdate, onTaskUpdate }: DailyProg
                         </div>
                       )}
                     </div>
-                    {isTaskComplete(task) && task.backlog_task_id && (
+                    {isEntryComplete(entry) && entry.backlog_task_id && (
                       <span
                         className="shrink-0 inline-flex items-center justify-center rounded-full bg-emerald-50 p-0.5 text-emerald-500 mt-0.5"
                         title="已完成"
@@ -326,28 +334,28 @@ export function DailyProgressDayCard({ plan, onUpdate, onTaskUpdate }: DailyProg
                       </span>
                     )}
                     <button
-                      onClick={() => handleDeleteTask(task.id)}
+                      onClick={() => handleDeleteEntry(entry.id)}
                       className="opacity-0 group-hover:opacity-100 p-1 text-gray-400 hover:text-red-500 hover:bg-red-50 rounded transition-all shrink-0"
                       title="删除任务"
                     >
                       <Trash2 size={12} />
                     </button>
                   </div>
-                  {task.backlog_task_id && (
-                    <DailyTaskProgressSlider task={task} onCommit={handleLinkedProgressCommit} />
+                  {entry.backlog_task_id && (
+                    <DailyEntryProgressSlider entry={entry} onCommit={handleLinkedProgressCommit} />
                   )}
                 </div>
               );
             })}
 
-            {dailyProgressEntries(plan).length === 0 && (
+            {entries.length === 0 && (
               <div className="text-center py-4 px-3 bg-gray-50 rounded-lg border-2 border-dashed border-gray-200">
                 <p className="text-xs text-gray-500">暂无任务</p>
               </div>
             )}
           </div>
 
-          {showDailySummary && plan.daily_summary && (
+          {showDailySummary && day.daily_summary && (
             <div className="mt-3 p-3 bg-gradient-to-r from-amber-50 to-orange-50 rounded-xl border border-amber-200">
               <div className="flex items-start gap-2">
                 <div className="flex-shrink-0 mt-0.5">
@@ -358,9 +366,9 @@ export function DailyProgressDayCard({ plan, onUpdate, onTaskUpdate }: DailyProg
                 <div className="flex-1 min-w-0">
                   <h5 className="text-xs font-semibold text-amber-800 mb-1">每日总结</h5>
                   <p className={`text-sm text-amber-900 whitespace-pre-wrap ${expandedSummary ? "" : "line-clamp-6"}`}>
-                    {plan.daily_summary.content}
+                    {day.daily_summary.content}
                   </p>
-                  {!expandedSummary && plan.daily_summary.content && plan.daily_summary.content.length > 150 && (
+                  {!expandedSummary && day.daily_summary.content && day.daily_summary.content.length > 150 && (
                     <button
                       onClick={() => setExpandedSummary(true)}
                       className="mt-1.5 text-xs font-medium text-amber-700 hover:text-amber-800 transition-colors"
@@ -384,14 +392,8 @@ export function DailyProgressDayCard({ plan, onUpdate, onTaskUpdate }: DailyProg
 
       {showSummaryModal && (
         <DailySummaryModal
-          planId={plan.id}
-          planDate={(() => {
-            const relativeDate = formatDate(plan.plan_date);
-            const isRelative = relativeDate === "今天" || relativeDate === "昨天" || relativeDate === "明天";
-            return isRelative
-              ? `${relativeDate} ${new Date(plan.plan_date).getMonth() + 1}月${new Date(plan.plan_date).getDate()}日`
-              : relativeDate;
-          })()}
+          dayId={day.id}
+          progressDate={formatProgressDateLabel(day.progress_date)}
           onClose={() => setShowSummaryModal(false)}
           onUpdate={onUpdate}
         />

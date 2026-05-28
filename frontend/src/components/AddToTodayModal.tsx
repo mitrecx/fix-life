@@ -11,20 +11,20 @@ import { DEFAULT_TASK_CONTEXT, getTaskContextConfig } from "@/types/taskContext"
 import type { TaskContext } from "@/types/taskContext";
 import { DEFAULT_TASK_PRIORITY, getTaskPriorityConfig } from "@/types/taskPriority";
 import type { TaskPriority } from "@/types/taskPriority";
-import type { DailyTaskStatus } from "@/types/dailyProgress";
+import type { DailyProgressEntryStatus } from "@/types/dailyProgress";
 
 type AddMode = "pick" | "create";
 
 interface AddToTodayModalProps {
   open: boolean;
-  planId: string;
-  planDate: string;
+  dayId: string;
+  progressDate: string;
   existingBacklogIds: Set<string>;
   onClose: () => void;
   onSuccess: () => void;
 }
 
-function formStatusToDailyStatus(status: TaskFormStatus): DailyTaskStatus {
+function formStatusToDailyStatus(status: TaskFormStatus): DailyProgressEntryStatus {
   if (status === "done") return "done";
   if (status === "in_progress") return "in-progress";
   return "todo";
@@ -32,8 +32,8 @@ function formStatusToDailyStatus(status: TaskFormStatus): DailyTaskStatus {
 
 export function AddToTodayModal({
   open,
-  planId,
-  planDate,
+  dayId,
+  progressDate,
   existingBacklogIds,
   onClose,
   onSuccess,
@@ -111,7 +111,7 @@ export function AddToTodayModal({
     if (!selectedId || submitting) return;
     setSubmitting(true);
     try {
-      await dailyProgressService.createTask(planId, { backlog_task_id: selectedId });
+      await dailyProgressService.createEntry(dayId, { backlog_task_id: selectedId });
       message.success("已添加到当日");
       onSuccess();
       onClose();
@@ -128,7 +128,7 @@ export function AddToTodayModal({
     setSubmitting(true);
     const trimmedDescription = formDescription.trim();
     try {
-      await dailyProgressService.createTask(planId, {
+      await dailyProgressService.createEntry(dayId, {
         title: formTitle.trim(),
         description: trimmedDescription || undefined,
         priority: formPriority,
@@ -160,7 +160,7 @@ export function AddToTodayModal({
       }}
       width={520}
     >
-      <p className="text-sm text-gray-500 mb-3">将待办关联到 {planDate} 的每日进度</p>
+      <p className="text-sm text-gray-500 mb-3">将待办关联到 {progressDate} 的每日进度</p>
 
       <div className="flex gap-1 mb-4">
         <button

@@ -45,8 +45,6 @@ export interface BacklogTask {
 export interface BacklogOccurrence {
   daily_task_id: string;
   daily_progress_day_id?: string;
-  /** @deprecated use daily_progress_day_id */
-  daily_plan_id?: string;
   plan_date: string;
   daily_status?: "todo" | "in-progress" | "done" | "cancelled";
   daily_title?: string;

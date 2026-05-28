@@ -15,20 +15,20 @@ class SummaryType(str, enum.Enum):
     LARGE = "large"  # 大总结
 
 
-class DailyTaskPriority(str, enum.Enum):
+class DailyProgressEntryPriority(str, enum.Enum):
     LOW = "low"
     MEDIUM = "medium"
     HIGH = "high"
 
 
-class DailyTaskStatus(str, enum.Enum):
+class DailyProgressEntryStatus(str, enum.Enum):
     TODO = "todo"
     IN_PROGRESS = "in-progress"
     DONE = "done"
     CANCELLED = "cancelled"
 
 
-class DailyPlan(Base):
+class DailyProgressDay(Base):
     """One user's daily progress day container (每日进度)."""
 
     __tablename__ = "daily_progress_days"
@@ -36,25 +36,35 @@ class DailyPlan(Base):
     id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
     user_id = Column(UUID(as_uuid=True), ForeignKey("users.id", ondelete="CASCADE"), nullable=False)
     monthly_plan_id = Column(UUID(as_uuid=True), ForeignKey("monthly_plans.id", ondelete="SET NULL"))
-    plan_date = Column(Date, nullable=False)
+    progress_date = Column(Date, nullable=False)
     title = Column(String(200))
     notes = Column(Text)
     created_at = Column(DateTime, default=datetime.utcnow)
     updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
 
     # Relationships
-    user = relationship("User", back_populates="daily_plans")
-    monthly_plan = relationship("MonthlyPlan", back_populates="daily_plans")
-    daily_tasks = relationship("DailyTask", back_populates="daily_plan", cascade="all, delete-orphan")
+    user = relationship("User", back_populates="daily_progress_days")
+    monthly_plan = relationship("MonthlyPlan", back_populates="daily_progress_days")
+    daily_progress_entries = relationship(
+        "DailyProgressEntry",
+        back_populates="daily_progress_day",
+        cascade="all, delete-orphan",
+    )
     daily_summary = relationship("DailySummary", uselist=False, cascade="all, delete-orphan")
 
     @property
     def total_tasks(self) -> int:
-        return len(self.daily_tasks)
+        return len(self.daily_progress_entries)
 
     @property
     def completed_tasks(self) -> int:
-        return len([task for task in self.daily_tasks if task.status == DailyTaskStatus.DONE])
+        return len(
+            [
+                entry
+                for entry in self.daily_progress_entries
+                if entry.status == DailyProgressEntryStatus.DONE
+            ]
+        )
 
     @property
     def completion_rate(self) -> float:
@@ -63,10 +73,10 @@ class DailyPlan(Base):
         return round(self.completed_tasks / self.total_tasks * 100, 2)
 
     def __repr__(self):
-        return f"<DailyPlan {self.plan_date}: {self.title}>"
+        return f"<DailyProgressDay {self.progress_date}: {self.title}>"
 
 
-class DailyTask(Base):
+class DailyProgressEntry(Base):
     __tablename__ = "daily_progress_entries"
 
     id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
@@ -82,9 +92,19 @@ class DailyTask(Base):
     )
     title = Column(String(200), nullable=False)
     description = Column(Text)
-    priority = Column(Enum(DailyTaskPriority, values_callable=lambda x: [e.value for e in x]), default=DailyTaskPriority.MEDIUM)
-    status = Column(Enum(DailyTaskStatus, values_callable=lambda x: [e.value for e in x]), default=DailyTaskStatus.TODO)
-    context = Column(Enum(TaskContext, values_callable=lambda x: [e.value for e in x]), default=TaskContext.LEARNING, nullable=False)
+    priority = Column(
+        Enum(DailyProgressEntryPriority, values_callable=lambda x: [e.value for e in x]),
+        default=DailyProgressEntryPriority.MEDIUM,
+    )
+    status = Column(
+        Enum(DailyProgressEntryStatus, values_callable=lambda x: [e.value for e in x]),
+        default=DailyProgressEntryStatus.TODO,
+    )
+    context = Column(
+        Enum(TaskContext, values_callable=lambda x: [e.value for e in x]),
+        default=TaskContext.LEARNING,
+        nullable=False,
+    )
     estimated_minutes = Column(Integer)
     actual_minutes = Column(Integer, default=0)
     time_slot = Column(String(50))  # e.g., "morning", "afternoon", "evening"
@@ -92,16 +112,16 @@ class DailyTask(Base):
     updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
 
     # Relationships
-    daily_plan = relationship("DailyPlan", back_populates="daily_tasks")
+    daily_progress_day = relationship("DailyProgressDay", back_populates="daily_progress_entries")
     backlog_link = relationship(
         "BacklogDailyLink",
-        back_populates="daily_task",
+        back_populates="daily_progress_entry",
         uselist=False,
         passive_deletes=True,
     )
 
     def __repr__(self):
-        return f"<DailyTask {self.title} - {self.status}>"
+        return f"<DailyProgressEntry {self.title} - {self.status}>"
 
 
 class DailySummary(Base):
@@ -120,7 +140,7 @@ class DailySummary(Base):
     updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
 
     # Relationships
-    daily_plan = relationship("DailyPlan")
+    daily_progress_day = relationship("DailyProgressDay")
     user = relationship("User")
 
     def __repr__(self):

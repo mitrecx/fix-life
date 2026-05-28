@@ -22,21 +22,13 @@ export function NamingMigrationNotice() {
       showIcon
       closable
       className="mb-4"
-      message="命名迁移说明"
+      message="命名已统一"
       description={
-        <ul className="list-disc pl-4 space-y-1 text-sm mb-0">
-          <li>
-            页面与 API 已统一为 <strong>每日进度</strong>（路径 <code>/daily-progress</code>）；旧路径{" "}
-            <code>/daily-plans</code> 已移除。
-          </li>
-          <li>
-            MCP 请使用 <code>daily_progress</code>；<code>daily</code> 已弃用，计划约 2026-08-22 移除。
-          </li>
-          <li>
-            日总结请用 <code>reflect</code> 的 <code>get_daily_summary</code> 等 action（旧{" "}
-            <code>get_daily</code> 等同样计划移除）。
-          </li>
-        </ul>
+        <p className="text-sm mb-0">
+          产品、REST、MCP 均已使用 <strong>每日进度</strong> 命名（<code>/daily-progress</code>、
+          <code>daily_progress</code>、<code>daily_progress_day_id</code> / <code>daily_progress_entries</code>
+          ）。旧字段与兼容层已移除。
+        </p>
       }
       onClose={() => {
         setDismissed(true);

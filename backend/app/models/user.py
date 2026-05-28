@@ -32,7 +32,9 @@ class User(Base):
     mcp_api_keys = relationship("McpApiKey", back_populates="user", cascade="all, delete-orphan")
     yearly_goals = relationship("YearlyGoal", back_populates="user", cascade="all, delete-orphan")
     monthly_plans = relationship("MonthlyPlan", back_populates="user", cascade="all, delete-orphan")
-    daily_plans = relationship("DailyPlan", back_populates="user", cascade="all, delete-orphan")
+    daily_progress_days = relationship(
+        "DailyProgressDay", back_populates="user", cascade="all, delete-orphan"
+    )
     backlog_tasks = relationship("BacklogTask", back_populates="user", cascade="all, delete-orphan")
     quick_notes = relationship("QuickNote", back_populates="user", cascade="all, delete-orphan")
     daily_summaries = relationship("DailySummary", cascade="all, delete-orphan")

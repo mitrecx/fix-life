@@ -10,7 +10,6 @@ from app.mcp.auth import FixLifeApiKeyVerifier
 from app.mcp.prompts.github_issue_todo import register_github_issue_prompts
 from app.mcp.tools.account import handle_account
 from app.mcp.tools.admin import admin_tool_visible, handle_admin
-from app.mcp.tools.daily import handle_daily
 from app.mcp.tools.daily_progress import handle_daily_progress
 from app.mcp.tools.plan import handle_plan
 from app.mcp.tools.reflect import handle_reflect
@@ -38,9 +37,10 @@ def create_mcp_server() -> FastMCP:
             "with an `action` field plus action-specific parameters. "
             "Todo category uses field `context`: work (工作), learning (学习), life (生活). "
             "Use `daily_progress` for execution-by-date views (not a separate task inbox). "
-            "The `daily` tool is deprecated (planned removal ~2026-08-22); migrate to `daily_progress`. "
-            "Use `reflect` daily_summary actions (get_daily_summary, etc.) for reflection text; "
-            "legacy get_daily/create_daily aliases are deprecated. "
+            "Daily progress IDs use `daily_progress_day_id`; same-day items use `entry_id`; "
+            "dates use `progress_date`. "
+            "Use `reflect` daily_summary actions (get_daily_summary, create_daily_summary, etc.) "
+            "for reflection text — not daily_progress. "
             "GitHub issue skill: when create title or description is a github.com/.../issues/N URL, "
             "the server fetches the issue title, stores the URL as description, and sets context=work."
         ),
@@ -73,11 +73,12 @@ def create_mcp_server() -> FastMCP:
             "Payload: { action, ...params }. Not for standalone tasks (use `todo`). "
             "Not for reflection text (use `reflect` get_daily_summary). "
             "context filter: work | learning | life | all. "
-            "Actions: get_by_date, list (alias list_by_range), get, create (alias ensure_day), "
-            "update, delete, list_tasks (alias list_entries), add_task (alias link_entry), "
-            "update_task, set_task_status, remove_task (alias unlink_entry). "
-            "list/get/get_by_date return enriched plans (total_tasks, completion_rate, progress fields) "
-            "matching REST GET /daily-progress."
+            "IDs: daily_progress_day_id (day container), entry_id (same-day occurrence). "
+            "Dates: progress_date (single day), start_date/end_date (range). "
+            "Actions: get_by_date, list_by_range, get, ensure_day, update, delete, "
+            "list_entries, link_entry, update_entry, set_entry_status, unlink_entry. "
+            "Responses use daily_progress_day / daily_progress_days / daily_progress_entries "
+            "and progress_date (not plan_id / plan / tasks)."
         ),
     )
     def daily_progress(payload: dict[str, Any]) -> dict[str, Any]:
@@ -85,19 +86,9 @@ def create_mcp_server() -> FastMCP:
 
     @mcp.tool(
         description=(
-            "Deprecated (planned removal ~2026-08-22): use daily_progress instead. "
-            "Manage daily progress plans and tasks for specific dates."
-        ),
-    )
-    def daily(payload: dict[str, Any]) -> dict[str, Any]:
-        return _run_tool(handle_daily, payload)
-
-    @mcp.tool(
-        description=(
             "Manage daily and weekly summaries, including generation and notifications. "
-            "Daily reflection actions: get_daily_summary (alias get_daily, deprecated ~2026-08-22), "
-            "create_daily_summary (alias create_daily), update_daily_summary (alias update_daily), "
-            "delete_daily_summary (alias delete_daily)."
+            "Daily reflection actions: get_daily_summary, create_daily_summary, "
+            "update_daily_summary, delete_daily_summary (require daily_progress_day_id on get/create)."
         ),
     )
     def reflect(payload: dict[str, Any]) -> dict[str, Any]:

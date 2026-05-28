@@ -5,8 +5,8 @@ import { LoadingSpinner } from "@/components/LoadingSpinner";
 import type { Dayjs } from "dayjs";
 import dayjs from "dayjs";
 import { dailyProgressService } from "@/services/dailyProgressService";
-import type { DailyTaskPriority, TaskContext } from "@/types/dailyProgress";
-import { DAILY_TASK_PRIORITY } from "@/types/dailyProgress";
+import type { DailyProgressEntryPriority, TaskContext } from "@/types/dailyProgress";
+import { DAILY_PROGRESS_ENTRY_PRIORITY } from "@/types/dailyProgress";
 import { TASK_CONTEXT, DEFAULT_TASK_CONTEXT } from "@/types/taskContext";
 
 interface BatchCreateTasksModalProps {
@@ -18,7 +18,7 @@ export function BatchCreateTasksModal({ onClose, onSuccess }: BatchCreateTasksMo
   const [taskTitle, setTaskTitle] = useState("");
   const [startDate, setStartDate] = useState<Dayjs>(dayjs());
   const [endDate, setEndDate] = useState<Dayjs>(dayjs().add(6, "day"));
-  const [priority, setPriority] = useState<DailyTaskPriority>("medium");
+  const [priority, setPriority] = useState<DailyProgressEntryPriority>("medium");
   const [context, setContext] = useState<TaskContext>(DEFAULT_TASK_CONTEXT);
   const [isSubmitting, setIsSubmitting] = useState(false);
 
@@ -45,34 +45,30 @@ export function BatchCreateTasksModal({ onClose, onSuccess }: BatchCreateTasksMo
       }
 
       // 获取现有的每日进度
-      const existingPlans = await dailyProgressService.getAll(
+      const existingDays = await dailyProgressService.getAll(
         startDate.format("YYYY-MM-DD"),
         endDate.format("YYYY-MM-DD")
       );
-      const existingDates = new Set(existingPlans.map((plan) => plan.plan_date));
+      const existingDates = new Set(existingDays.map((day) => day.progress_date));
 
-      // 为每个日期创建任务
       let createdCount = 0;
-      let createdPlanCount = 0;
+      let createdDayCount = 0;
 
       for (const date of dates) {
-        let planId: string;
+        let dayId: string;
 
         if (existingDates.has(date)) {
-          // 该日已有每日进度，直接使用
-          planId = existingPlans.find((plan) => plan.plan_date === date)!.id;
+          dayId = existingDays.find((day) => day.progress_date === date)!.id;
         } else {
-          // 该日尚无每日进度，先创建
-          const { plan: newPlan } = await dailyProgressService.create({
-            plan_date: date,
+          const { day: newDay } = await dailyProgressService.create({
+            progress_date: date,
             notes: "",
           });
-          planId = newPlan.id;
-          createdPlanCount++;
+          dayId = newDay.id;
+          createdDayCount++;
         }
 
-        // 创建任务
-        await dailyProgressService.createTask(planId, {
+        await dailyProgressService.createEntry(dayId, {
           title: taskTitle,
           priority,
           context,
@@ -83,7 +79,7 @@ export function BatchCreateTasksModal({ onClose, onSuccess }: BatchCreateTasksMo
 
       message.success(
         `成功在 ${dates.length} 天创建 ${createdCount} 个任务` +
-          (createdPlanCount > 0 ? `（其中新建了 ${createdPlanCount} 天的每日进度）` : "")
+          (createdDayCount > 0 ? `（其中新建了 ${createdDayCount} 天的每日进度）` : "")
       );
 
       onSuccess();
@@ -201,11 +197,11 @@ export function BatchCreateTasksModal({ onClose, onSuccess }: BatchCreateTasksMo
               优先级
             </label>
             <div className="flex gap-2">
-              {DAILY_TASK_PRIORITY.map((p) => (
+              {DAILY_PROGRESS_ENTRY_PRIORITY.map((p) => (
                 <button
                   key={p.value}
                   type="button"
-                  onClick={() => setPriority(p.value as DailyTaskPriority)}
+                  onClick={() => setPriority(p.value as DailyProgressEntryPriority)}
                   disabled={isSubmitting}
                   className="px-4 py-2 rounded-lg text-sm font-medium transition-all disabled:opacity-50 disabled:cursor-not-allowed"
                   style={{

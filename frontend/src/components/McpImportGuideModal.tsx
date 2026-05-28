@@ -241,7 +241,8 @@ export function McpImportGuideModal({
             )}
           </p>
           <div className="mb-4 rounded-lg border border-indigo-100 bg-indigo-50/60 px-3 py-2 text-xs text-indigo-900">
-            连接成功后可用 Tools：<strong>todo</strong>、<strong>daily_progress</strong>（每日进度，替代已弃用的 daily）、
+            连接成功后可用 Tools：<strong>todo</strong>、<strong>daily_progress</strong>（每日进度；
+            参数 daily_progress_day_id / entry_id / progress_date）、
             <strong>reflect</strong>（日总结用 get_daily_summary）、<strong>plan</strong>、<strong>account</strong>。
           </div>
           <Tabs

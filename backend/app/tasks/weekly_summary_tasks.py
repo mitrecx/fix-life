@@ -32,7 +32,7 @@ def generate_all_weekly_summaries() -> Dict[str, Any]:
         logger.info(f"Generating summaries for week {year}-{week_number} ({start_date} to {end_date})")
 
         # 获取所有有日计划的活跃用户
-        active_user_ids = service.get_active_users_with_daily_plans(start_date, end_date)
+        active_user_ids = service.get_active_users_with_daily_progress_days(start_date, end_date)
         logger.info(f"Found {len(active_user_ids)} active users")
 
         results = {

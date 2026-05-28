@@ -7,7 +7,7 @@ from sqlalchemy.orm import Session
 
 from app.models.backlog_daily_link import BacklogDailyLink
 from app.models.backlog_task import BacklogTask
-from app.models.daily_plan import DailyPlan, DailyTask, DailyTaskStatus
+from app.models.daily_progress import DailyProgressDay, DailyProgressEntry, DailyProgressEntryStatus
 from app.models.task_priority import TaskPriority
 from app.schemas.task_data_repair import (
     DataRepairPreview,
@@ -31,21 +31,21 @@ class TaskDataRepairService:
         self.db = db
         self.backlog_service = BacklogTaskService(db)
 
-    def _orphan_dailies(self, user_id: str) -> List[Tuple[DailyTask, DailyPlan]]:
+    def _orphan_dailies(self, user_id: str) -> List[Tuple[DailyProgressEntry, DailyProgressDay]]:
         return (
-            self.db.query(DailyTask, DailyPlan)
-            .join(DailyPlan, DailyTask.daily_progress_day_id == DailyPlan.id)
-            .outerjoin(BacklogDailyLink, BacklogDailyLink.daily_task_id == DailyTask.id)
-            .filter(DailyPlan.user_id == user_id, BacklogDailyLink.id.is_(None))
-            .order_by(DailyPlan.plan_date.desc(), DailyTask.created_at.desc())
+            self.db.query(DailyProgressEntry, DailyProgressDay)
+            .join(DailyProgressDay, DailyProgressEntry.daily_progress_day_id == DailyProgressDay.id)
+            .outerjoin(BacklogDailyLink, BacklogDailyLink.daily_task_id == DailyProgressEntry.id)
+            .filter(DailyProgressDay.user_id == user_id, BacklogDailyLink.id.is_(None))
+            .order_by(DailyProgressDay.progress_date.desc(), DailyProgressEntry.created_at.desc())
             .all()
         )
 
     @staticmethod
-    def _daily_progress(status: DailyTaskStatus) -> int:
-        if status == DailyTaskStatus.DONE:
+    def _daily_progress(status: DailyProgressEntryStatus) -> int:
+        if status == DailyProgressEntryStatus.DONE:
             return 100
-        if status == DailyTaskStatus.IN_PROGRESS:
+        if status == DailyProgressEntryStatus.IN_PROGRESS:
             return 50
         return 0
 
@@ -184,7 +184,7 @@ class TaskDataRepairService:
         would_create = 0
 
         for daily, plan in orphans:
-            match = self._find_matching_backlog(user_id, daily.title, plan.plan_date)
+            match = self._find_matching_backlog(user_id, daily.title, plan.progress_date)
             action = "link_existing" if match else "create_backlog"
             if action == "link_existing":
                 would_link += 1
@@ -195,7 +195,7 @@ class TaskDataRepairService:
                     OrphanDailyItem(
                         daily_task_id=daily.id,
                         daily_progress_day_id=plan.id,
-                        plan_date=plan.plan_date,
+                        plan_date=plan.progress_date,
                         title=daily.title,
                         daily_status=daily.status,
                         suggested_action=action,
@@ -218,10 +218,10 @@ class TaskDataRepairService:
             would_backfill_progress_snapshots=self._count_missing_progress_snapshots(user_id),
         )
 
-    def _backfill_orphan(self, user_id: str, daily: DailyTask, plan: DailyPlan) -> str:
-        existing = self._find_matching_backlog(user_id, daily.title, plan.plan_date)
+    def _backfill_orphan(self, user_id: str, daily: DailyProgressEntry, plan: DailyProgressDay) -> str:
+        existing = self._find_matching_backlog(user_id, daily.title, plan.progress_date)
         if existing:
-            self.backlog_service._create_link(existing, str(daily.id), plan.plan_date)
+            self.backlog_service._create_link(existing, str(daily.id), plan.progress_date)
             daily.backlog_task_id = existing.id
             return "linked_existing"
 
@@ -237,10 +237,10 @@ class TaskDataRepairService:
         )
         self.backlog_service.apply_progress(backlog, progress)
         if progress == 100:
-            backlog.completed_at = datetime.combine(plan.plan_date, time(12, 0))
+            backlog.completed_at = datetime.combine(plan.progress_date, time(12, 0))
         self.db.add(backlog)
         self.db.flush()
-        self.backlog_service._create_link(backlog, str(daily.id), plan.plan_date)
+        self.backlog_service._create_link(backlog, str(daily.id), plan.progress_date)
         daily.backlog_task_id = backlog.id
         return "created_backlog"
 
@@ -258,7 +258,7 @@ class TaskDataRepairService:
         merge_links = list(self.backlog_service.get_links_for_backlog(merge_id))
         for link in merge_links:
             keeper_link = self.backlog_service.get_link_for_date(keeper_id, link.plan_date)
-            daily = self.db.query(DailyTask).filter(DailyTask.id == link.daily_task_id).first()
+            daily = self.db.query(DailyProgressEntry).filter(DailyProgressEntry.id == link.daily_task_id).first()
             if keeper_link:
                 if daily:
                     self.db.delete(daily)

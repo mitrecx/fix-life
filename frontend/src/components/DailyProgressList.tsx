@@ -1,8 +1,7 @@
 import { useState, useEffect } from "react";
 import { ChevronDown, Download, SlidersHorizontal, X } from "lucide-react";
 import { message } from "antd";
-import type { DailyPlan, DailyTask } from "@/types/dailyProgress";
-import { dailyProgressEntries } from "@/types/dailyProgress";
+import type { DailyProgressDay, DailyProgressEntry } from "@/types/dailyProgress";
 import type { DailySummary } from "@/types/dailySummary";
 import { dailyProgressService } from "@/services/dailyProgressService";
 import { dailySummaryService } from "@/services/dailySummaryService";
@@ -84,10 +83,10 @@ export function DailyProgressList({ focusDate }: { focusDate?: string | null }) 
   const isMobile = useIsMobile();
   const [filterDrawerOpen, setFilterDrawerOpen] = useState(false);
   const [moreOpen, setMoreOpen] = useState(false);
-  const [plans, setPlans] = useState<DailyPlan[]>([]);
+  const [days, setDays] = useState<DailyProgressDay[]>([]);
   const [loading, setLoading] = useState(true);
   const [showExportModal, setShowExportModal] = useState(false);
-  const [planSummaries, setPlanSummaries] = useState<Record<string, DailySummary>>({});
+  const [daySummaries, setDaySummaries] = useState<Record<string, DailySummary>>({});
 
   useEffect(() => {
     if (!focusDate || !/^\d{4}-\d{2}-\d{2}$/.test(focusDate)) return;
@@ -260,7 +259,7 @@ export function DailyProgressList({ focusDate }: { focusDate?: string | null }) 
   const yearOptions = Array.from({ length: 11 }, (_, i) => currentYear - 5 + i);
 
   useEffect(() => {
-    loadPlans();
+    loadDays();
   }, [startDate, endDate, contextFilter]);
 
   // Prevent body scroll when export modal is open
@@ -291,44 +290,41 @@ export function DailyProgressList({ focusDate }: { focusDate?: string | null }) 
   }, [showExportModal]);
 
   // 排序计划：今天 > 未来（递增） > 过去（递增）
-  const sortPlans = (plans: DailyPlan[]): DailyPlan[] => {
+  const sortDays = (items: DailyProgressDay[]): DailyProgressDay[] => {
     const today = new Date();
     today.setHours(0, 0, 0, 0); // 重置时间为当天0点
 
-    return [...plans].sort((a, b) => {
-      const planDateA = new Date(a.plan_date);
-      planDateA.setHours(0, 0, 0, 0);
-      const planDateB = new Date(b.plan_date);
-      planDateB.setHours(0, 0, 0, 0);
+    return [...items].sort((a, b) => {
+      const progressDateA = new Date(a.progress_date);
+      progressDateA.setHours(0, 0, 0, 0);
+      const progressDateB = new Date(b.progress_date);
+      progressDateB.setHours(0, 0, 0, 0);
 
-      const isTodayA = planDateA.getTime() === today.getTime();
-      const isTodayB = planDateB.getTime() === today.getTime();
-      const isFutureA = planDateA > today;
-      const isFutureB = planDateB > today;
-      const isPastA = planDateA < today;
-      const isPastB = planDateB < today;
+      const isTodayA = progressDateA.getTime() === today.getTime();
+      const isTodayB = progressDateB.getTime() === today.getTime();
+      const isFutureA = progressDateA > today;
+      const isFutureB = progressDateB > today;
+      const isPastA = progressDateA < today;
+      const isPastB = progressDateB < today;
 
-      // 今天的计划最优先
+      // 今天的进度最优先
       if (isTodayA && !isTodayB) return -1;
       if (!isTodayA && isTodayB) return 1;
 
-      // 如果两个都是今天，保持原顺序
       if (isTodayA && isTodayB) return 0;
 
-      // 未来的计划排在过去的计划前面
       if (isFutureA && isPastB) return -1;
       if (isPastA && isFutureB) return 1;
 
-      // 同类型（都是未来或都是过去），按日期递增排
-      return planDateA.getTime() - planDateB.getTime();
+      return progressDateA.getTime() - progressDateB.getTime();
     });
   };
 
-  const loadPlans = async () => {
+  const loadDays = async () => {
     try {
       setLoading(true);
       const data = await dailyProgressService.getAll(startDate, endDate, contextFilter);
-      setPlans(sortPlans(data));
+      setDays(sortDays(data));
     } catch (error) {
       console.error("Failed to load daily progress:", error);
     } finally {
@@ -336,32 +332,31 @@ export function DailyProgressList({ focusDate }: { focusDate?: string | null }) 
     }
   };
 
-  const patchDailyTask = (planId: string, updatedTask: DailyTask) => {
-    setPlans((prev) =>
-      sortPlans(
-        prev.map((plan) => {
-          if (plan.id !== planId) return plan;
+  const patchDailyEntry = (dayId: string, updatedEntry: DailyProgressEntry) => {
+    setDays((prev) =>
+      sortDays(
+        prev.map((day) => {
+          if (day.id !== dayId) return day;
 
-          const entries = dailyProgressEntries(plan);
-          const previousTask = entries.find((t) => t.id === updatedTask.id);
-          const nextEntries = entries.map((t) =>
-            t.id === updatedTask.id ? updatedTask : t
+          const entries = day.daily_progress_entries;
+          const previousEntry = entries.find((e) => e.id === updatedEntry.id);
+          const nextEntries = entries.map((e) =>
+            e.id === updatedEntry.id ? updatedEntry : e
           );
 
-          let completed_tasks = plan.completed_tasks;
-          if (previousTask?.status !== "done" && updatedTask.status === "done") {
+          let completed_tasks = day.completed_tasks;
+          if (previousEntry?.status !== "done" && updatedEntry.status === "done") {
             completed_tasks += 1;
-          } else if (previousTask?.status === "done" && updatedTask.status !== "done") {
+          } else if (previousEntry?.status === "done" && updatedEntry.status !== "done") {
             completed_tasks -= 1;
           }
 
           const completion_rate =
-            plan.total_tasks > 0 ? (completed_tasks / plan.total_tasks) * 100 : 0;
+            day.total_tasks > 0 ? (completed_tasks / day.total_tasks) * 100 : 0;
 
           return {
-            ...plan,
+            ...day,
             daily_progress_entries: nextEntries,
-            daily_tasks: nextEntries,
             completed_tasks,
             completion_rate,
           };
@@ -394,48 +389,44 @@ export function DailyProgressList({ focusDate }: { focusDate?: string | null }) 
     }
     markdown += `\n---\n\n`;
 
-    if (plans.length === 0) {
-      markdown += `暂无计划\n`;
+    if (days.length === 0) {
+      markdown += `暂无进度\n`;
     } else {
-      // Sort by chronological order (ascending date)
-      const sortedPlans = [...plans].sort((a, b) => {
-        const dateA = new Date(a.plan_date).getTime();
-        const dateB = new Date(b.plan_date).getTime();
+      const sortedDays = [...days].sort((a, b) => {
+        const dateA = new Date(a.progress_date).getTime();
+        const dateB = new Date(b.progress_date).getTime();
         return dateA - dateB;
       });
 
-      sortedPlans.forEach((plan) => {
-        const date = new Date(plan.plan_date);
+      sortedDays.forEach((day) => {
+        const date = new Date(day.progress_date);
         const weekday = WEEKDAYS[date.getDay()];
         const dateStr = `${date.getMonth() + 1}月${date.getDate()}日`;
 
         markdown += `## ${dateStr} ${weekday}\n\n`;
 
-        // 任务清单
-        const entries = dailyProgressEntries(plan);
+        const entries = day.daily_progress_entries;
         if (entries.length > 0) {
           markdown += `### 任务清单\n\n`;
-          entries.forEach((task) => {
-            const statusIcon = task.status === "done" ? "✅" : "⬜";
+          entries.forEach((entry) => {
+            const statusIcon = entry.status === "done" ? "✅" : "⬜";
             const priorityLabel = {
               high: "【高】",
               medium: "【中】",
               low: "【低】",
-            }[task.priority] || "";
-            markdown += `${statusIcon} ${priorityLabel} ${task.title}\n`;
+            }[entry.priority] || "";
+            markdown += `${statusIcon} ${priorityLabel} ${entry.title}\n`;
           });
           markdown += `\n`;
         } else {
           markdown += `### 任务清单\n暂无任务\n\n`;
         }
 
-        // 备注
-        if (plan.notes) {
-          markdown += `### 备注\n${plan.notes}\n\n`;
+        if (day.notes) {
+          markdown += `### 备注\n${day.notes}\n\n`;
         }
 
-        // 日总结 - use loaded summaries
-        const summary = planSummaries[plan.id];
+        const summary = daySummaries[day.id];
         if (summary) {
           const summaryType = SUMMARY_TYPE_LABELS[summary.summary_type] || "总结";
           markdown += `### ${summaryType}\n${summary.content}\n\n`;
@@ -476,16 +467,15 @@ export function DailyProgressList({ focusDate }: { focusDate?: string | null }) 
   // Load summaries for export
   const loadSummariesForExport = async () => {
     const summaries: Record<string, DailySummary> = {};
-    for (const plan of plans) {
+    for (const day of days) {
       try {
-        const summary = await dailySummaryService.getByPlanId(plan.id);
-        summaries[plan.id] = summary;
+        const summary = await dailySummaryService.getByDayId(day.id);
+        summaries[day.id] = summary;
       } catch (error) {
-        // No summary for this plan, which is fine
-        summaries[plan.id] = null as any;
+        summaries[day.id] = null as any;
       }
     }
-    setPlanSummaries(summaries);
+    setDaySummaries(summaries);
   };
 
   // Open export modal and load summaries
@@ -573,7 +563,7 @@ export function DailyProgressList({ focusDate }: { focusDate?: string | null }) 
 
         <button
           type="button"
-          onClick={loadPlans}
+          onClick={loadDays}
           className="min-h-[44px] px-4 py-2 text-sm font-medium text-white bg-indigo-600 rounded-lg hover:bg-indigo-700 transition-all"
         >
           查询
@@ -685,24 +675,24 @@ export function DailyProgressList({ focusDate }: { focusDate?: string | null }) 
       {/* Plans List */}
       {!loading && (
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 items-start">
-          {plans.length === 0 ? (
+          {days.length === 0 ? (
             <div
               className="col-span-full text-center py-16 px-8 rounded-2xl border-2 border-dashed border-gray-300"
               style={{ background: 'linear-gradient(to bottom right, rgb(249 250 251), rgb(243 244 246))' }}
             >
               <div className="text-6xl mb-4">📝</div>
               <p className="text-lg text-gray-600 font-medium">
-                {formatDateRange()} 还没有计划
+                {formatDateRange()} 还没有进度
               </p>
               <p className="text-sm text-gray-400 mt-2">可从待办安排任务到每日进度</p>
             </div>
           ) : (
-            plans.map((plan) => (
+            days.map((day) => (
               <DailyProgressDayCard
-                key={plan.id}
-                plan={plan}
-                onUpdate={loadPlans}
-                onTaskUpdate={(task) => patchDailyTask(plan.id, task)}
+                key={day.id}
+                day={day}
+                onUpdate={loadDays}
+                onEntryUpdate={(entry) => patchDailyEntry(day.id, entry)}
               />
             ))
           )}

@@ -40,7 +40,9 @@ class MonthlyPlan(Base):
     user = relationship("User", back_populates="monthly_plans")
     yearly_goal = relationship("YearlyGoal", back_populates="monthly_plans")
     monthly_tasks = relationship("MonthlyTask", back_populates="monthly_plan", cascade="all, delete-orphan")
-    daily_plans = relationship("DailyPlan", back_populates="monthly_plan", cascade="all, delete-orphan")
+    daily_progress_days = relationship(
+        "DailyProgressDay", back_populates="monthly_plan", cascade="all, delete-orphan"
+    )
 
     @property
     def total_tasks(self) -> int:
