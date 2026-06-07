@@ -1,0 +1,40 @@
+@import "../../styles/common.wxss";
+
+.filter-card .picker-text {
+  padding: 12rpx 0;
+  color: #374151;
+}
+
+.year-nav {
+  display: flex;
+  gap: 12rpx;
+  margin: 12rpx 0;
+}
+
+.field {
+  margin-top: 16rpx;
+}
+
+.plan-title {
+  font-size: 30rpx;
+  font-weight: 500;
+}
+
+.plan-item .muted {
+  display: block;
+  margin-top: 8rpx;
+}
+
+.progress-bar {
+  height: 12rpx;
+  background: #e5e7eb;
+  border-radius: 999rpx;
+  margin-top: 12rpx;
+  overflow: hidden;
+}
+
+.progress-fill {
+  height: 100%;
+  background: #4f46e5;
+  border-radius: 999rpx;
+}

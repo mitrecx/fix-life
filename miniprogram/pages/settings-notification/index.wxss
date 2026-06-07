@@ -1,0 +1,23 @@
+@import "../../styles/common.wxss";
+
+.setting-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 24rpx;
+}
+
+.setting-text .muted {
+  display: block;
+  margin-top: 8rpx;
+  font-size: 24rpx;
+}
+
+.label {
+  font-size: 24rpx;
+  color: #6b7280;
+}
+
+.field {
+  margin-top: 16rpx;
+}

@@ -1,0 +1,64 @@
+@import "../../styles/common.wxss";
+
+.filter-card .picker-text {
+  padding: 12rpx 0;
+}
+
+.year-nav {
+  display: flex;
+  gap: 12rpx;
+  margin: 12rpx 0;
+}
+
+.stat-grid {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 16rpx;
+}
+
+.stat-item {
+  width: calc(50% - 8rpx);
+  background: #f9fafb;
+  border-radius: 12rpx;
+  padding: 20rpx;
+  box-sizing: border-box;
+}
+
+.stat-num {
+  display: block;
+  font-size: 36rpx;
+  font-weight: 700;
+  color: #4f46e5;
+}
+
+.stat-label {
+  font-size: 22rpx;
+  color: #6b7280;
+}
+
+.big-rate {
+  display: block;
+  font-size: 56rpx;
+  font-weight: 700;
+  color: #4f46e5;
+  margin-top: 12rpx;
+}
+
+.heatmap-list {
+  margin-top: 12rpx;
+}
+
+.heat-item {
+  display: flex;
+  justify-content: space-between;
+  padding: 12rpx 0;
+  border-bottom: 1rpx solid #f3f4f6;
+}
+
+.heat-date {
+  color: #374151;
+}
+
+.heat-count {
+  color: #6b7280;
+}

@@ -1,0 +1,51 @@
+<view class="card" wx:if="{{loading}}">
+  <text class="muted">加载中...</text>
+</view>
+
+<block wx:elif="{{goal}}">
+  <view class="card">
+    <view class="row-between">
+      <text class="section-title">编辑目标</text>
+      <text class="badge" style="background:{{goal.categoryColor}}">{{goal.categoryLabel}}</text>
+    </view>
+    <input class="input field" value="{{editTitle}}" bindinput="onTitleInput" />
+    <textarea class="textarea field" placeholder="描述" value="{{editDescription}}" bindinput="onDescInput" maxlength="-1" />
+    <input class="input field" type="number" placeholder="目标值" value="{{editTarget}}" bindinput="onTargetInput" />
+    <button class="primary-btn" bindtap="handleSave">保存</button>
+  </view>
+
+  <view class="card">
+    <text class="section-title">更新进度</text>
+    <text class="muted">当前 {{goal.current_value}} / {{goal.target_value}}（{{goal.completion_rate}}%）</text>
+    <view class="progress-bar">
+      <view class="progress-fill" style="width:{{goal.completion_rate}}%"></view>
+    </view>
+    <input class="input field" type="digit" placeholder="当前进度值" value="{{progressValue}}" bindinput="onProgressInput" />
+    <input class="input field" placeholder="备注（可选）" value="{{progressNote}}" bindinput="onProgressNoteInput" />
+    <button class="secondary-btn" bindtap="handleUpdateProgress">更新进度</button>
+  </view>
+
+  <view class="card">
+    <text class="section-title">状态</text>
+    <view class="filter-bar">
+      <text
+        wx:for="{{statuses}}"
+        wx:key="value"
+        class="chip {{goal.status === item.value ? 'active' : 'inactive'}}"
+        data-value="{{item.value}}"
+        bindtap="handleStatusChange"
+      >{{item.label}}</text>
+    </view>
+  </view>
+
+  <view class="card" wx:if="{{goal.milestones.length > 0}}">
+    <text class="section-title">月度里程碑</text>
+    <view class="milestone" wx:for="{{goal.milestones}}" wx:key="month">
+      <text>{{item.month}}月：{{item.achieved_value}}/{{item.target_value}}</text>
+    </view>
+  </view>
+
+  <view class="card">
+    <button class="danger-btn" bindtap="handleDelete">删除年度目标</button>
+  </view>
+</block>

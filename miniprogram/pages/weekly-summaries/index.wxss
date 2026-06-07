@@ -1,0 +1,19 @@
+@import "../../styles/common.wxss";
+
+.year-nav {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12rpx;
+  margin-top: 12rpx;
+}
+
+.preview {
+  display: block;
+  margin-top: 12rpx;
+  color: #374151;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  display: -webkit-box;
+  -webkit-line-clamp: 3;
+  -webkit-box-orient: vertical;
+}

@@ -1,0 +1,34 @@
+@import "../../styles/common.wxss";
+
+.search-row {
+  display: flex;
+  gap: 12rpx;
+}
+
+.field {
+  margin-top: 16rpx;
+}
+
+.action-row {
+  display: flex;
+  gap: 12rpx;
+  margin-top: 16rpx;
+  flex-wrap: wrap;
+}
+
+.note-content {
+  display: block;
+  margin-top: 12rpx;
+  white-space: pre-wrap;
+  word-break: break-all;
+}
+
+.note-actions {
+  display: flex;
+  gap: 16rpx;
+}
+
+.delete-link {
+  color: #dc2626;
+  font-size: 24rpx;
+}

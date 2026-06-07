@@ -1,0 +1,16 @@
+@import "../../styles/common.wxss";
+
+.username {
+  font-size: 30rpx;
+  font-weight: 500;
+  display: block;
+}
+
+.user-item .muted {
+  display: block;
+  margin-top: 4rpx;
+}
+
+.unlock-btn {
+  margin-top: 12rpx;
+}

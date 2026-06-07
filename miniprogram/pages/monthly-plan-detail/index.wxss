@@ -1,0 +1,15 @@
+@import "../../styles/common.wxss";
+
+.field {
+  margin-top: 16rpx;
+}
+
+.task-title.done {
+  text-decoration: line-through;
+  color: #9ca3af;
+}
+
+.delete-link {
+  color: #dc2626;
+  font-size: 24rpx;
+}

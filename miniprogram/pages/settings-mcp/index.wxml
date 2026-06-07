@@ -1,0 +1,21 @@
+<view class="card">
+  <text class="section-title">MCP 集成</text>
+  <text class="muted desc">生成 API Key 供 Cursor 等客户端连接 Fix Life MCP Server。</text>
+  <button class="primary-btn" loading="{{creating}}" bindtap="handleCreate">生成 API Key</button>
+</view>
+
+<view class="card" wx:if="{{loading}}">
+  <text class="muted">加载中...</text>
+</view>
+
+<view class="card empty" wx:elif="{{keys.length === 0}}">
+  <text class="muted">暂无 API Key</text>
+</view>
+
+<view class="card key-item" wx:for="{{keys}}" wx:key="id">
+  <view class="row-between">
+    <text class="key-name">{{item.name}}</text>
+    <text class="delete-link" data-id="{{item.id}}" bindtap="handleRevoke">吊销</text>
+  </view>
+  <text class="muted">{{item.key_prefix}}...</text>
+</view>

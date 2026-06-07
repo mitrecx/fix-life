@@ -1,0 +1,11 @@
+<view class="card" wx:if="{{loading}}">
+  <text class="muted">加载中...</text>
+</view>
+
+<view class="card setting-row" wx:else>
+  <view class="setting-text">
+    <text class="section-title">显示每日总结</text>
+    <text class="muted">开启后，每日总结会显示在每日进度卡片下方</text>
+  </view>
+  <switch checked="{{showDailySummary}}" disabled="{{saving}}" bindchange="onToggle" />
+</view>

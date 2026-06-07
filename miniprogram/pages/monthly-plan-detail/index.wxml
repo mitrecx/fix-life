@@ -1,0 +1,36 @@
+<view class="card" wx:if="{{loading}}">
+  <text class="muted">加载中...</text>
+</view>
+
+<block wx:elif="{{plan}}">
+  <view class="card">
+    <text class="section-title">{{plan.title || plan.year + '年' + plan.month + '月计划'}}</text>
+    <text class="muted">完成 {{plan.completed_tasks}}/{{plan.total_tasks}}（{{plan.completion_rate}}%）</text>
+    <textarea class="textarea field" placeholder="计划备注" value="{{editNotes}}" bindinput="onNotesInput" maxlength="-1" />
+    <button class="secondary-btn" bindtap="handleSaveNotes">保存备注</button>
+  </view>
+
+  <view class="card">
+    <text class="section-title">添加任务</text>
+    <input class="input field" placeholder="任务标题" value="{{newTitle}}" bindinput="onNewTitleInput" />
+    <view class="filter-bar">
+      <text wx:for="{{contexts}}" wx:key="value" class="chip {{newContext === item.value ? 'active' : 'inactive'}}" data-value="{{item.value}}" bindtap="onNewContext">{{item.label}}</text>
+    </view>
+    <button class="primary-btn" bindtap="handleAddTask">添加</button>
+  </view>
+
+  <view class="card empty" wx:if="{{tasks.length === 0}}">
+    <text class="muted">暂无月度任务</text>
+  </view>
+  <view class="card task-item" wx:for="{{tasks}}" wx:key="id">
+    <view class="row-between">
+      <text class="task-title {{item.status === 'done' ? 'done' : ''}}" data-id="{{item.id}}" data-status="{{item.status}}" bindtap="handleToggleTask">{{item.title}}</text>
+      <text class="delete-link" data-id="{{item.id}}" bindtap="handleDeleteTask">删</text>
+    </view>
+    <text class="muted">{{item.context}} · {{item.priority}} · {{item.status}}</text>
+  </view>
+
+  <view class="card">
+    <button class="danger-btn" bindtap="handleDeletePlan">删除月度计划</button>
+  </view>
+</block>

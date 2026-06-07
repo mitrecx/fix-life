@@ -1,0 +1,126 @@
+<view class="tabs">
+  <view
+    wx:for="{{tabs}}"
+    wx:key="value"
+    class="tab-item {{tab === item.value ? 'active' : ''}}"
+    data-tab="{{item.value}}"
+    bindtap="onTabChange"
+  >
+    {{item.label}}
+  </view>
+</view>
+
+<view class="card toolbar">
+  <view class="search-row">
+    <input
+      class="input"
+      placeholder="搜索待办"
+      value="{{searchQ}}"
+      bindinput="onSearchInput"
+      bindconfirm="onSearchConfirm"
+    />
+    <button class="primary-btn search-btn" size="mini" bindtap="onSearchConfirm">搜</button>
+  </view>
+  <view class="filter-bar">
+    <text
+      class="chip {{contextFilter === 'all' ? 'active' : 'inactive'}}"
+      data-value="all"
+      bindtap="onContextFilter"
+    >全部</text>
+    <text
+      wx:for="{{contexts}}"
+      wx:key="value"
+      class="chip {{contextFilter === item.value ? 'active' : 'inactive'}}"
+      data-value="{{item.value}}"
+      bindtap="onContextFilter"
+    >{{item.label}}</text>
+  </view>
+  <view class="filter-bar">
+    <text
+      class="chip {{priorityFilter === 'all' ? 'active' : 'inactive'}}"
+      data-value="all"
+      bindtap="onPriorityFilter"
+    >全部优先级</text>
+    <text
+      wx:for="{{priorities}}"
+      wx:key="value"
+      class="chip {{priorityFilter === item.value ? 'active' : 'inactive'}}"
+      data-value="{{item.value}}"
+      bindtap="onPriorityFilter"
+    >{{item.label}}</text>
+  </view>
+</view>
+
+<view class="card create-card">
+  <view class="row-between" bindtap="toggleCreatePanel">
+    <text class="section-title">新建待办</text>
+    <text class="muted">{{showCreatePanel ? '收起' : '展开'}}</text>
+  </view>
+  <block wx:if="{{showCreatePanel}}">
+    <input class="input create-input" placeholder="输入待办标题" value="{{title}}" bindinput="onTitleInput" />
+    <view class="filter-bar">
+      <text
+        wx:for="{{contexts}}"
+        wx:key="value"
+        class="chip {{createContext === item.value ? 'active' : 'inactive'}}"
+        data-value="{{item.value}}"
+        bindtap="onCreateContext"
+      >{{item.label}}</text>
+    </view>
+    <view class="filter-bar">
+      <text
+        wx:for="{{priorities}}"
+        wx:key="value"
+        class="chip {{createPriority === item.value ? 'active' : 'inactive'}}"
+        data-value="{{item.value}}"
+        bindtap="onCreatePriority"
+      >{{item.label}}</text>
+    </view>
+    <button class="primary-btn add-btn" bindtap="handleCreate">添加</button>
+  </block>
+</view>
+
+<view class="card" wx:if="{{loading}}">
+  <text class="muted">加载中...</text>
+</view>
+
+<view class="card empty" wx:elif="{{tasks.length === 0}}">
+  <text class="muted">暂无待办</text>
+</view>
+
+<block wx:else>
+  <view class="card task" wx:for="{{tasks}}" wx:key="id" data-id="{{item.id}}" bindtap="openDetail">
+    <view class="task-row">
+      <text class="task-title">{{item.title}}</text>
+      <text class="progress-tag" wx:if="{{item.progress > 0}}">{{item.progress}}%</text>
+    </view>
+    <view class="meta-row">
+      <text class="badge" style="background:{{item.contextColor}}">{{item.contextLabel}}</text>
+      <text class="badge" style="background:{{item.priorityColor}}">{{item.priorityLabel}}</text>
+      <text class="muted" wx:if="{{item.scheduled_date}}">排期 {{item.scheduled_date}}</text>
+    </view>
+    <view class="action-row" catchtap="noop">
+      <button
+        wx:if="{{tab === 'pending'}}"
+        class="secondary-btn action-btn"
+        size="mini"
+        data-id="{{item.id}}"
+        catchtap="handleStart"
+      >开始</button>
+      <button
+        wx:if="{{tab !== 'done'}}"
+        class="secondary-btn action-btn"
+        size="mini"
+        data-id="{{item.id}}"
+        catchtap="handleScheduleToday"
+      >排入今日</button>
+      <button
+        wx:if="{{tab !== 'done'}}"
+        class="primary-btn action-btn"
+        size="mini"
+        data-id="{{item.id}}"
+        catchtap="handleComplete"
+      >完成</button>
+    </view>
+  </view>
+</block>

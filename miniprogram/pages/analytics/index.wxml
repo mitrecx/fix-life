@@ -1,0 +1,78 @@
+<view class="tabs">
+  <view class="tab-item {{tab === 'dashboard' ? 'active' : ''}}" data-tab="dashboard" bindtap="onTab">总览</view>
+  <view class="tab-item {{tab === 'yearly' ? 'active' : ''}}" data-tab="yearly" bindtap="onTab">年度</view>
+  <view class="tab-item {{tab === 'monthly' ? 'active' : ''}}" data-tab="monthly" bindtap="onTab">月度</view>
+  <view class="tab-item {{tab === 'heatmap' ? 'active' : ''}}" data-tab="heatmap" bindtap="onTab">活跃</view>
+</view>
+
+<view class="card filter-card">
+  <view class="picker-text">年份：{{year}}</view>
+  <view class="year-nav">
+    <button class="secondary-btn" size="mini" bindtap="onYearPrev">上一年</button>
+    <button class="secondary-btn" size="mini" bindtap="onYearNext">下一年</button>
+  </view>
+  <picker wx:if="{{tab === 'monthly'}}" mode="selector" range="{{['1月','2月','3月','4月','5月','6月','7月','8月','9月','10月','11月','12月']}}" value="{{month - 1}}" bindchange="onMonthChange">
+    <view class="picker-text">月份：{{month}}月</view>
+  </picker>
+</view>
+
+<view class="card" wx:if="{{loading}}">
+  <text class="muted">加载中...</text>
+</view>
+
+<block wx:elif="{{tab === 'dashboard' && dashboard}}">
+  <view class="card stat-grid">
+    <view class="stat-item"><text class="stat-num">{{dashboard.total_goals}}</text><text class="stat-label">年度目标</text></view>
+    <view class="stat-item"><text class="stat-num">{{dashboard.active_goals}}</text><text class="stat-label">进行中</text></view>
+    <view class="stat-item"><text class="stat-num">{{dashboard.completed_goals}}</text><text class="stat-label">已完成</text></view>
+    <view class="stat-item"><text class="stat-num">{{dashboard.total_monthly_plans}}</text><text class="stat-label">月度计划</text></view>
+    <view class="stat-item"><text class="stat-num">{{dashboard.total_daily_progress_days}}</text><text class="stat-label">每日记录</text></view>
+    <view class="stat-item"><text class="stat-num">{{dashboard.completed_tasks}}/{{dashboard.total_tasks}}</text><text class="stat-label">任务完成</text></view>
+  </view>
+  <view class="card">
+    <text class="section-title">整体完成率</text>
+    <text class="big-rate">{{dashboard.overall_completion_rate}}%</text>
+  </view>
+</block>
+
+<block wx:elif="{{tab === 'yearly' && yearly}}">
+  <view class="card">
+    <text class="section-title">{{year}} 年度统计</text>
+    <text class="muted">目标完成率 {{yearly.goal_completion_rate}}%</text>
+    <text class="muted">任务完成率 {{yearly.task_completion_rate}}%</text>
+    <text class="muted">计划数 {{yearly.total_plans}} · 任务 {{yearly.completed_tasks}}/{{yearly.total_tasks}}</text>
+  </view>
+  <view class="card" wx:for="{{yearly.category_stats}}" wx:key="category">
+    <text>{{item.category}}：{{item.completed}}/{{item.count}}（{{item.completion_rate}}%）</text>
+  </view>
+  <view class="card" wx:for="{{yearly.monthly_progress}}" wx:key="month">
+    <text>{{item.month}}月：{{item.completed}}/{{item.total}}</text>
+  </view>
+</block>
+
+<block wx:elif="{{tab === 'monthly' && monthly}}">
+  <view class="card">
+    <text class="section-title">{{year}}年{{month}}月</text>
+    <text class="muted">任务完成率 {{monthly.task_completion_rate}}%</text>
+    <text class="muted">任务 {{monthly.completed_tasks}}/{{monthly.total_tasks}}</text>
+    <text class="muted">每日记录天数 {{monthly.total_daily_progress_days}}</text>
+  </view>
+  <view class="card" wx:for="{{monthly.daily_completion_data}}" wx:key="day">
+    <text>{{item.day}}日：{{item.completed}}/{{item.total}}（{{item.rate}}%）</text>
+  </view>
+  <view class="card" wx:for="{{monthly.priority_distribution}}" wx:key="priority">
+    <text>优先级 {{item.priority}}：{{item.count}} 条</text>
+  </view>
+</block>
+
+<block wx:elif="{{tab === 'heatmap' && heatmap}}">
+  <view class="card">
+    <text class="section-title">近 90 天活跃度</text>
+    <view class="heatmap-list">
+      <view class="heat-item" wx:for="{{heatmap.data}}" wx:key="date">
+        <text class="heat-date">{{item.date}}</text>
+        <text class="heat-count">{{item.value}} 条</text>
+      </view>
+    </view>
+  </view>
+</block>

@@ -1,0 +1,36 @@
+<view class="card" wx:if="{{loading}}">
+  <text class="muted">加载中...</text>
+</view>
+
+<block wx:else>
+  <view class="card setting-row">
+    <view class="setting-text">
+      <text class="section-title">邮件推送周总结</text>
+      <text class="muted">每周一自动发送上周周总结</text>
+    </view>
+    <switch checked="{{emailEnabled}}" bindchange="onEmailToggle" />
+  </view>
+
+  <view class="card" wx:if="{{emailEnabled}}">
+    <text class="label">接收邮箱</text>
+    <input class="input field" type="text" placeholder="留空则使用注册邮箱" value="{{email}}" bindinput="onEmailInput" />
+  </view>
+
+  <view class="card setting-row">
+    <view class="setting-text">
+      <text class="section-title">飞书推送周总结</text>
+      <text class="muted">通过飞书机器人推送</text>
+    </view>
+    <switch checked="{{feishuEnabled}}" bindchange="onFeishuToggle" />
+  </view>
+
+  <view class="card" wx:if="{{feishuEnabled}}">
+    <input class="input field" placeholder="飞书 App ID" value="{{feishuAppId}}" bindinput="onFeishuAppIdInput" />
+    <input class="input field" placeholder="飞书 App Secret" value="{{feishuAppSecret}}" bindinput="onFeishuSecretInput" />
+    <input class="input field" placeholder="飞书 Chat ID" value="{{feishuChatId}}" bindinput="onFeishuChatInput" />
+  </view>
+
+  <view class="card">
+    <button class="primary-btn" loading="{{saving}}" bindtap="handleSave">保存设置</button>
+  </view>
+</block>

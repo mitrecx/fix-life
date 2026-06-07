@@ -1,0 +1,36 @@
+<view class="card toolbar">
+  <view class="search-row">
+    <input class="input" placeholder="搜索随手记" value="{{searchQ}}" bindinput="onSearchInput" bindconfirm="onSearch" />
+    <button class="primary-btn search-btn" size="mini" bindtap="onSearch">搜</button>
+  </view>
+  <textarea class="textarea field" placeholder="记录灵感..." value="{{content}}" bindinput="onContentInput" maxlength="-1" />
+  <view class="action-row">
+    <button class="secondary-btn" size="mini" bindtap="handleChooseImage">图片</button>
+    <button class="primary-btn" size="mini" bindtap="handleCreate">保存</button>
+    <button class="secondary-btn" size="mini" bindtap="toggleSelectMode">{{selectMode ? '取消' : '多选'}}</button>
+  </view>
+  <view class="action-row" wx:if="{{selectMode}}">
+    <button class="secondary-btn" size="mini" bindtap="handleBatchMerge">合并</button>
+    <button class="danger-btn" size="mini" bindtap="handleBatchDelete">删除</button>
+  </view>
+</view>
+
+<view class="card" wx:if="{{loading}}">
+  <text class="muted">加载中...</text>
+</view>
+
+<view class="card empty" wx:elif="{{notes.length === 0}}">
+  <text class="muted">暂无随手记</text>
+</view>
+
+<view class="card note" wx:for="{{notes}}" wx:key="id">
+  <view class="row-between">
+    <checkbox wx:if="{{selectMode}}" checked="{{selectedMap[item.id]}}" data-id="{{item.id}}" bindtap="onToggleSelect" />
+    <text class="note-time muted">{{item.created_at}}</text>
+    <view class="note-actions">
+      <text class="link-btn" data-content="{{item.content}}" bindtap="handleCopy">复制</text>
+      <text class="delete-link" data-id="{{item.id}}" bindtap="handleDeleteOne">删</text>
+    </view>
+  </view>
+  <text class="note-content">{{item.content}}</text>
+</view>

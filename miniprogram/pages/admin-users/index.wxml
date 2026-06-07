@@ -1,0 +1,14 @@
+<view class="card" wx:if="{{loading}}">
+  <text class="muted">加载中...</text>
+</view>
+
+<view class="card empty" wx:elif="{{users.length === 0}}">
+  <text class="muted">暂无用户</text>
+</view>
+
+<view class="card user-item" wx:for="{{users}}" wx:key="id">
+  <text class="username">{{item.username}}</text>
+  <text class="muted">{{item.email}}</text>
+  <text class="muted">状态：{{item.is_active ? '正常' : '禁用'}}</text>
+  <button class="secondary-btn unlock-btn" size="mini" data-id="{{item.id}}" bindtap="handleUnlock">解锁登录</button>
+</view>

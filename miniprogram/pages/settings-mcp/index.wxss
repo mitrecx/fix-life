@@ -1,0 +1,16 @@
+@import "../../styles/common.wxss";
+
+.desc {
+  display: block;
+  margin: 12rpx 0 20rpx;
+  font-size: 24rpx;
+}
+
+.key-name {
+  font-weight: 500;
+}
+
+.delete-link {
+  color: #dc2626;
+  font-size: 24rpx;
+}

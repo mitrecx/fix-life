@@ -1,0 +1,13 @@
+<view class="card" wx:if="{{loading}}">
+  <text class="muted">加载中...</text>
+</view>
+
+<block wx:elif="{{summary}}">
+  <view class="card">
+    <text class="section-title">第 {{summary.week_number}} 周总结</text>
+    <text class="muted">{{summary.start_date}} ~ {{summary.end_date}}</text>
+    <textarea class="textarea field" value="{{editText}}" bindinput="onTextInput" maxlength="-1" />
+    <button class="primary-btn" loading="{{saving}}" bindtap="handleSave">保存</button>
+    <button class="danger-btn delete-btn" bindtap="handleDelete">删除</button>
+  </view>
+</block>

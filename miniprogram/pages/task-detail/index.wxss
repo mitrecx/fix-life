@@ -1,0 +1,57 @@
+@import "../../styles/common.wxss";
+
+.field {
+  margin-top: 16rpx;
+}
+
+.label {
+  margin-top: 20rpx;
+  font-size: 24rpx;
+  color: #6b7280;
+}
+
+.save-btn {
+  margin-top: 24rpx;
+}
+
+.action-grid {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12rpx;
+  margin-top: 16rpx;
+}
+
+.action-grid button {
+  margin: 0;
+  flex: 1;
+  min-width: 200rpx;
+}
+
+.schedule-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-top: 20rpx;
+  gap: 12rpx;
+}
+
+.picker-value {
+  color: #4f46e5;
+  font-size: 26rpx;
+}
+
+.schedule-btn {
+  margin: 0;
+}
+
+.occurrence {
+  padding: 16rpx 0;
+  border-bottom: 1rpx solid #f3f4f6;
+  display: flex;
+  justify-content: space-between;
+  gap: 12rpx;
+}
+
+.danger-zone .delete-btn {
+  width: 100%;
+}

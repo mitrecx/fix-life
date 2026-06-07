@@ -1,0 +1,75 @@
+<view class="card" wx:if="{{loading}}">
+  <text class="muted">加载中...</text>
+</view>
+
+<block wx:elif="{{task}}">
+  <view class="card">
+    <text class="section-title">编辑待办</text>
+    <input class="input field" placeholder="标题" value="{{editTitle}}" bindinput="onTitleInput" />
+    <textarea
+      class="textarea field"
+      placeholder="描述（可选）"
+      value="{{editDescription}}"
+      bindinput="onDescInput"
+      maxlength="-1"
+    />
+    <view class="label">场景</view>
+    <view class="filter-bar">
+      <text
+        wx:for="{{contexts}}"
+        wx:key="value"
+        class="chip {{editContext === item.value ? 'active' : 'inactive'}}"
+        data-value="{{item.value}}"
+        bindtap="onContextChange"
+      >{{item.label}}</text>
+    </view>
+    <view class="label">优先级</view>
+    <view class="filter-bar">
+      <text
+        wx:for="{{priorities}}"
+        wx:key="value"
+        class="chip {{editPriority === item.value ? 'active' : 'inactive'}}"
+        data-value="{{item.value}}"
+        bindtap="onPriorityChange"
+      >{{item.label}}</text>
+    </view>
+    <view class="label">进度</view>
+    <view class="filter-bar">
+      <text
+        wx:for="{{progressPresets}}"
+        wx:key="*this"
+        class="chip {{editProgress === item ? 'active' : 'inactive'}}"
+        data-value="{{item}}"
+        bindtap="onProgressChange"
+      >{{item}}%</text>
+    </view>
+    <button class="primary-btn save-btn" loading="{{saving}}" bindtap="handleSave">保存</button>
+  </view>
+
+  <view class="card">
+    <text class="section-title">快捷操作</text>
+    <view class="action-grid">
+      <button wx:if="{{task.status !== 'in_progress' && task.status !== 'done'}}" class="secondary-btn" bindtap="handleStart">开始</button>
+      <button wx:if="{{task.status !== 'done'}}" class="primary-btn" bindtap="handleComplete">标记完成</button>
+      <button wx:if="{{task.is_scheduled}}" class="secondary-btn" bindtap="handleRevert">退回收件箱</button>
+    </view>
+    <view class="schedule-row">
+      <picker mode="date" value="{{scheduleDate}}" bindchange="onScheduleDateChange">
+        <view class="picker-value">排期日期：{{scheduleDate}}</view>
+      </picker>
+      <button class="secondary-btn schedule-btn" size="mini" bindtap="handleSchedule">排入每日</button>
+    </view>
+  </view>
+
+  <view class="card" wx:if="{{occurrences.length > 0}}">
+    <text class="section-title">每日关联记录</text>
+    <view class="occurrence" wx:for="{{occurrences}}" wx:key="daily_task_id">
+      <text>{{item.plan_date}} · {{item.daily_title || '每日任务'}}</text>
+      <text class="muted" wx:if="{{item.progress_after != null}}">进度 {{item.progress_after}}%</text>
+    </view>
+  </view>
+
+  <view class="card danger-zone">
+    <button class="danger-btn delete-btn" bindtap="handleDelete">删除待办</button>
+  </view>
+</block>

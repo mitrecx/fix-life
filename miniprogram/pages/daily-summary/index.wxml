@@ -1,0 +1,21 @@
+<view class="card" wx:if="{{loading}}">
+  <text class="muted">加载中...</text>
+</view>
+
+<block wx:else>
+  <view class="card">
+    <text class="section-title">{{progressDate}} 日总结</text>
+    <picker wx:if="{{typeLabels.length > 0}}" mode="selector" range="{{typeLabels}}" value="{{typeIndex}}" bindchange="onTypeChange">
+      <view class="picker-row">类型：{{typeLabels[typeIndex]}}</view>
+    </picker>
+    <textarea
+      class="textarea field"
+      placeholder="记录今日收获、反思与明日计划..."
+      value="{{content}}"
+      bindinput="onContentInput"
+      maxlength="-1"
+    />
+    <button class="primary-btn" loading="{{saving}}" bindtap="handleSave">保存总结</button>
+    <button wx:if="{{summary}}" class="danger-btn delete-btn" bindtap="handleDelete">删除总结</button>
+  </view>
+</block>

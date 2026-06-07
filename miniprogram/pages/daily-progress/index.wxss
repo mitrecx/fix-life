@@ -1,0 +1,159 @@
+@import "../../styles/common.wxss";
+
+.summary-card .summary-text {
+  display: block;
+  margin: 12rpx 0;
+  color: #374151;
+  white-space: pre-wrap;
+}
+
+.date-card {
+  padding-bottom: 12rpx;
+}
+
+.nav-row {
+  margin-bottom: 16rpx;
+}
+
+.nav-btn {
+  font-size: 48rpx;
+  color: #4f46e5;
+  padding: 0 16rpx;
+}
+
+.date-center {
+  text-align: center;
+}
+
+.date-title {
+  display: block;
+  font-size: 32rpx;
+  font-weight: 600;
+}
+
+.week-strip {
+  display: flex;
+  white-space: nowrap;
+  margin-top: 8rpx;
+}
+
+.week-day {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 88rpx;
+  height: 64rpx;
+  margin-right: 12rpx;
+  border-radius: 12rpx;
+  background: #f3f4f6;
+  font-size: 24rpx;
+}
+
+.week-day.selected {
+  background: #4f46e5;
+  color: #ffffff;
+}
+
+.week-day.today:not(.selected) {
+  border: 2rpx solid #4f46e5;
+}
+
+.action-row {
+  display: flex;
+  gap: 12rpx;
+  margin-top: 16rpx;
+}
+
+.mini-action {
+  margin: 0;
+}
+
+.entry-row {
+  display: flex;
+  align-items: flex-start;
+  gap: 16rpx;
+}
+
+.status-dot {
+  width: 36rpx;
+  height: 36rpx;
+  border-radius: 50%;
+  border: 4rpx solid #d1d5db;
+  flex-shrink: 0;
+  margin-top: 6rpx;
+}
+
+.status-dot.in-progress {
+  border-color: #4f46e5;
+  background: #eef2ff;
+}
+
+.status-dot.done {
+  border-color: #10b981;
+  background: #10b981;
+}
+
+.entry-body {
+  flex: 1;
+}
+
+.entry-title {
+  font-size: 30rpx;
+}
+
+.entry-title.done {
+  text-decoration: line-through;
+  color: #9ca3af;
+}
+
+.meta-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8rpx;
+  margin-top: 8rpx;
+}
+
+.delete-link {
+  color: #dc2626;
+  font-size: 24rpx;
+  padding: 8rpx;
+}
+
+.modal-mask {
+  position: fixed;
+  left: 0;
+  right: 0;
+  top: 0;
+  bottom: 0;
+  background: rgba(0, 0, 0, 0.45);
+  z-index: 100;
+  display: flex;
+  align-items: flex-end;
+}
+
+.modal-panel {
+  width: 100%;
+  max-height: 70vh;
+  background: #ffffff;
+  border-radius: 24rpx 24rpx 0 0;
+  padding: 24rpx;
+}
+
+.modal-header {
+  margin-bottom: 16rpx;
+}
+
+.modal-list {
+  max-height: 55vh;
+}
+
+.modal-item {
+  padding: 24rpx 0;
+  border-bottom: 1rpx solid #f3f4f6;
+  font-size: 28rpx;
+}
+
+.modal-body {
+  padding: 32rpx 0;
+  text-align: center;
+}

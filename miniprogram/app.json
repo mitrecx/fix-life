@@ -1,0 +1,59 @@
+{
+  "pages": [
+    "pages/login/index",
+    "pages/todos/index",
+    "pages/daily-progress/index",
+    "pages/plans/index",
+    "pages/analytics/index",
+    "pages/profile/index",
+    "pages/task-detail/index",
+    "pages/daily-summary/index",
+    "pages/monthly-plan-detail/index",
+    "pages/yearly-goal-detail/index",
+    "pages/quick-notes/index",
+    "pages/weekly-summaries/index",
+    "pages/weekly-summary-detail/index",
+    "pages/settings/index",
+    "pages/settings-display/index",
+    "pages/settings-notification/index",
+    "pages/settings-mcp/index",
+    "pages/admin-users/index"
+  ],
+  "window": {
+    "navigationBarTitleText": "修生活计划",
+    "navigationBarBackgroundColor": "#4f46e5",
+    "navigationBarTextStyle": "white",
+    "backgroundColor": "#f9fafb",
+    "backgroundTextStyle": "light"
+  },
+  "tabBar": {
+    "color": "#6b7280",
+    "selectedColor": "#4f46e5",
+    "backgroundColor": "#ffffff",
+    "borderStyle": "black",
+    "list": [
+      {
+        "pagePath": "pages/todos/index",
+        "text": "待办"
+      },
+      {
+        "pagePath": "pages/daily-progress/index",
+        "text": "每日"
+      },
+      {
+        "pagePath": "pages/plans/index",
+        "text": "计划"
+      },
+      {
+        "pagePath": "pages/analytics/index",
+        "text": "统计"
+      },
+      {
+        "pagePath": "pages/profile/index",
+        "text": "我的"
+      }
+    ]
+  },
+  "style": "v2",
+  "sitemapLocation": "sitemap.json"
+}

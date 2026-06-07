@@ -1,0 +1,60 @@
+@import "../../styles/common.wxss";
+
+.search-row {
+  display: flex;
+  gap: 12rpx;
+  align-items: center;
+}
+
+.search-btn {
+  flex-shrink: 0;
+}
+
+.create-card .create-input {
+  margin-top: 16rpx;
+  width: 100%;
+}
+
+.add-btn {
+  margin-top: 16rpx;
+}
+
+.task-row {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 16rpx;
+}
+
+.task-title {
+  flex: 1;
+  font-size: 30rpx;
+  font-weight: 500;
+}
+
+.progress-tag {
+  font-size: 24rpx;
+  color: #4f46e5;
+  background: #eef2ff;
+  padding: 4rpx 12rpx;
+  border-radius: 8rpx;
+}
+
+.meta-row {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8rpx;
+  margin-top: 12rpx;
+}
+
+.action-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12rpx;
+  margin-top: 16rpx;
+}
+
+.action-btn {
+  margin: 0;
+}

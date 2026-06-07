@@ -1,0 +1,22 @@
+<view class="card filter-card">
+  <view class="picker-text">年份：{{year}}</view>
+  <view class="year-nav">
+    <button class="secondary-btn" size="mini" bindtap="onYearPrev">上一年</button>
+    <button class="secondary-btn" size="mini" bindtap="onYearNext">下一年</button>
+    <button class="primary-btn" size="mini" loading="{{generating}}" bindtap="handleGenerate">生成本周</button>
+  </view>
+</view>
+
+<view class="card" wx:if="{{loading}}">
+  <text class="muted">加载中...</text>
+</view>
+
+<view class="card empty" wx:elif="{{summaries.length === 0}}">
+  <text class="muted">暂无周总结</text>
+</view>
+
+<view class="card summary-item" wx:for="{{summaries}}" wx:key="id" data-id="{{item.id}}" bindtap="openDetail">
+  <text class="section-title">第 {{item.week_number}} 周</text>
+  <text class="muted">{{item.start_date}} ~ {{item.end_date}}</text>
+  <text class="preview">{{item.summary_text}}</text>
+</view>
