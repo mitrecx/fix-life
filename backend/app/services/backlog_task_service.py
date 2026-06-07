@@ -625,7 +625,8 @@ class BacklogTaskService:
             task.status = new_status
             if new_progress == 100 or new_status == BacklogTaskStatus.DONE:
                 task.completed_at = datetime.utcnow()
-                self._sync_completed_daily_task(str(task.user_id), task)
+                if progress_plan_date is None:
+                    self._sync_completed_daily_task(str(task.user_id), task)
             else:
                 task.completed_at = None
         elif new_status is not None:
@@ -635,13 +636,14 @@ class BacklogTaskService:
                 task.completed_at = None
             elif new_status == BacklogTaskStatus.DONE:
                 self.apply_progress(task, 100)
-                self._sync_completed_daily_task(str(task.user_id), task)
+                if progress_plan_date is None:
+                    self._sync_completed_daily_task(str(task.user_id), task)
             elif new_status == BacklogTaskStatus.IN_PROGRESS:
                 task.status = BacklogTaskStatus.IN_PROGRESS
                 task.completed_at = None
         elif new_progress is not None and new_progress != old_progress:
             self.apply_progress(task, new_progress)
-            if new_progress == 100:
+            if new_progress == 100 and progress_plan_date is None:
                 self._sync_completed_daily_task(str(task.user_id), task)
 
         if (

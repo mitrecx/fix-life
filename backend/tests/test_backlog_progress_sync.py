@@ -101,3 +101,37 @@ def test_ensure_in_progress_daily_link_skips_completed_or_pending():
     service._ensure_in_progress_daily_link("user-1", done)
 
     service.get_links_for_backlog.assert_not_called()
+
+
+def test_update_task_with_progress_plan_date_skips_today_completion_sync():
+    service = BacklogTaskService(db=MagicMock())
+    past = date.today() - timedelta(days=2)
+    task = MagicMock()
+    task.id = "backlog-1"
+    task.user_id = "user-1"
+    task.progress = 0
+
+    service.get_task = MagicMock(return_value=task)
+    service._sync_completed_daily_task = MagicMock()
+    service._record_progress_snapshot = MagicMock()
+    service._sync_linked_daily_status_for_plan_date = MagicMock()
+    service.get_links_for_backlog = MagicMock(
+        return_value=[_make_link(plan_date=past, progress_after=0)]
+    )
+    service.db.commit = MagicMock()
+    service.db.refresh = MagicMock()
+
+    from app.schemas.backlog_task import BacklogTaskUpdate
+
+    service.update_task(
+        "backlog-1",
+        BacklogTaskUpdate(progress=100, progress_plan_date=past),
+    )
+
+    service._sync_completed_daily_task.assert_not_called()
+    service._record_progress_snapshot.assert_called_once_with(task, 100, plan_date=past)
+    service._sync_linked_daily_status_for_plan_date.assert_called_once_with(
+        task,
+        plan_date=past,
+        progress=100,
+    )
