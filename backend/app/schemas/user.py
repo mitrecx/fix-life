@@ -32,6 +32,12 @@ class UserLogin(BaseModel):
     login_identifier: str = Field(..., min_length=1, max_length=100, description="Email or username")
     password: str = Field(..., min_length=1, max_length=100, description="Password")
 
+
+class WeChatLoginRequest(BaseModel):
+    """Schema for WeChat mini program login."""
+
+    code: str = Field(..., min_length=1, max_length=128, description="wx.login temporary code")
+
     class Config:
         json_schema_extra = {
             "example": {

@@ -73,6 +73,10 @@ class Settings(BaseSettings):
     # Frontend
     FRONTEND_URL: str = "http://localhost:5277"
 
+    # WeChat Mini Program
+    WECHAT_MINI_APP_ID: str = ""
+    WECHAT_MINI_APP_SECRET: str = ""
+
     # Aliyun OSS (optional; required for quick-note image uploads)
     OSS_ENABLED: bool = False
     OSS_ACCESS_KEY_ID: str = ""

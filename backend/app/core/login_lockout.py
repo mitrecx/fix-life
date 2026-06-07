@@ -88,7 +88,7 @@ def attempt_login(db: Session, login_identifier: str, password: str) -> User:
     if is_login_locked(user):
         raise AccountLockedError(lock_remaining_minutes(user))
 
-    if not verify_password(password, user.hashed_password):
+    if not user.hashed_password or not verify_password(password, user.hashed_password):
         just_locked = record_failed_login(user, db)
         if just_locked:
             raise AccountLockedError(LOGIN_LOCKOUT_MINUTES)

@@ -8,6 +8,7 @@ from app.schemas.user import (
     UserRegister,
     UserRegisterWithCode,
     UserLogin,
+    WeChatLoginRequest,
     TokenResponse,
     SendVerificationCodeRequest,
     SendVerificationCodeResponse,
@@ -16,6 +17,7 @@ from app.schemas.user import (
     ResetPasswordRequest
 )
 from app.services.auth_service import AuthService
+from app.services.wechat_service import WeChatAuthError, WeChatConfigError, exchange_login_code
 from app.services.email_service import EmailService
 from app.services.user_response import build_user_response
 from app.core.security import create_access_token, get_password_hash
@@ -137,6 +139,44 @@ def register(
     # Create access token
     access_token = create_access_token(data={"sub": str(user.id)})
 
+    return TokenResponse(
+        access_token=access_token,
+        token_type="bearer",
+        user=build_user_response(db, user),
+    )
+
+
+@router.post("/wechat-login", response_model=TokenResponse)
+def wechat_login(
+    request: WeChatLoginRequest,
+    db: Session = Depends(get_db),
+):
+    """Login or register via WeChat mini program wx.login code."""
+    try:
+        session = exchange_login_code(request.code)
+    except WeChatConfigError as exc:
+        raise HTTPException(
+            status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+            detail=str(exc),
+        ) from exc
+    except WeChatAuthError as exc:
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail=str(exc),
+        ) from exc
+
+    service = AuthService(db)
+    user = service.get_or_create_wechat_user(
+        openid=str(session["openid"]),
+        unionid=str(session["unionid"]) if session.get("unionid") else None,
+    )
+    if not user.is_active:
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="账号已停用",
+        )
+
+    access_token = create_access_token(data={"sub": str(user.id)})
     return TokenResponse(
         access_token=access_token,
         token_type="bearer",

@@ -14,7 +14,9 @@ class User(Base):
     id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
     username = Column(String(50), unique=True, nullable=False, index=True)
     email = Column(String(100), unique=True, nullable=False, index=True)
-    hashed_password = Column(String(255), nullable=False)
+    hashed_password = Column(String(255), nullable=True)
+    wechat_openid = Column(String(64), unique=True, nullable=True, index=True)
+    wechat_unionid = Column(String(64), nullable=True)
     full_name = Column(String(100))
     avatar_url = Column(String(500), nullable=True)
     avatar_data = Column(LargeBinary, nullable=True)  # Store avatar image binary data
