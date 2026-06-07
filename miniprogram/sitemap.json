@@ -1,0 +1,9 @@
+{
+  "desc": "Fix Life mini program sitemap",
+  "rules": [
+    {
+      "action": "allow",
+      "page": "*"
+    }
+  ]
+}

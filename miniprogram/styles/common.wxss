@@ -1,0 +1,107 @@
+.section-title {
+  font-size: 30rpx;
+  font-weight: 600;
+  color: #111827;
+}
+
+.row-between {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.tabs {
+  display: flex;
+  background: #ffffff;
+  margin: 24rpx;
+  border-radius: 12rpx;
+  overflow: hidden;
+  box-shadow: 0 4rpx 16rpx rgba(15, 23, 42, 0.06);
+}
+
+.tab-item {
+  flex: 1;
+  text-align: center;
+  padding: 20rpx 0;
+  font-size: 26rpx;
+  color: #6b7280;
+}
+
+.tab-item.active {
+  color: #4f46e5;
+  font-weight: 600;
+  background: #eef2ff;
+}
+
+.input {
+  flex: 1;
+  background: #f3f4f6;
+  border-radius: 12rpx;
+  padding: 16rpx 20rpx;
+  font-size: 28rpx;
+}
+
+.textarea {
+  width: 100%;
+  min-height: 160rpx;
+  background: #f3f4f6;
+  border-radius: 12rpx;
+  padding: 16rpx 20rpx;
+  font-size: 28rpx;
+  box-sizing: border-box;
+}
+
+.chip {
+  display: inline-block;
+  padding: 6rpx 16rpx;
+  border-radius: 999rpx;
+  font-size: 22rpx;
+  margin-right: 8rpx;
+}
+
+.chip.active {
+  background: #4f46e5;
+  color: #ffffff;
+}
+
+.chip.inactive {
+  background: #f3f4f6;
+  color: #374151;
+}
+
+.badge {
+  display: inline-block;
+  padding: 4rpx 12rpx;
+  border-radius: 8rpx;
+  font-size: 22rpx;
+  color: #ffffff;
+}
+
+.empty {
+  text-align: center;
+  padding: 48rpx 24rpx;
+}
+
+.link-btn {
+  color: #4f46e5;
+  font-size: 26rpx;
+}
+
+.danger-btn {
+  background: #fef2f2;
+  color: #dc2626;
+  border-radius: 12rpx;
+}
+
+.secondary-btn {
+  background: #f3f4f6;
+  color: #374151;
+  border-radius: 12rpx;
+}
+
+.filter-bar {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12rpx;
+  margin-top: 16rpx;
+}

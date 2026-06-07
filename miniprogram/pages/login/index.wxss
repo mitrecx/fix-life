@@ -1,0 +1,38 @@
+.container {
+  min-height: 100vh;
+  padding: 48rpx 0;
+}
+
+.hero {
+  text-align: center;
+}
+
+.title {
+  display: block;
+  font-size: 48rpx;
+  font-weight: 700;
+  color: #4f46e5;
+}
+
+.subtitle {
+  display: block;
+  margin-top: 12rpx;
+  color: #6b7280;
+}
+
+.hint {
+  display: block;
+  margin-bottom: 32rpx;
+  color: #4b5563;
+  line-height: 1.6;
+}
+
+.login-btn {
+  margin-top: 8rpx;
+}
+
+.error {
+  display: block;
+  margin-top: 24rpx;
+  color: #dc2626;
+}

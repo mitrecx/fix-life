@@ -1,0 +1,14 @@
+<view class="container">
+  <view class="hero card">
+    <text class="title">Fix Life</text>
+    <text class="subtitle">待办、每日进度与目标管理</text>
+  </view>
+
+  <view class="card">
+    <text class="hint">使用微信授权登录，数据与 Web 端同步。</text>
+    <button class="primary-btn login-btn" loading="{{loading}}" bindtap="handleLogin">
+      微信一键登录
+    </button>
+    <text class="error" wx:if="{{error}}">{{error}}</text>
+  </view>
+</view>
