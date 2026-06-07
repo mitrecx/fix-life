@@ -507,6 +507,9 @@ export function TodosList() {
   const filtersHydratedRef = useRef(false);
   const skipNextFilterPersistRef = useRef(false);
   const skipNextFilterLoadRef = useRef(false);
+  const filterApplyTimerRef = useRef<ReturnType<typeof setTimeout>>();
+  const draftFiltersRef = useRef(draftFilters);
+  draftFiltersRef.current = draftFilters;
   const loadTasksRequestIdRef = useRef(0);
 
   useLayoutEffect(() => {
@@ -625,21 +628,6 @@ export function TodosList() {
     });
   }, [columnTasks]);
 
-  const updateDraftFilters = useCallback((patch: Partial<BacklogListFilters>) => {
-    setDraftFilters((prev) => {
-      const next = { ...prev, ...patch };
-      if (!("q" in patch)) {
-        queueMicrotask(() => {
-          setSearchParams(
-            filtersToSearchParams(next, searchParamsRef.current.get("task")),
-            { replace: true },
-          );
-        });
-      }
-      return next;
-    });
-  }, [setSearchParams]);
-
   const setColumnState = useCallback(
     (column: KanbanColumnId, updater: (prev: BacklogTask[]) => BacklogTask[]) => {
       if (column === "pending") setPendingTasks(updater);
@@ -751,19 +739,57 @@ export function TodosList() {
     [setColumnState],
   );
 
+  const applyFilters = useCallback(
+    (next: BacklogListFilters) => {
+      skipNextFilterLoadRef.current = true;
+      draftFiltersRef.current = next;
+      setDraftFilters(next);
+      writeSharedTaskContextFilter(next.context ?? "all");
+      setSearchParams(filtersToSearchParams(next, searchParamsRef.current.get("task")), { replace: true });
+      void loadTasks({ filters: next });
+    },
+    [setSearchParams, loadTasks],
+  );
+
   const applySearch = useCallback(() => {
-    skipNextFilterLoadRef.current = true;
-    setSearchParams(filtersToSearchParams(draftFilters, searchParams.get("task")), { replace: true });
-    void loadTasks({ filters: draftFilters });
-  }, [draftFilters, searchParams, setSearchParams, loadTasks]);
+    if (filterApplyTimerRef.current) {
+      clearTimeout(filterApplyTimerRef.current);
+      filterApplyTimerRef.current = undefined;
+    }
+    applyFilters(draftFiltersRef.current);
+  }, [applyFilters]);
 
   const resetFilters = useCallback(() => {
-    skipNextFilterLoadRef.current = true;
-    setDraftFilters(DEFAULT_FILTERS);
-    writeSharedTaskContextFilter("all");
-    setSearchParams(filtersToSearchParams(DEFAULT_FILTERS, searchParams.get("task")), { replace: true });
-    void loadTasks({ filters: DEFAULT_FILTERS });
-  }, [searchParams, setSearchParams, loadTasks]);
+    if (filterApplyTimerRef.current) {
+      clearTimeout(filterApplyTimerRef.current);
+      filterApplyTimerRef.current = undefined;
+    }
+    applyFilters(DEFAULT_FILTERS);
+  }, [applyFilters]);
+
+  const updateDraftFilters = useCallback(
+    (patch: Partial<BacklogListFilters>) => {
+      const next = { ...draftFiltersRef.current, ...patch };
+      draftFiltersRef.current = next;
+      setDraftFilters(next);
+
+      if (filterApplyTimerRef.current) {
+        clearTimeout(filterApplyTimerRef.current);
+        filterApplyTimerRef.current = undefined;
+      }
+
+      if ("q" in patch) {
+        filterApplyTimerRef.current = setTimeout(() => {
+          filterApplyTimerRef.current = undefined;
+          applyFilters(draftFiltersRef.current);
+        }, 350);
+        return;
+      }
+
+      applyFilters(next);
+    },
+    [applyFilters],
+  );
 
   const loadMoreColumn = useCallback(
     async (column: KanbanColumnId) => {

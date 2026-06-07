@@ -110,19 +110,21 @@ function DescriptionField({
   value,
   onChange,
   editing,
+  alwaysShowInput = false,
 }: {
   value: string;
   onChange: (value: string) => void;
   editing: boolean;
+  alwaysShowInput?: boolean;
 }) {
   const [isEditing, setIsEditing] = useState(false);
   const trimmed = value.trim();
 
   useEffect(() => {
-    if (!trimmed) {
+    if (!trimmed && !alwaysShowInput) {
       setIsEditing(false);
     }
-  }, [trimmed]);
+  }, [trimmed, alwaysShowInput]);
 
   if (!editing) {
     return (
@@ -132,12 +134,17 @@ function DescriptionField({
     );
   }
 
-  if (isEditing || !trimmed) {
+  if (alwaysShowInput || isEditing || !trimmed) {
     return (
       <textarea
         value={value}
-        onChange={(e) => onChange(e.target.value)}
-        onBlur={() => setIsEditing(false)}
+        onChange={(e) => {
+          setIsEditing(true);
+          onChange(e.target.value);
+        }}
+        onBlur={() => {
+          if (!alwaysShowInput) setIsEditing(false);
+        }}
         onFocus={() => setIsEditing(true)}
         placeholder="可选描述"
         rows={5}
@@ -403,6 +410,7 @@ export function TaskFormPanel({
           value={description}
           onChange={onDescriptionChange}
           editing={editing}
+          alwaysShowInput={mode === "create"}
         />
       </DetailRow>
       {!hideStatusFields && (
