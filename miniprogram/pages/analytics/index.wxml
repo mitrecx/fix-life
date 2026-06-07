@@ -3,6 +3,7 @@
   <view class="tab-item {{tab === 'yearly' ? 'active' : ''}}" data-tab="yearly" bindtap="onTab">年度</view>
   <view class="tab-item {{tab === 'monthly' ? 'active' : ''}}" data-tab="monthly" bindtap="onTab">月度</view>
   <view class="tab-item {{tab === 'heatmap' ? 'active' : ''}}" data-tab="heatmap" bindtap="onTab">活跃</view>
+  <view class="tab-item {{tab === 'trend' ? 'active' : ''}}" data-tab="trend" bindtap="onTab">趋势</view>
 </view>
 
 <view class="card filter-card">
@@ -62,6 +63,16 @@
   </view>
   <view class="card" wx:for="{{monthly.priority_distribution}}" wx:key="priority">
     <text>优先级 {{item.priority}}：{{item.count}} 条</text>
+  </view>
+</block>
+
+<block wx:elif="{{tab === 'trend' && completionTrend}}">
+  <view class="card">
+    <text class="section-title">近 30 天完成率趋势</text>
+    <text class="muted">平均 {{completionTrend.average_rate}}% · 趋势 {{completionTrend.trend}}</text>
+  </view>
+  <view class="card" wx:for="{{completionTrend.data}}" wx:key="date">
+    <text>{{item.date}}：{{item.rate}}%（{{item.completed}}/{{item.total}}）</text>
   </view>
 </block>
 

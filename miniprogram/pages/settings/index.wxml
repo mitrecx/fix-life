@@ -11,4 +11,12 @@
     <text>MCP 集成</text>
     <text class="muted">›</text>
   </view>
+  <view class="menu-item" wx:if="{{canSystemStatus}}" data-url="/pages/settings-status/index" bindtap="navigate">
+    <text>系统状态</text>
+    <text class="muted">›</text>
+  </view>
+  <view class="menu-item" wx:if="{{canSystemStatus}}" data-url="/pages/settings-ip-bans/index" bindtap="navigate">
+    <text>IP 封禁</text>
+    <text class="muted">›</text>
+  </view>
 </view>

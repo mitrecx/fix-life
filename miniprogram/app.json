@@ -17,7 +17,10 @@
     "pages/settings-display/index",
     "pages/settings-notification/index",
     "pages/settings-mcp/index",
-    "pages/admin-users/index"
+    "pages/admin-users/index",
+    "pages/daily-entry-detail/index",
+    "pages/settings-status/index",
+    "pages/settings-ip-bans/index"
   ],
   "window": {
     "navigationBarTitleText": "修生活计划",

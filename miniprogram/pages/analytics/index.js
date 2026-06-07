@@ -11,6 +11,7 @@ Page({
     yearly: null,
     monthly: null,
     heatmap: null,
+    completionTrend: null,
     tab: "dashboard",
   },
 
@@ -41,12 +42,13 @@ Page({
   async loadAll() {
     this.setData({ loading: true });
     try {
-      const [dashboard, yearly, heatmap] = await Promise.all([
+      const [dashboard, yearly, heatmap, completionTrend] = await Promise.all([
         analytics.getDashboard(),
         analytics.getYearly(this.data.year),
         analytics.getHeatmap({ days: 90 }),
+        analytics.getCompletionRate("daily", { days: 30 }),
       ]);
-      this.setData({ dashboard, yearly, heatmap });
+      this.setData({ dashboard, yearly, heatmap, completionTrend });
       await this.loadMonthly();
     } catch (error) {
       wx.showToast({ title: error.message || "加载失败", icon: "none" });

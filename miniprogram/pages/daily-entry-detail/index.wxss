@@ -1,0 +1,16 @@
+@import "../../styles/common.wxss";
+
+.field {
+  margin-top: 16rpx;
+}
+
+.label {
+  margin-top: 20rpx;
+  font-size: 24rpx;
+  color: #6b7280;
+}
+
+.delete-btn {
+  margin-top: 16rpx;
+  width: 100%;
+}

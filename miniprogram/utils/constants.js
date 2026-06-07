@@ -43,6 +43,15 @@ const PROGRESS_PRESETS = [0, 25, 50, 75, 100];
 
 const PERM_QUICK_NOTES = "quick_notes:use";
 const PERM_USERS_MANAGE = "users:manage";
+const PERM_SYSTEM_STATUS = "system_status:read";
+
+const CHECK_LABELS = {
+  postgres: "PostgreSQL",
+  redis_broker: "Redis（Broker）",
+  redis_result_backend: "Redis（Result）",
+  celery_worker: "Celery Worker",
+  celery_beat: "Celery Beat",
+};
 
 module.exports = {
   TASK_CONTEXT,
@@ -54,6 +63,8 @@ module.exports = {
   PROGRESS_PRESETS,
   PERM_QUICK_NOTES,
   PERM_USERS_MANAGE,
+  PERM_SYSTEM_STATUS,
+  CHECK_LABELS,
   DEFAULT_CONTEXT: "learning",
   DEFAULT_PRIORITY: "medium",
 };

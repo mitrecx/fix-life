@@ -1,0 +1,21 @@
+<view class="card row-between">
+  <text class="section-title">IP 封禁</text>
+  <text class="link-btn" bindtap="loadBans">刷新</text>
+</view>
+
+<view class="card" wx:if="{{loading}}">
+  <text class="muted">加载中...</text>
+</view>
+
+<view class="card empty" wx:elif="{{items.length === 0}}">
+  <text class="muted">当前无封禁记录</text>
+</view>
+
+<view class="card ban-item" wx:for="{{items}}" wx:key="ip">
+  <view class="row-between">
+    <text class="ip">{{item.ip}}</text>
+    <button class="secondary-btn" size="mini" data-ip="{{item.ip}}" data-scope="{{item.scope}}" bindtap="handleUnban">解封</button>
+  </view>
+  <text class="muted">范围：{{item.scope}}</text>
+  <text class="muted">请求数：{{item.request_count}} · TTL {{item.ttl_seconds}}s</text>
+</view>

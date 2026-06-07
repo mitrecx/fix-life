@@ -1,0 +1,33 @@
+@import "../../styles/common.wxss";
+
+.status-badge {
+  display: inline-block;
+  padding: 8rpx 16rpx;
+  border-radius: 8rpx;
+  font-weight: 600;
+  margin-bottom: 8rpx;
+}
+
+.status-badge.ok {
+  background: #d1fae5;
+  color: #047857;
+}
+
+.status-badge.bad {
+  background: #fee2e2;
+  color: #b91c1c;
+}
+
+.ok-text {
+  color: #047857;
+}
+
+.bad-text {
+  color: #b91c1c;
+  font-size: 24rpx;
+}
+
+.check-item .muted {
+  display: block;
+  margin-top: 4rpx;
+}

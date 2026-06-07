@@ -1,0 +1,23 @@
+<view class="card row-between">
+  <text class="section-title">系统状态</text>
+  <text class="link-btn" bindtap="loadStatus">刷新</text>
+</view>
+
+<view class="card" wx:if="{{loading}}">
+  <text class="muted">检测中...</text>
+</view>
+
+<block wx:else>
+  <view class="card">
+    <text class="status-badge {{allOk ? 'ok' : 'bad'}}">{{allOk ? '全部正常' : '存在异常'}}</text>
+    <text class="muted" wx:if="{{checkedAt}}">检测时间：{{checkedAt}}</text>
+  </view>
+  <view class="card check-item" wx:for="{{checks}}" wx:key="name">
+    <view class="row-between">
+      <text>{{item.label}}</text>
+      <text class="{{item.ok ? 'ok-text' : 'bad-text'}}">{{item.ok ? '正常' : '异常'}}</text>
+    </view>
+    <text class="muted" wx:if="{{item.latency_ms != null}}">延迟 {{item.latency_ms}} ms</text>
+    <text class="bad-text" wx:if="{{item.error}}">{{item.error}}</text>
+  </view>
+</block>

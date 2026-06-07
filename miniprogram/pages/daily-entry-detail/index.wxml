@@ -1,0 +1,26 @@
+<view class="card" wx:if="{{loading}}">
+  <text class="muted">加载中...</text>
+</view>
+
+<block wx:elif="{{entry}}">
+  <view class="card">
+    <input class="input field" value="{{editTitle}}" bindinput="onTitleInput" />
+    <textarea class="textarea field" placeholder="描述" value="{{editDescription}}" bindinput="onDescInput" maxlength="-1" />
+    <view class="label">场景</view>
+    <view class="filter-bar">
+      <text wx:for="{{contexts}}" wx:key="value" class="chip {{editContext === item.value ? 'active' : 'inactive'}}" data-value="{{item.value}}" bindtap="onContextChange">{{item.label}}</text>
+    </view>
+    <view class="label">优先级</view>
+    <view class="filter-bar">
+      <text wx:for="{{priorities}}" wx:key="value" class="chip {{editPriority === item.value ? 'active' : 'inactive'}}" data-value="{{item.value}}" bindtap="onPriorityChange">{{item.label}}</text>
+    </view>
+    <view class="label">状态</view>
+    <view class="filter-bar">
+      <text wx:for="{{statuses}}" wx:key="value" class="chip {{editStatus === item.value ? 'active' : 'inactive'}}" data-value="{{item.value}}" bindtap="onStatusChange">{{item.label}}</text>
+    </view>
+    <input class="input field" type="number" placeholder="预计分钟" value="{{editEstimated}}" bindinput="onEstimatedInput" />
+    <input class="input field" type="number" placeholder="实际分钟" value="{{editActual}}" bindinput="onActualInput" />
+    <button class="primary-btn" loading="{{saving}}" bindtap="handleSave">保存</button>
+    <button class="danger-btn delete-btn" bindtap="handleDelete">删除</button>
+  </view>
+</block>

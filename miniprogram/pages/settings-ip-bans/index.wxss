@@ -1,0 +1,11 @@
+@import "../../styles/common.wxss";
+
+.ip {
+  font-family: monospace;
+  font-size: 28rpx;
+}
+
+.ban-item .muted {
+  display: block;
+  margin-top: 4rpx;
+}

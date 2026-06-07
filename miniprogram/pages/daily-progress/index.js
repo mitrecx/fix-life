@@ -239,4 +239,11 @@ Page({
       url: `/pages/daily-summary/index?dayId=${this.data.dayId}&date=${this.data.progressDate}`,
     });
   },
+
+  openEntryDetail(e) {
+    const id = e.currentTarget.dataset.id;
+    wx.navigateTo({
+      url: `/pages/daily-entry-detail/index?id=${id}&dayId=${this.data.dayId}`,
+    });
+  },
 });
