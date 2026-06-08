@@ -1,41 +1,68 @@
 @import "../../styles/common.wxss";
 
-.desc {
-  display: block;
-  margin-top: 12rpx;
-  line-height: 1.6;
+.intro-card {
+  margin-bottom: 16rpx;
 }
 
-.label {
-  display: block;
-  margin-bottom: 12rpx;
-  color: #6b7280;
-  font-size: 24rpx;
-}
-
-.code-input {
+.bound-card {
   text-align: center;
-  font-size: 40rpx;
-  letter-spacing: 12rpx;
-  font-weight: 600;
+  padding: 48rpx var(--space-card);
 }
 
 .bound-title {
   display: block;
-  font-size: 32rpx;
-  font-weight: 600;
-  color: #047857;
-  margin-bottom: 8rpx;
+  font-size: 36rpx;
+  font-weight: 700;
+  color: var(--color-success);
 }
 
-.bound .muted {
-  display: block;
-  margin-top: 4rpx;
-}
-
-.step {
+.bound-user {
   display: block;
   margin-top: 12rpx;
-  color: #374151;
-  line-height: 1.5;
+  font-size: var(--font-body);
+  font-weight: 600;
+  color: var(--color-text);
+}
+
+.field {
+  margin-top: 24rpx;
+}
+
+.code-input {
+  height: 112rpx;
+  min-height: 112rpx;
+  line-height: 112rpx;
+  text-align: center;
+  font-size: 48rpx;
+  letter-spacing: 16rpx;
+  font-weight: 700;
+  padding: 0 24rpx;
+}
+
+.step-item {
+  display: flex;
+  align-items: flex-start;
+  gap: 16rpx;
+  margin-top: 20rpx;
+}
+
+.step-num {
+  width: 40rpx;
+  height: 40rpx;
+  line-height: 40rpx;
+  text-align: center;
+  background: var(--color-primary-light);
+  color: var(--color-primary);
+  border-radius: var(--radius-full);
+  font-size: var(--font-small);
+  font-weight: 600;
+  flex-shrink: 0;
+}
+
+.step-text {
+  flex: 1;
+  font-size: var(--font-caption);
+  color: var(--color-text-secondary);
+  line-height: 1.55;
+  padding-top: 4rpx;
 }

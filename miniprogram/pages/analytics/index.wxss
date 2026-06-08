@@ -1,64 +1,58 @@
 @import "../../styles/common.wxss";
 
-.filter-card .picker-text {
-  padding: 12rpx 0;
+.card {
+  margin-top: 0;
+  margin-bottom: 16rpx;
+}
+
+.tabs .tab-item {
+  padding: 16rpx 0;
+  font-size: var(--font-small);
+}
+
+.filter-label {
+  font-size: var(--font-body);
+  font-weight: 600;
 }
 
 .year-nav {
   display: flex;
-  gap: 12rpx;
-  margin: 12rpx 0;
-}
-
-.stat-grid {
-  display: flex;
-  flex-wrap: wrap;
   gap: 16rpx;
+  margin: 16rpx 0;
 }
 
-.stat-item {
-  width: calc(50% - 8rpx);
-  background: #f9fafb;
-  border-radius: 12rpx;
-  padding: 20rpx;
-  box-sizing: border-box;
+.picker-text {
+  font-size: var(--font-caption);
+  color: var(--color-text-secondary);
 }
 
-.stat-num {
-  display: block;
-  font-size: 36rpx;
-  font-weight: 700;
-  color: #4f46e5;
+.stat-grid-wrap {
+  padding-bottom: 8rpx;
 }
 
-.stat-label {
-  font-size: 22rpx;
-  color: #6b7280;
+.highlight-card {
+  text-align: center;
+  padding: 40rpx var(--space-card);
 }
 
 .big-rate {
   display: block;
-  font-size: 56rpx;
+  font-size: 72rpx;
   font-weight: 700;
-  color: #4f46e5;
+  background: linear-gradient(135deg, #6366f1, #9333ea);
+  -webkit-background-clip: text;
+  color: var(--color-primary);
   margin-top: 12rpx;
 }
 
-.heatmap-list {
-  margin-top: 12rpx;
+.stat-line {
+  display: block;
+  margin-top: 8rpx;
 }
 
-.heat-item {
+.list-row {
   display: flex;
   justify-content: space-between;
-  padding: 12rpx 0;
-  border-bottom: 1rpx solid #f3f4f6;
-}
-
-.heat-date {
-  color: #374151;
-}
-
-.heat-count {
-  color: #6b7280;
+  align-items: center;
+  font-size: var(--font-caption);
 }

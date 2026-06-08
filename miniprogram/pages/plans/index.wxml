@@ -1,67 +1,68 @@
-<view class="tabs">
-  <view class="tab-item {{planTab === 'monthly' ? 'active' : ''}}" data-tab="monthly" bindtap="onPlanTab">月度计划</view>
-  <view class="tab-item {{planTab === 'yearly' ? 'active' : ''}}" data-tab="yearly" bindtap="onPlanTab">年度目标</view>
-</view>
-
-<view class="card filter-card">
-  <view class="picker-text">年份：{{year}}</view>
-  <view class="year-nav">
-    <button class="secondary-btn" size="mini" bindtap="onYearPrev">上一年</button>
-    <button class="secondary-btn" size="mini" bindtap="onYearNext">下一年</button>
+<view class="page-shell">
+  <view class="tabs">
+    <view class="tab-item {{planTab === 'monthly' ? 'active' : ''}}" data-tab="monthly" bindtap="onPlanTab">月度计划</view>
+    <view class="tab-item {{planTab === 'yearly' ? 'active' : ''}}" data-tab="yearly" bindtap="onPlanTab">年度目标</view>
   </view>
-  <picker wx:if="{{planTab === 'monthly'}}" mode="selector" range="{{['1月','2月','3月','4月','5月','6月','7月','8月','9月','10月','11月','12月']}}" value="{{month - 1}}" bindchange="onMonthChange">
-    <view class="picker-text">月份：{{month}}月</view>
-  </picker>
-</view>
 
-<block wx:if="{{planTab === 'monthly'}}">
-  <view class="card">
-    <view class="row-between" bindtap="toggleCreateMonthly">
-      <text class="section-title">新建月度计划</text>
-      <text class="muted">{{showCreateMonthly ? '收起' : '展开'}}</text>
+  <view class="card card-flat filter-card">
+    <text class="filter-label">年份 {{year}}</text>
+    <view class="year-nav">
+      <button class="secondary-btn" size="mini" bindtap="onYearPrev">上一年</button>
+      <button class="secondary-btn" size="mini" bindtap="onYearNext">下一年</button>
     </view>
-    <block wx:if="{{showCreateMonthly}}">
-      <input class="input field" placeholder="计划标题（可选）" value="{{newMonthlyTitle}}" bindinput="onNewMonthlyTitle" />
-      <button class="primary-btn" bindtap="handleCreateMonthly">创建</button>
-    </block>
+    <picker wx:if="{{planTab === 'monthly'}}" mode="selector" range="{{['1月','2月','3月','4月','5月','6月','7月','8月','9月','10月','11月','12月']}}" value="{{month - 1}}" bindchange="onMonthChange">
+      <view class="picker-text">月份：{{month}} 月</view>
+    </picker>
   </view>
 
-  <view class="card empty" wx:if="{{monthlyPlans.length === 0}}">
-    <text class="muted">本月暂无计划</text>
-  </view>
-  <view class="card plan-item" wx:for="{{monthlyPlans}}" wx:key="id" data-id="{{item.id}}" bindtap="openMonthly">
-    <text class="plan-title">{{item.title || (item.year + '年' + item.month + '月计划')}}</text>
-    <text class="muted">任务 {{item.completed_tasks}}/{{item.total_tasks}} · 完成率 {{item.completion_rate}}%</text>
-  </view>
-</block>
-
-<block wx:else>
-  <view class="card">
-    <view class="row-between" bindtap="toggleCreateYearly">
-      <text class="section-title">新建年度目标</text>
-      <text class="muted">{{showCreateYearly ? '收起' : '展开'}}</text>
-    </view>
-    <block wx:if="{{showCreateYearly}}">
-      <input class="input field" placeholder="目标标题" value="{{newYearlyTitle}}" bindinput="onNewYearlyTitle" />
-      <view class="filter-bar">
-        <text wx:for="{{categories}}" wx:key="value" class="chip {{newYearlyCategory === item.value ? 'active' : 'inactive'}}" data-value="{{item.value}}" bindtap="onNewYearlyCategory">{{item.label}}</text>
+  <block wx:if="{{planTab === 'monthly'}}">
+    <view class="card card-flat">
+      <view class="row-between" bindtap="toggleCreateMonthly">
+        <text class="section-title">新建月度计划</text>
+        <text class="link-btn">{{showCreateMonthly ? '收起' : '展开'}}</text>
       </view>
-      <input class="input field" type="number" placeholder="目标值" value="{{newYearlyTarget}}" bindinput="onNewYearlyTarget" />
-      <button class="primary-btn" bindtap="handleCreateYearly">创建</button>
-    </block>
-  </view>
+      <block wx:if="{{showCreateMonthly}}">
+        <input class="input field" placeholder="计划标题（可选）" value="{{newMonthlyTitle}}" bindinput="onNewMonthlyTitle" />
+        <button class="primary-btn field" bindtap="handleCreateMonthly">创建</button>
+      </block>
+    </view>
 
-  <view class="card empty" wx:if="{{yearlyGoals.length === 0}}">
-    <text class="muted">本年度暂无目标</text>
-  </view>
-  <view class="card plan-item" wx:for="{{yearlyGoals}}" wx:key="id" data-id="{{item.id}}" bindtap="openYearly">
-    <view class="row-between">
-      <text class="plan-title">{{item.title}}</text>
-      <text class="badge" style="background:{{item.categoryColor}}">{{item.categoryLabel}}</text>
+    <view class="empty card" wx:if="{{monthlyPlans.length === 0}}">
+      <text>本月暂无计划</text>
     </view>
-    <text class="muted">进度 {{item.current_value}}/{{item.target_value}} · {{item.completion_rate}}%</text>
-    <view class="progress-bar">
-      <view class="progress-fill" style="width:{{item.completion_rate}}%"></view>
+    <view class="card plan-item" wx:for="{{monthlyPlans}}" wx:key="id" data-id="{{item.id}}" bindtap="openMonthly">
+      <text class="plan-title">{{item.title || (item.year + '年' + item.month + '月计划')}}</text>
+      <text class="muted plan-meta">任务 {{item.completed_tasks}}/{{item.total_tasks}} · 完成率 {{item.completion_rate}}%</text>
+      <view class="progress-bar"><view class="progress-fill" style="width:{{item.completion_rate}}%"></view></view>
     </view>
-  </view>
-</block>
+  </block>
+
+  <block wx:else>
+    <view class="card card-flat">
+      <view class="row-between" bindtap="toggleCreateYearly">
+        <text class="section-title">新建年度目标</text>
+        <text class="link-btn">{{showCreateYearly ? '收起' : '展开'}}</text>
+      </view>
+      <block wx:if="{{showCreateYearly}}">
+        <input class="input field" placeholder="目标标题" value="{{newYearlyTitle}}" bindinput="onNewYearlyTitle" />
+        <view class="filter-bar">
+          <text wx:for="{{categories}}" wx:key="value" class="chip {{newYearlyCategory === item.value ? 'active' : 'inactive'}}" data-value="{{item.value}}" bindtap="onNewYearlyCategory">{{item.label}}</text>
+        </view>
+        <input class="input field" type="number" placeholder="目标值" value="{{newYearlyTarget}}" bindinput="onNewYearlyTarget" />
+        <button class="primary-btn field" bindtap="handleCreateYearly">创建</button>
+      </block>
+    </view>
+
+    <view class="empty card" wx:if="{{yearlyGoals.length === 0}}">
+      <text>本年度暂无目标</text>
+    </view>
+    <view class="card plan-item" wx:for="{{yearlyGoals}}" wx:key="id" data-id="{{item.id}}" bindtap="openYearly">
+      <view class="row-between">
+        <text class="plan-title">{{item.title}}</text>
+        <text class="badge" style="background:{{item.categoryColor}}">{{item.categoryLabel}}</text>
+      </view>
+      <text class="muted plan-meta">进度 {{item.current_value}}/{{item.target_value}} · {{item.completion_rate}}%</text>
+      <view class="progress-bar"><view class="progress-fill" style="width:{{item.completion_rate}}%"></view></view>
+    </view>
+  </block>
+</view>

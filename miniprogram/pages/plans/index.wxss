@@ -1,40 +1,45 @@
 @import "../../styles/common.wxss";
 
-.filter-card .picker-text {
-  padding: 12rpx 0;
-  color: #374151;
+.card {
+  margin-top: 0;
+  margin-bottom: 16rpx;
+}
+
+.filter-label {
+  font-size: var(--font-body);
+  font-weight: 600;
+  color: var(--color-text);
 }
 
 .year-nav {
   display: flex;
-  gap: 12rpx;
-  margin: 12rpx 0;
+  gap: 16rpx;
+  margin: 16rpx 0;
+}
+
+.picker-text {
+  padding: 12rpx 0;
+  color: var(--color-text-secondary);
+  font-size: var(--font-caption);
 }
 
 .field {
-  margin-top: 16rpx;
+  margin-top: 20rpx;
 }
 
 .plan-title {
   font-size: 30rpx;
-  font-weight: 500;
+  font-weight: 600;
+  color: var(--color-text);
+  flex: 1;
+  margin-right: 16rpx;
 }
 
-.plan-item .muted {
+.plan-meta {
   display: block;
-  margin-top: 8rpx;
+  margin-top: 10rpx;
 }
 
-.progress-bar {
-  height: 12rpx;
-  background: #e5e7eb;
-  border-radius: 999rpx;
-  margin-top: 12rpx;
-  overflow: hidden;
-}
-
-.progress-fill {
-  height: 100%;
-  background: #4f46e5;
-  border-radius: 999rpx;
+.plan-item .progress-bar {
+  margin-top: 16rpx;
 }

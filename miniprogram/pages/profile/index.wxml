@@ -1,45 +1,50 @@
-<view class="card profile">
-  <view class="avatar-row" bindtap="handleChooseAvatar">
-    <image wx:if="{{user.avatar_url}}" class="avatar" src="{{user.avatar_url}}" mode="aspectFill" />
-    <view wx:else class="avatar placeholder">修</view>
-    <view class="profile-info">
-      <text class="name">{{user.full_name || user.username || '用户'}}</text>
-      <text class="meta">{{user.username}}</text>
-      <text class="meta" wx:if="{{user.email}}">{{user.email}}</text>
+<view class="page-shell profile-page">
+  <view class="profile-hero card hero-gradient">
+    <view class="avatar-row" bindtap="handleChooseAvatar">
+      <image wx:if="{{user.avatar_url}}" class="avatar" src="{{user.avatar_url}}" mode="aspectFill" />
+      <view wx:else class="avatar placeholder">{{avatarInitial}}</view>
+      <view class="profile-info">
+        <text class="name">{{user.full_name || user.username || '用户'}}</text>
+        <text class="meta">@{{user.username}}</text>
+      </view>
     </view>
+    <text class="bio" wx:if="{{user.bio && !showEdit}}">{{user.bio}}</text>
   </view>
-  <text class="bio muted" wx:if="{{user.bio && !showEdit}}">{{user.bio}}</text>
-  <view wx:if="{{showEdit}}" class="edit-form">
+
+  <view class="card card-flat" wx:if="{{showEdit}}">
+    <text class="section-title">编辑资料</text>
     <input class="input field" placeholder="显示名称" value="{{editName}}" bindinput="onNameInput" />
     <textarea class="textarea field" placeholder="个人简介" value="{{editBio}}" bindinput="onBioInput" maxlength="-1" />
     <button class="primary-btn" bindtap="handleSaveProfile">保存资料</button>
   </view>
-  <button wx:else class="secondary-btn edit-btn" bindtap="toggleEdit">编辑资料</button>
-</view>
+  <view class="card card-flat edit-card" wx:else>
+    <button class="secondary-btn edit-btn" bindtap="toggleEdit">编辑资料</button>
+  </view>
 
-<view class="card menu">
-  <view class="menu-item" wx:if="{{needsBind}}" data-url="/pages/bind/index" bindtap="navigate">
-    <text>绑定 Web 账号</text>
-    <text class="bind-hint">同步数据</text>
+  <view class="card menu-list">
+    <view class="menu-item" wx:if="{{needsBind}}" data-url="/pages/bind/index" bindtap="navigate">
+      <text>绑定 Web 账号</text>
+      <text class="bind-hint">同步数据</text>
+    </view>
+    <view class="menu-item" wx:if="{{canQuickNotes}}" data-url="/pages/quick-notes/index" bindtap="navigate">
+      <text>随手记</text>
+      <text class="menu-chevron">›</text>
+    </view>
+    <view class="menu-item" data-url="/pages/weekly-summaries/index" bindtap="navigate">
+      <text>周总结</text>
+      <text class="menu-chevron">›</text>
+    </view>
+    <view class="menu-item" data-url="/pages/settings/index" bindtap="navigate">
+      <text>系统设置</text>
+      <text class="menu-chevron">›</text>
+    </view>
+    <view class="menu-item" wx:if="{{canAdmin}}" data-url="/pages/admin-users/index" bindtap="navigate">
+      <text>用户管理</text>
+      <text class="menu-chevron">›</text>
+    </view>
   </view>
-  <view class="menu-item" wx:if="{{canQuickNotes}}" data-url="/pages/quick-notes/index" bindtap="navigate">
-    <text>随手记</text>
-    <text class="muted">›</text>
-  </view>
-  <view class="menu-item" data-url="/pages/weekly-summaries/index" bindtap="navigate">
-    <text>周总结</text>
-    <text class="muted">›</text>
-  </view>
-  <view class="menu-item" data-url="/pages/settings/index" bindtap="navigate">
-    <text>系统设置</text>
-    <text class="muted">›</text>
-  </view>
-  <view class="menu-item" wx:if="{{canAdmin}}" data-url="/pages/admin-users/index" bindtap="navigate">
-    <text>用户管理</text>
-    <text class="muted">›</text>
-  </view>
-</view>
 
-<view class="card">
-  <button class="logout-btn" bindtap="handleLogout">退出登录</button>
+  <view class="card logout-card">
+    <button class="danger-btn logout-btn" bindtap="handleLogout">退出登录</button>
+  </view>
 </view>

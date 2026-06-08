@@ -21,6 +21,7 @@ Page({
     canQuickNotes: false,
     canAdmin: false,
     needsBind: true,
+    avatarInitial: "修",
   },
 
   onShow() {
@@ -48,6 +49,7 @@ Page({
       ...user,
       avatar_url: resolveAvatarUrl(user.avatar_url),
     };
+    const avatarInitial = (normalized.full_name || normalized.username || "修").charAt(0).toUpperCase();
     this.setData({
       user: normalized,
       editName: normalized.full_name || "",
@@ -55,6 +57,7 @@ Page({
       canQuickNotes: hasPermission(normalized, PERM_QUICK_NOTES),
       canAdmin: hasPermission(normalized, PERM_USERS_MANAGE),
       needsBind: (normalized.email || "").toLowerCase().endsWith("@weixin.fixlife.mitrecx.top"),
+      avatarInitial,
     });
   },
 

@@ -2,7 +2,24 @@
 
 .search-row {
   display: flex;
-  gap: 12rpx;
+  gap: 16rpx;
+  align-items: stretch;
+}
+
+.search-row .input {
+  flex: 1;
+  width: 0;
+}
+
+.search-row .primary-btn,
+.search-row .secondary-btn {
+  flex-shrink: 0;
+  height: 88rpx;
+  min-height: 88rpx;
+  padding: 0 28rpx;
+  display: flex;
+  align-items: center;
+  justify-content: center;
 }
 
 .field {

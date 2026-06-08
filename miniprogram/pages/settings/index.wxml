@@ -1,22 +1,24 @@
-<view class="card menu">
-  <view class="menu-item" data-url="/pages/settings-display/index" bindtap="navigate">
-    <text>显示设置</text>
-    <text class="muted">›</text>
-  </view>
-  <view class="menu-item" data-url="/pages/settings-notification/index" bindtap="navigate">
-    <text>通知设置</text>
-    <text class="muted">›</text>
-  </view>
-  <view class="menu-item" data-url="/pages/settings-mcp/index" bindtap="navigate">
-    <text>MCP 集成</text>
-    <text class="muted">›</text>
-  </view>
-  <view class="menu-item" wx:if="{{canSystemStatus}}" data-url="/pages/settings-status/index" bindtap="navigate">
-    <text>系统状态</text>
-    <text class="muted">›</text>
-  </view>
-  <view class="menu-item" wx:if="{{canSystemStatus}}" data-url="/pages/settings-ip-bans/index" bindtap="navigate">
-    <text>IP 封禁</text>
-    <text class="muted">›</text>
+<view class="page-shell">
+  <view class="card menu-list">
+    <view class="menu-item" data-url="/pages/settings-display/index" bindtap="navigate">
+      <text>显示设置</text>
+      <text class="menu-chevron">›</text>
+    </view>
+    <view class="menu-item" data-url="/pages/settings-notification/index" bindtap="navigate">
+      <text>通知设置</text>
+      <text class="menu-chevron">›</text>
+    </view>
+    <view class="menu-item" data-url="/pages/settings-mcp/index" bindtap="navigate">
+      <text>MCP 集成</text>
+      <text class="menu-chevron">›</text>
+    </view>
+    <view class="menu-item" wx:if="{{canSystemStatus}}" data-url="/pages/settings-status/index" bindtap="navigate">
+      <text>系统状态</text>
+      <text class="menu-chevron">›</text>
+    </view>
+    <view class="menu-item" wx:if="{{canSystemStatus}}" data-url="/pages/settings-ip-bans/index" bindtap="navigate">
+      <text>IP 封禁</text>
+      <text class="menu-chevron">›</text>
+    </view>
   </view>
 </view>
