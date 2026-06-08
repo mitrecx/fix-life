@@ -2,7 +2,7 @@ const dailyProgress = require("../../utils/services/dailyProgress");
 const dailySummary = require("../../utils/services/dailySummary");
 const settingsService = require("../../utils/services/settings");
 const backlog = require("../../utils/services/backlog");
-const { TASK_CONTEXT, TASK_PRIORITY, ENTRY_STATUS } = require("../../utils/constants");
+const { TASK_CONTEXT, ENTRY_STATUS } = require("../../utils/constants");
 const { decorateEntry } = require("../../utils/format");
 const {
   todayString,
@@ -21,12 +21,7 @@ Page({
     entries: [],
     contextFilter: "all",
     contexts: TASK_CONTEXT,
-    priorities: TASK_PRIORITY,
     entryStatuses: ENTRY_STATUS,
-    showAddPanel: false,
-    newTitle: "",
-    newContext: "learning",
-    newPriority: "medium",
     showBacklogPicker: false,
     backlogTasks: [],
     backlogLoading: false,
@@ -141,43 +136,6 @@ Page({
 
   onContextFilter(e) {
     this.setData({ contextFilter: e.currentTarget.dataset.value }, () => this.loadDay());
-  },
-
-  toggleAddPanel() {
-    this.setData({ showAddPanel: !this.data.showAddPanel });
-  },
-
-  onNewTitleInput(e) {
-    this.setData({ newTitle: e.detail.value });
-  },
-
-  onNewContext(e) {
-    this.setData({ newContext: e.currentTarget.dataset.value });
-  },
-
-  onNewPriority(e) {
-    this.setData({ newPriority: e.currentTarget.dataset.value });
-  },
-
-  async handleAddEntry() {
-    const title = this.data.newTitle.trim();
-    if (!title) {
-      wx.showToast({ title: "请输入标题", icon: "none" });
-      return;
-    }
-    try {
-      await dailyProgress.createEntry(this.data.dayId, {
-        title,
-        context: this.data.newContext,
-        priority: this.data.newPriority,
-        status: "todo",
-      });
-      this.setData({ newTitle: "", showAddPanel: false });
-      await this.loadDay();
-      wx.showToast({ title: "已添加", icon: "success" });
-    } catch (error) {
-      wx.showToast({ title: error.message || "添加失败", icon: "none" });
-    }
   },
 
   async openBacklogPicker() {

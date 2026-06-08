@@ -18,6 +18,13 @@ page {
   --color-warning-bg: #fffbeb;
   --color-danger: #dc2626;
   --color-danger-bg: #fef2f2;
+  --btn-primary-bg: #eef2ff;
+  --btn-primary-bg-active: #e0e7ff;
+  --btn-primary-border: #c7d2fe;
+  --btn-secondary-bg: #f9fafb;
+  --btn-secondary-bg-active: #f3f4f6;
+  --btn-success-bg: #ecfdf5;
+  --btn-success-border: #a7f3d0;
   --radius-sm: 12rpx;
   --radius-md: 16rpx;
   --radius-lg: 24rpx;

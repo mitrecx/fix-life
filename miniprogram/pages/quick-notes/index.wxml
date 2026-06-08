@@ -1,7 +1,7 @@
 <view class="card toolbar">
   <view class="search-row">
     <input class="input" placeholder="搜索随手记" value="{{searchQ}}" bindinput="onSearchInput" bindconfirm="onSearch" />
-    <button class="primary-btn search-btn" size="mini" bindtap="onSearch">搜</button>
+    <button class="primary-btn inline-btn search-btn" bindtap="onSearch">搜</button>
   </view>
   <textarea class="textarea field" placeholder="记录灵感..." value="{{content}}" bindinput="onContentInput" maxlength="-1" />
   <view class="action-row">

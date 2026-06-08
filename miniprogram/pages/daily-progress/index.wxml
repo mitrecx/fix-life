@@ -42,20 +42,8 @@
       <text wx:for="{{contexts}}" wx:key="value" class="chip {{contextFilter === item.value ? 'active' : 'inactive'}}" data-value="{{item.value}}" bindtap="onContextFilter">{{item.label}}</text>
     </view>
     <view class="action-row">
-      <button class="secondary-btn mini-action" size="mini" bindtap="toggleAddPanel">手动添加</button>
-      <button class="primary-btn mini-action" size="mini" bindtap="openBacklogPicker">从待办排入</button>
+      <button class="primary-btn schedule-btn" bindtap="openBacklogPicker">从待办排入</button>
     </view>
-  </view>
-
-  <view class="card card-flat" wx:if="{{showAddPanel}}">
-    <input class="input field" placeholder="任务标题" value="{{newTitle}}" bindinput="onNewTitleInput" />
-    <view class="filter-bar">
-      <text wx:for="{{contexts}}" wx:key="value" class="chip {{newContext === item.value ? 'active' : 'inactive'}}" data-value="{{item.value}}" bindtap="onNewContext">{{item.label}}</text>
-    </view>
-    <view class="filter-bar">
-      <text wx:for="{{priorities}}" wx:key="value" class="chip {{newPriority === item.value ? 'active' : 'inactive'}}" data-value="{{item.value}}" bindtap="onNewPriority">{{item.label}}</text>
-    </view>
-    <button class="primary-btn field" bindtap="handleAddEntry">添加条目</button>
   </view>
 
   <view class="card" wx:if="{{loading}}">
@@ -64,7 +52,7 @@
 
   <view class="empty card" wx:elif="{{entries.length === 0}}">
     <text>今日暂无任务</text>
-    <text class="section-desc">从待办排入，或手动添加</text>
+    <text class="section-desc">从待办收件箱排入今日任务</text>
   </view>
 
   <block wx:else>

@@ -11,15 +11,9 @@
   width: 0;
 }
 
-.search-row .primary-btn,
-.search-row .secondary-btn {
+.search-row .inline-btn {
   flex-shrink: 0;
-  height: 88rpx;
-  min-height: 88rpx;
-  padding: 0 28rpx;
-  display: flex;
-  align-items: center;
-  justify-content: center;
+  min-width: 96rpx;
 }
 
 .field {
