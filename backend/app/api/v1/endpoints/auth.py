@@ -9,6 +9,8 @@ from app.schemas.user import (
     UserRegisterWithCode,
     UserLogin,
     WeChatLoginRequest,
+    WeChatBindCodeResponse,
+    WeChatBindRequest,
     TokenResponse,
     SendVerificationCodeRequest,
     SendVerificationCodeResponse,
@@ -18,6 +20,7 @@ from app.schemas.user import (
 )
 from app.services.auth_service import AuthService
 from app.services.wechat_service import WeChatAuthError, WeChatConfigError, exchange_login_code
+from app.services.wechat_bind_service import WeChatBindError, WeChatBindService, BIND_CODE_TTL_MINUTES
 from app.services.email_service import EmailService
 from app.services.user_response import build_user_response
 from app.core.security import create_access_token, get_password_hash
@@ -139,6 +142,68 @@ def register(
     # Create access token
     access_token = create_access_token(data={"sub": str(user.id)})
 
+    return TokenResponse(
+        access_token=access_token,
+        token_type="bearer",
+        user=build_user_response(db, user),
+    )
+
+
+@router.post("/wechat-bind-code", response_model=WeChatBindCodeResponse)
+def create_wechat_bind_code(
+    current_user=Depends(get_current_user),
+    db: Session = Depends(get_db),
+):
+    """Generate a short-lived code so the mini program can bind to this Web account."""
+    service = WeChatBindService(db)
+    try:
+        record = service.create_bind_code(current_user)
+    except WeChatBindError as exc:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(exc)) from exc
+
+    return WeChatBindCodeResponse(
+        code=record.code,
+        expires_at=record.expires_at,
+        expires_in_seconds=BIND_CODE_TTL_MINUTES * 60,
+    )
+
+
+@router.post("/wechat-bind", response_model=TokenResponse)
+def bind_wechat_account(
+    request: WeChatBindRequest,
+    db: Session = Depends(get_db),
+):
+    """Bind the WeChat identity from wx.login to the Web account that owns the bind code."""
+    try:
+        session = exchange_login_code(request.wx_code)
+    except WeChatConfigError as exc:
+        raise HTTPException(
+            status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+            detail=str(exc),
+        ) from exc
+    except WeChatAuthError as exc:
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail=str(exc),
+        ) from exc
+
+    service = WeChatBindService(db)
+    try:
+        user = service.bind_wechat_to_user(
+            bind_code=request.code,
+            openid=str(session["openid"]),
+            unionid=str(session["unionid"]) if session.get("unionid") else None,
+        )
+    except WeChatBindError as exc:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(exc)) from exc
+
+    if not user.is_active:
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="账号已停用",
+        )
+
+    access_token = create_access_token(data={"sub": str(user.id)})
     return TokenResponse(
         access_token=access_token,
         token_type="bearer",

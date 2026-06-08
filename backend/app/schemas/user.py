@@ -57,9 +57,25 @@ class UserResponse(UserBase):
     created_at: datetime
     updated_at: Optional[datetime] = None
     permissions: list[str] = Field(default_factory=list)
+    wechat_bound: bool = False
 
     class Config:
         from_attributes = True
+
+
+class WeChatBindCodeResponse(BaseModel):
+    """One-time code for binding a mini program WeChat identity to this Web account."""
+
+    code: str
+    expires_at: datetime
+    expires_in_seconds: int
+
+
+class WeChatBindRequest(BaseModel):
+    """Bind the current WeChat session to a Web account using a bind code."""
+
+    code: str = Field(..., min_length=6, max_length=6, description="6-digit bind code from Web profile")
+    wx_code: str = Field(..., min_length=1, max_length=128, description="wx.login temporary code")
 
 
 class TokenResponse(BaseModel):
