@@ -4,7 +4,8 @@ import type {
   User,
   SendVerificationCodeResponse,
   VerifyCodeResponse,
-  ResetPasswordResponse
+  ResetPasswordResponse,
+  WeChatBindCodeResponse,
 } from "@/types/auth";
 
 export const authService = {
@@ -81,5 +82,9 @@ export const authService = {
    */
   async getCurrentUser(): Promise<User> {
     return await api.get<User>("/auth/me");
+  },
+
+  async createWeChatBindCode(): Promise<WeChatBindCodeResponse> {
+    return await api.post<WeChatBindCodeResponse>("/auth/wechat-bind-code");
   },
 };

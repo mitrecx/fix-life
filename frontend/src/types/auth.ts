@@ -13,6 +13,15 @@ export interface User {
   updated_at?: string;
   /** Permission codes from RBAC (e.g. system_status:read) */
   permissions?: string[];
+  /** True when this account is linked to a WeChat mini program identity */
+  wechat_bound?: boolean;
+}
+
+/** Response from POST /auth/wechat-bind-code */
+export interface WeChatBindCodeResponse {
+  code: string;
+  expires_at: string;
+  expires_in_seconds: number;
 }
 
 /** Request payload for login */

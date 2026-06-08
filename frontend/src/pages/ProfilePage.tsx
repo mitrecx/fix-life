@@ -1,17 +1,19 @@
-import { useState, useRef } from "react";
+import { useState, useRef, useEffect } from "react";
 import {
   User as UserIcon,
   Camera,
   Mail,
   Calendar,
   Lock,
+  Smartphone,
 } from "lucide-react";
 import { Input, message } from "antd";
 import { useAuthStore } from "@/store/authStore";
 import api from "@/services/api";
+import { authService } from "@/services/authService";
 import type { User } from "@/types/auth";
 
-type ProfileTab = "info" | "password";
+type ProfileTab = "info" | "password" | "wechat";
 
 export default function ProfilePage() {
   const { user, setUser } = useAuthStore();
@@ -33,6 +35,42 @@ export default function ProfilePage() {
   const [showNewPassword, setShowNewPassword] = useState(false);
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
   const [isChangingPassword, setIsChangingPassword] = useState(false);
+  const [bindCode, setBindCode] = useState("");
+  const [bindExpiresAt, setBindExpiresAt] = useState<Date | null>(null);
+  const [bindCountdown, setBindCountdown] = useState(0);
+  const [isCreatingBindCode, setIsCreatingBindCode] = useState(false);
+
+  useEffect(() => {
+    if (!bindExpiresAt) {
+      setBindCountdown(0);
+      return;
+    }
+    const tick = () => {
+      const seconds = Math.max(0, Math.floor((bindExpiresAt.getTime() - Date.now()) / 1000));
+      setBindCountdown(seconds);
+      if (seconds <= 0) {
+        setBindCode("");
+        setBindExpiresAt(null);
+      }
+    };
+    tick();
+    const timer = window.setInterval(tick, 1000);
+    return () => window.clearInterval(timer);
+  }, [bindExpiresAt]);
+
+  const handleCreateBindCode = async () => {
+    setIsCreatingBindCode(true);
+    try {
+      const res = await authService.createWeChatBindCode();
+      setBindCode(res.code);
+      setBindExpiresAt(new Date(res.expires_at));
+      message.success("绑定码已生成，请在 10 分钟内在小程序输入");
+    } catch (error) {
+      message.error(error instanceof Error ? error.message : "生成绑定码失败");
+    } finally {
+      setIsCreatingBindCode(false);
+    }
+  };
 
   const menuItems = [
     {
@@ -46,6 +84,12 @@ export default function ProfilePage() {
       icon: Lock,
       label: "修改密码",
       description: "更改账户密码",
+    },
+    {
+      key: "wechat" as ProfileTab,
+      icon: Smartphone,
+      label: "小程序绑定",
+      description: "与微信小程序共用数据",
     },
   ];
 
@@ -295,6 +339,52 @@ export default function ProfilePage() {
                     />
                   </div>
                 </div>
+              </div>
+            )}
+
+            {/* WeChat bind */}
+            {activeTab === "wechat" && user && (
+              <div className="space-y-4">
+                <div className="mb-6">
+                  <h2 className="text-xl font-semibold text-gray-800 mb-2">微信小程序绑定</h2>
+                  <p className="text-sm text-gray-500">
+                    绑定后，小程序与 Web 将使用同一账号，待办、每日进度与计划数据完全同步。
+                  </p>
+                </div>
+
+                {user.wechat_bound ? (
+                  <div className="p-4 bg-green-50 border border-green-200 rounded-xl text-sm text-green-800">
+                    当前账号已绑定微信。在小程序中使用微信登录即可看到相同数据。
+                  </div>
+                ) : (
+                  <div className="space-y-4">
+                    <div className="p-4 bg-indigo-50 border border-indigo-100 rounded-xl text-sm text-indigo-900 space-y-2">
+                      <p className="font-medium">绑定步骤</p>
+                      <ol className="list-decimal list-inside space-y-1 text-indigo-800">
+                        <li>点击下方按钮生成 6 位绑定码（10 分钟内有效）</li>
+                        <li>打开微信小程序，进入「我的 → 绑定 Web 账号」</li>
+                        <li>输入绑定码并确认</li>
+                      </ol>
+                    </div>
+                    <button
+                      onClick={() => void handleCreateBindCode()}
+                      disabled={isCreatingBindCode || bindCountdown > 0}
+                      className="px-4 py-2 text-sm font-medium text-white bg-gradient-to-r from-indigo-500 to-purple-600 rounded-xl hover:from-indigo-600 hover:to-purple-700 transition-all disabled:opacity-50"
+                    >
+                      {isCreatingBindCode
+                        ? "生成中..."
+                        : bindCountdown > 0
+                          ? `绑定码有效 ${bindCountdown}s`
+                          : "生成绑定码"}
+                    </button>
+                    {bindCode && bindCountdown > 0 && (
+                      <div className="p-6 bg-gray-50 border border-gray-200 rounded-xl text-center">
+                        <div className="text-xs text-gray-500 mb-2">请在小程序输入以下绑定码</div>
+                        <div className="text-4xl font-bold tracking-[0.3em] text-indigo-600">{bindCode}</div>
+                      </div>
+                    )}
+                  </div>
+                )}
               </div>
             )}
 
