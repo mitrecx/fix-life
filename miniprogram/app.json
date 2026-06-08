@@ -3,14 +3,15 @@
     "pages/login/index",
     "pages/todos/index",
     "pages/daily-progress/index",
+    "pages/quick-notes/index",
+    "pages/profile/index",
     "pages/plans/index",
     "pages/analytics/index",
-    "pages/profile/index",
     "pages/task-detail/index",
+    "pages/task-create/index",
     "pages/daily-summary/index",
     "pages/monthly-plan-detail/index",
     "pages/yearly-goal-detail/index",
-    "pages/quick-notes/index",
     "pages/weekly-summaries/index",
     "pages/weekly-summary-detail/index",
     "pages/settings/index",
@@ -49,16 +50,10 @@
         "selectedIconPath": "assets/tab/daily-active.png"
       },
       {
-        "pagePath": "pages/plans/index",
-        "text": "计划",
-        "iconPath": "assets/tab/plans.png",
-        "selectedIconPath": "assets/tab/plans-active.png"
-      },
-      {
-        "pagePath": "pages/analytics/index",
-        "text": "统计",
-        "iconPath": "assets/tab/analytics.png",
-        "selectedIconPath": "assets/tab/analytics-active.png"
+        "pagePath": "pages/quick-notes/index",
+        "text": "随手记",
+        "iconPath": "assets/tab/notes.png",
+        "selectedIconPath": "assets/tab/notes-active.png"
       },
       {
         "pagePath": "pages/profile/index",

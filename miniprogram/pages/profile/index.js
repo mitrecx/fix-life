@@ -2,7 +2,7 @@ const userService = require("../../utils/services/user");
 const { getStoredUser } = require("../../utils/auth");
 const { clearToken } = require("../../utils/request");
 const { hasPermission } = require("../../utils/format");
-const { PERM_QUICK_NOTES, PERM_USERS_MANAGE } = require("../../utils/constants");
+const { PERM_USERS_MANAGE } = require("../../utils/constants");
 const { apiBaseUrl } = require("../../config");
 
 function resolveAvatarUrl(url) {
@@ -18,7 +18,6 @@ Page({
     editName: "",
     editBio: "",
     showEdit: false,
-    canQuickNotes: false,
     canAdmin: false,
     needsBind: true,
     avatarInitial: "修",
@@ -54,7 +53,6 @@ Page({
       user: normalized,
       editName: normalized.full_name || "",
       editBio: normalized.bio || "",
-      canQuickNotes: hasPermission(normalized, PERM_QUICK_NOTES),
       canAdmin: hasPermission(normalized, PERM_USERS_MANAGE),
       needsBind: (normalized.email || "").toLowerCase().endsWith("@weixin.fixlife.mitrecx.top"),
       avatarInitial,

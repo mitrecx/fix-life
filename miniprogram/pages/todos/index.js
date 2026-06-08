@@ -11,13 +11,9 @@ Page({
     contextFilter: "all",
     priorityFilter: "all",
     searchQ: "",
-    title: "",
-    createContext: "learning",
-    createPriority: "medium",
     contexts: TASK_CONTEXT,
     priorities: TASK_PRIORITY,
     tasks: [],
-    showCreatePanel: false,
   },
 
   onShow() {
@@ -72,41 +68,8 @@ Page({
     this.loadTasks();
   },
 
-  onTitleInput(e) {
-    this.setData({ title: e.detail.value });
-  },
-
-  onCreateContext(e) {
-    this.setData({ createContext: e.currentTarget.dataset.value });
-  },
-
-  onCreatePriority(e) {
-    this.setData({ createPriority: e.currentTarget.dataset.value });
-  },
-
-  toggleCreatePanel() {
-    this.setData({ showCreatePanel: !this.data.showCreatePanel });
-  },
-
-  async handleCreate() {
-    const title = this.data.title.trim();
-    if (!title) {
-      wx.showToast({ title: "请输入标题", icon: "none" });
-      return;
-    }
-    try {
-      await backlog.create({
-        title,
-        context: this.data.createContext,
-        priority: this.data.createPriority,
-        progress: 0,
-      });
-      this.setData({ title: "", showCreatePanel: false });
-      await this.loadTasks();
-      wx.showToast({ title: "已添加", icon: "success" });
-    } catch (error) {
-      wx.showToast({ title: error.message || "创建失败", icon: "none" });
-    }
+  openCreate() {
+    wx.navigateTo({ url: "/pages/task-create/index" });
   },
 
   openDetail(e) {

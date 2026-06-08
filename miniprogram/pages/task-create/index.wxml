@@ -1,0 +1,41 @@
+<view class="page-shell">
+  <view class="card">
+    <text class="section-title">新建待办</text>
+    <text class="section-desc">记录想法，稍后再排期或开始</text>
+    <input
+      class="input field"
+      placeholder="输入待办标题"
+      value="{{title}}"
+      bindinput="onTitleInput"
+      focus
+    />
+    <textarea
+      class="textarea field"
+      placeholder="描述（可选）"
+      value="{{description}}"
+      bindinput="onDescInput"
+      maxlength="-1"
+    />
+    <view class="label">场景</view>
+    <view class="filter-bar">
+      <text
+        wx:for="{{contexts}}"
+        wx:key="value"
+        class="chip {{context === item.value ? 'active' : 'inactive'}}"
+        data-value="{{item.value}}"
+        bindtap="onContextChange"
+      >{{item.label}}</text>
+    </view>
+    <view class="label">优先级</view>
+    <view class="filter-bar">
+      <text
+        wx:for="{{priorities}}"
+        wx:key="value"
+        class="chip {{priority === item.value ? 'active' : 'inactive'}}"
+        data-value="{{item.value}}"
+        bindtap="onPriorityChange"
+      >{{item.label}}</text>
+    </view>
+    <button class="primary-btn submit-btn" loading="{{saving}}" bindtap="handleCreate">添加待办</button>
+  </view>
+</view>

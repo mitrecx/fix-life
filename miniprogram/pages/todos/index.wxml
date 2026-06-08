@@ -20,7 +20,7 @@
         bindinput="onSearchInput"
         bindconfirm="onSearchConfirm"
       />
-      <button class="primary-btn search-btn" size="mini" bindtap="onSearchConfirm">搜索</button>
+      <button class="primary-btn inline-btn search-btn" bindtap="onSearchConfirm">搜索</button>
     </view>
     <view class="filter-bar">
       <text class="chip {{contextFilter === 'all' ? 'active' : 'inactive'}}" data-value="all" bindtap="onContextFilter">全部</text>
@@ -32,24 +32,8 @@
     </view>
   </view>
 
-  <view class="card card-flat create-card">
-    <view class="row-between create-toggle" bindtap="toggleCreatePanel">
-      <view>
-        <text class="section-title">新建待办</text>
-        <text class="section-desc">快速记录想法</text>
-      </view>
-      <text class="link-btn">{{showCreatePanel ? '收起' : '展开'}}</text>
-    </view>
-    <block wx:if="{{showCreatePanel}}">
-      <input class="input field" placeholder="输入待办标题" value="{{title}}" bindinput="onTitleInput" />
-      <view class="filter-bar">
-        <text wx:for="{{contexts}}" wx:key="value" class="chip {{createContext === item.value ? 'active' : 'inactive'}}" data-value="{{item.value}}" bindtap="onCreateContext">{{item.label}}</text>
-      </view>
-      <view class="filter-bar">
-        <text wx:for="{{priorities}}" wx:key="value" class="chip {{createPriority === item.value ? 'active' : 'inactive'}}" data-value="{{item.value}}" bindtap="onCreatePriority">{{item.label}}</text>
-      </view>
-      <button class="primary-btn field" bindtap="handleCreate">添加待办</button>
-    </block>
+  <view class="create-bar">
+    <button class="primary-btn create-btn" bindtap="openCreate">新建待办</button>
   </view>
 
   <view class="card" wx:if="{{loading}}">

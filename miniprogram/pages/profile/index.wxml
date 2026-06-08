@@ -26,10 +26,6 @@
       <text>绑定 Web 账号</text>
       <text class="bind-hint">同步数据</text>
     </view>
-    <view class="menu-item" wx:if="{{canQuickNotes}}" data-url="/pages/quick-notes/index" bindtap="navigate">
-      <text>随手记</text>
-      <text class="menu-chevron">›</text>
-    </view>
     <view class="menu-item" data-url="/pages/weekly-summaries/index" bindtap="navigate">
       <text>周总结</text>
       <text class="menu-chevron">›</text>

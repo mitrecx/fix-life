@@ -1,0 +1,19 @@
+@import "../../styles/common.wxss";
+
+.card {
+  margin-top: 0;
+}
+
+.field {
+  margin-top: 20rpx;
+}
+
+.label {
+  margin-top: 24rpx;
+  font-size: var(--font-caption);
+  color: var(--color-text-secondary);
+}
+
+.submit-btn {
+  margin-top: 32rpx;
+}
