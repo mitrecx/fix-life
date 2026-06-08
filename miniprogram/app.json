@@ -20,7 +20,8 @@
     "pages/admin-users/index",
     "pages/daily-entry-detail/index",
     "pages/settings-status/index",
-    "pages/settings-ip-bans/index"
+    "pages/settings-ip-bans/index",
+    "pages/bind/index"
   ],
   "window": {
     "navigationBarTitleText": "修生活计划",

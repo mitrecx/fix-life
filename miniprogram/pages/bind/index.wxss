@@ -1,0 +1,41 @@
+@import "../../styles/common.wxss";
+
+.desc {
+  display: block;
+  margin-top: 12rpx;
+  line-height: 1.6;
+}
+
+.label {
+  display: block;
+  margin-bottom: 12rpx;
+  color: #6b7280;
+  font-size: 24rpx;
+}
+
+.code-input {
+  text-align: center;
+  font-size: 40rpx;
+  letter-spacing: 12rpx;
+  font-weight: 600;
+}
+
+.bound-title {
+  display: block;
+  font-size: 32rpx;
+  font-weight: 600;
+  color: #047857;
+  margin-bottom: 8rpx;
+}
+
+.bound .muted {
+  display: block;
+  margin-top: 4rpx;
+}
+
+.step {
+  display: block;
+  margin-top: 12rpx;
+  color: #374151;
+  line-height: 1.5;
+}

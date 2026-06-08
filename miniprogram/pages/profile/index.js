@@ -20,6 +20,7 @@ Page({
     showEdit: false,
     canQuickNotes: false,
     canAdmin: false,
+    needsBind: true,
   },
 
   onShow() {
@@ -53,6 +54,7 @@ Page({
       editBio: normalized.bio || "",
       canQuickNotes: hasPermission(normalized, PERM_QUICK_NOTES),
       canAdmin: hasPermission(normalized, PERM_USERS_MANAGE),
+      needsBind: (normalized.email || "").toLowerCase().endsWith("@weixin.fixlife.mitrecx.top"),
     });
   },
 

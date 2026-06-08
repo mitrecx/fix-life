@@ -63,6 +63,11 @@
   border-bottom: none;
 }
 
+.bind-hint {
+  color: #4f46e5;
+  font-size: 24rpx;
+}
+
 .logout-btn {
   background: #fef2f2;
   color: #dc2626;

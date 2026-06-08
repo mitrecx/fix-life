@@ -1,0 +1,32 @@
+<view class="card">
+  <text class="section-title">绑定 Web 账号</text>
+  <text class="desc muted">在 Web 端「个人中心 → 小程序绑定」生成绑定码，在此输入后即可与 Web 共用同一套数据。</text>
+</view>
+
+<view class="card bound" wx:if="{{isBound}}">
+  <text class="bound-title">已绑定</text>
+  <text class="muted">当前账号：{{user.username}}</text>
+  <text class="muted">小程序与 Web 数据已同步。</text>
+</view>
+
+<block wx:else>
+  <view class="card">
+    <text class="label">6 位绑定码</text>
+    <input
+      class="input code-input"
+      type="number"
+      maxlength="6"
+      placeholder="输入 Web 端生成的绑定码"
+      value="{{bindCode}}"
+      bindinput="onCodeInput"
+    />
+    <button class="primary-btn" loading="{{loading}}" bindtap="handleBind">确认绑定</button>
+  </view>
+
+  <view class="card steps">
+    <text class="section-title">操作步骤</text>
+    <text class="step">1. 在电脑或手机浏览器登录 fixlife.mitrecx.top</text>
+    <text class="step">2. 进入个人中心 → 小程序绑定 → 生成绑定码</text>
+    <text class="step">3. 10 分钟内在此输入绑定码</text>
+  </view>
+</block>
