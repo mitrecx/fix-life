@@ -50,7 +50,7 @@
     <text class="section-title">快捷操作</text>
     <view class="action-grid">
       <button wx:if="{{task.status !== 'in_progress' && task.status !== 'done'}}" class="secondary-btn" bindtap="handleStart">开始</button>
-      <button wx:if="{{task.status !== 'done'}}" class="primary-btn" bindtap="handleComplete">标记完成</button>
+      <button wx:if="{{task.status !== 'done'}}" class="soft-success-btn" bindtap="handleComplete">标记完成</button>
       <button wx:if="{{task.is_scheduled}}" class="secondary-btn" bindtap="handleRevert">退回收件箱</button>
     </view>
     <view class="schedule-row">

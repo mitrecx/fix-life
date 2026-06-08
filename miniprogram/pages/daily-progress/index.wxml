@@ -1,106 +1,105 @@
-<view class="card date-card">
-  <view class="row-between nav-row">
-    <text class="nav-btn" bindtap="onPrevDay">‹</text>
-    <view class="date-center" bindtap="onGoToday">
-      <text class="date-title">{{displayDate}}</text>
-      <text class="link-btn">回到今天</text>
+<view class="page-shell">
+  <view class="card date-card">
+    <view class="row-between nav-row">
+      <view class="nav-btn-wrap" bindtap="onPrevDay"><text class="nav-btn">‹</text></view>
+      <view class="date-center" bindtap="onGoToday">
+        <text class="date-title">{{displayDate}}</text>
+        <text class="link-btn today-link">回到今天</text>
+      </view>
+      <view class="nav-btn-wrap" bindtap="onNextDay"><text class="nav-btn">›</text></view>
     </view>
-    <text class="nav-btn" bindtap="onNextDay">›</text>
-  </view>
-  <scroll-view class="week-strip" scroll-x enable-flex>
-    <view
-      wx:for="{{weekDays}}"
-      wx:key="date"
-      class="week-day {{item.isSelected ? 'selected' : ''}} {{item.isToday ? 'today' : ''}}"
-      data-date="{{item.date}}"
-      bindtap="onSelectDay"
-    >
-      <text class="week-label">{{item.label}}</text>
-    </view>
-  </scroll-view>
-</view>
-
-<view class="card summary-card" wx:if="{{showDailySummary && summaryPreview}}">
-  <text class="section-title">每日总结</text>
-  <text class="summary-text">{{summaryPreview}}</text>
-  <text class="link-btn" bindtap="openSummary">编辑总结</text>
-</view>
-
-<view class="card toolbar">
-  <view class="row-between">
-    <text class="section-title">每日任务</text>
-    <text class="link-btn" bindtap="openSummary">日总结</text>
-  </view>
-  <view class="filter-bar">
-    <text class="chip {{contextFilter === 'all' ? 'active' : 'inactive'}}" data-value="all" bindtap="onContextFilter">全部</text>
-    <text
-      wx:for="{{contexts}}"
-      wx:key="value"
-      class="chip {{contextFilter === item.value ? 'active' : 'inactive'}}"
-      data-value="{{item.value}}"
-      bindtap="onContextFilter"
-    >{{item.label}}</text>
-  </view>
-  <view class="action-row">
-    <button class="secondary-btn mini-action" size="mini" bindtap="toggleAddPanel">手动添加</button>
-    <button class="primary-btn mini-action" size="mini" bindtap="openBacklogPicker">从待办排入</button>
-  </view>
-</view>
-
-<view class="card" wx:if="{{showAddPanel}}">
-  <input class="input" placeholder="任务标题" value="{{newTitle}}" bindinput="onNewTitleInput" />
-  <view class="filter-bar">
-    <text wx:for="{{contexts}}" wx:key="value" class="chip {{newContext === item.value ? 'active' : 'inactive'}}" data-value="{{item.value}}" bindtap="onNewContext">{{item.label}}</text>
-  </view>
-  <view class="filter-bar">
-    <text wx:for="{{priorities}}" wx:key="value" class="chip {{newPriority === item.value ? 'active' : 'inactive'}}" data-value="{{item.value}}" bindtap="onNewPriority">{{item.label}}</text>
-  </view>
-  <button class="primary-btn" bindtap="handleAddEntry">添加条目</button>
-</view>
-
-<view class="card" wx:if="{{loading}}">
-  <text class="muted">加载中...</text>
-</view>
-
-<view class="card empty" wx:elif="{{entries.length === 0}}">
-  <text class="muted">今日暂无任务，从待办排入或手动添加吧。</text>
-</view>
-
-<block wx:else>
-  <view class="card entry" wx:for="{{entries}}" wx:key="id">
-    <view class="entry-row">
-      <view class="status-dot {{item.status}}" data-id="{{item.id}}" data-status="{{item.status}}" bindtap="handleToggleStatus"></view>
-      <view class="entry-body" data-id="{{item.id}}" bindtap="openEntryDetail">
-        <text class="entry-title {{item.status === 'done' ? 'done' : ''}}">{{item.title}}</text>
-        <view class="meta-row">
-          <text class="badge" style="background:{{item.contextColor}}">{{item.contextLabel}}</text>
-          <text class="badge" style="background:{{item.priorityColor}}">{{item.priorityLabel}}</text>
-          <text class="muted">{{item.statusLabel}}</text>
+    <scroll-view class="week-strip" scroll-x enhanced show-scrollbar="{{false}}">
+      <view class="week-strip-inner">
+        <view
+          wx:for="{{weekDays}}"
+          wx:key="date"
+          class="week-day {{item.isSelected ? 'selected' : ''}} {{item.isToday ? 'today' : ''}}"
+          data-date="{{item.date}}"
+          bindtap="onSelectDay"
+        >
+          <text class="week-label">{{item.label}}</text>
         </view>
       </view>
-      <text class="delete-link" data-id="{{item.id}}" bindtap="handleDeleteEntry">删</text>
+    </scroll-view>
+  </view>
+
+  <view class="card summary-card" wx:if="{{showDailySummary && summaryPreview}}">
+    <text class="section-title">每日总结</text>
+    <text class="summary-text">{{summaryPreview}}</text>
+    <text class="link-btn summary-edit" bindtap="openSummary">编辑总结</text>
+  </view>
+
+  <view class="card card-flat toolbar">
+    <view class="row-between">
+      <view>
+        <text class="section-title">每日任务</text>
+        <text class="section-desc">点击圆圈切换状态</text>
+      </view>
+      <text class="link-btn" bindtap="openSummary">日总结</text>
+    </view>
+    <view class="filter-bar">
+      <text class="chip {{contextFilter === 'all' ? 'active' : 'inactive'}}" data-value="all" bindtap="onContextFilter">全部</text>
+      <text wx:for="{{contexts}}" wx:key="value" class="chip {{contextFilter === item.value ? 'active' : 'inactive'}}" data-value="{{item.value}}" bindtap="onContextFilter">{{item.label}}</text>
+    </view>
+    <view class="action-row">
+      <button class="secondary-btn mini-action" size="mini" bindtap="toggleAddPanel">手动添加</button>
+      <button class="primary-btn mini-action" size="mini" bindtap="openBacklogPicker">从待办排入</button>
     </view>
   </view>
-</block>
+
+  <view class="card card-flat" wx:if="{{showAddPanel}}">
+    <input class="input field" placeholder="任务标题" value="{{newTitle}}" bindinput="onNewTitleInput" />
+    <view class="filter-bar">
+      <text wx:for="{{contexts}}" wx:key="value" class="chip {{newContext === item.value ? 'active' : 'inactive'}}" data-value="{{item.value}}" bindtap="onNewContext">{{item.label}}</text>
+    </view>
+    <view class="filter-bar">
+      <text wx:for="{{priorities}}" wx:key="value" class="chip {{newPriority === item.value ? 'active' : 'inactive'}}" data-value="{{item.value}}" bindtap="onNewPriority">{{item.label}}</text>
+    </view>
+    <button class="primary-btn field" bindtap="handleAddEntry">添加条目</button>
+  </view>
+
+  <view class="card" wx:if="{{loading}}">
+    <text class="muted">加载中...</text>
+  </view>
+
+  <view class="empty card" wx:elif="{{entries.length === 0}}">
+    <text>今日暂无任务</text>
+    <text class="section-desc">从待办排入，或手动添加</text>
+  </view>
+
+  <block wx:else>
+    <view class="card entry" wx:for="{{entries}}" wx:key="id">
+      <view class="entry-row">
+        <view class="status-dot {{item.status}}" data-id="{{item.id}}" data-status="{{item.status}}" bindtap="handleToggleStatus">
+          <text wx:if="{{item.status === 'done'}}" class="check-icon">✓</text>
+        </view>
+        <view class="entry-body" data-id="{{item.id}}" bindtap="openEntryDetail">
+          <text class="entry-title">{{item.title}}</text>
+          <view class="meta-row">
+            <text class="badge" style="background:{{item.contextColor}}">{{item.contextLabel}}</text>
+            <text class="badge" style="background:{{item.priorityColor}}">{{item.priorityLabel}}</text>
+            <text class="muted status-label">{{item.statusLabel}}</text>
+          </view>
+        </view>
+        <text class="delete-link" data-id="{{item.id}}" bindtap="handleDeleteEntry">删除</text>
+      </view>
+    </view>
+  </block>
+</view>
 
 <view class="modal-mask" wx:if="{{showBacklogPicker}}" bindtap="closeBacklogPicker">
   <view class="modal-panel" catchtap="noop">
+    <view class="modal-handle"></view>
     <view class="row-between modal-header">
       <text class="section-title">选择待办</text>
       <text class="link-btn" bindtap="closeBacklogPicker">关闭</text>
     </view>
     <view wx:if="{{backlogLoading}}" class="muted modal-body">加载中...</view>
     <scroll-view wx:else scroll-y class="modal-list">
-      <view
-        wx:for="{{backlogTasks}}"
-        wx:key="id"
-        class="modal-item"
-        data-id="{{item.id}}"
-        bindtap="handlePickBacklog"
-      >
+      <view wx:for="{{backlogTasks}}" wx:key="id" class="modal-item" data-id="{{item.id}}" bindtap="handlePickBacklog">
         <text>{{item.title}}</text>
       </view>
-      <view wx:if="{{backlogTasks.length === 0}}" class="muted modal-body">暂无待处理待办</view>
+      <view wx:if="{{backlogTasks.length === 0}}" class="empty modal-body">暂无待处理待办</view>
     </scroll-view>
   </view>
 </view>
