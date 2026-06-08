@@ -24,9 +24,9 @@
     "pages/bind/index"
   ],
   "window": {
-    "navigationBarTitleText": "修生活计划",
-    "navigationBarBackgroundColor": "#4f46e5",
-    "navigationBarTextStyle": "white",
+    "navigationBarTitleText": "修生活",
+    "navigationBarBackgroundColor": "#ffffff",
+    "navigationBarTextStyle": "black",
     "backgroundColor": "#f9fafb",
     "backgroundTextStyle": "light"
   },
@@ -34,27 +34,37 @@
     "color": "#6b7280",
     "selectedColor": "#4f46e5",
     "backgroundColor": "#ffffff",
-    "borderStyle": "black",
+    "borderStyle": "white",
     "list": [
       {
         "pagePath": "pages/todos/index",
-        "text": "待办"
+        "text": "待办",
+        "iconPath": "assets/tab/todos.png",
+        "selectedIconPath": "assets/tab/todos-active.png"
       },
       {
         "pagePath": "pages/daily-progress/index",
-        "text": "每日"
+        "text": "每日",
+        "iconPath": "assets/tab/daily.png",
+        "selectedIconPath": "assets/tab/daily-active.png"
       },
       {
         "pagePath": "pages/plans/index",
-        "text": "计划"
+        "text": "计划",
+        "iconPath": "assets/tab/plans.png",
+        "selectedIconPath": "assets/tab/plans-active.png"
       },
       {
         "pagePath": "pages/analytics/index",
-        "text": "统计"
+        "text": "统计",
+        "iconPath": "assets/tab/analytics.png",
+        "selectedIconPath": "assets/tab/analytics-active.png"
       },
       {
         "pagePath": "pages/profile/index",
-        "text": "我的"
+        "text": "我的",
+        "iconPath": "assets/tab/profile.png",
+        "selectedIconPath": "assets/tab/profile-active.png"
       }
     ]
   },

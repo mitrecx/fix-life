@@ -1,0 +1,33 @@
+/* Design tokens aligned with Fix Life Web (Tailwind indigo / gray palette) */
+
+page {
+  --color-bg: #f9fafb;
+  --color-surface: #ffffff;
+  --color-border: #e5e7eb;
+  --color-border-light: #f3f4f6;
+  --color-text: #1f2937;
+  --color-text-secondary: #6b7280;
+  --color-text-muted: #9ca3af;
+  --color-primary: #4f46e5;
+  --color-primary-light: #eef2ff;
+  --color-primary-dark: #4338ca;
+  --color-purple: #9333ea;
+  --color-success: #059669;
+  --color-success-bg: #ecfdf5;
+  --color-warning: #d97706;
+  --color-warning-bg: #fffbeb;
+  --color-danger: #dc2626;
+  --color-danger-bg: #fef2f2;
+  --radius-sm: 12rpx;
+  --radius-md: 16rpx;
+  --radius-lg: 24rpx;
+  --radius-xl: 32rpx;
+  --radius-full: 999rpx;
+  --space-page: 24rpx;
+  --space-card: 28rpx;
+  --shadow-none: none;
+  --font-title: 34rpx;
+  --font-body: 28rpx;
+  --font-caption: 24rpx;
+  --font-small: 22rpx;
+}
