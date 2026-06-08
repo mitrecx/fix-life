@@ -1,33 +1,120 @@
 const quickNote = require("../../utils/services/quickNote");
+const { decorateQuickNote } = require("../../utils/quickNoteContent");
+
+const PAGE_SIZE = 10;
 
 Page({
   data: {
     loading: false,
+    loadingMore: false,
     notes: [],
     content: "",
     searchQ: "",
-    selectMode: false,
-    selectedIds: [],
-    selectedMap: {},
+    total: 0,
+    listOffset: 0,
+    hasMoreOlder: false,
+    scrollIntoView: "",
+    showSearch: false,
+    searchFocus: false,
   },
 
   onShow() {
-    this.loadNotes();
+    this.refreshNotes({ scrollToBottom: true });
   },
 
   onPullDownRefresh() {
-    this.loadNotes().finally(() => wx.stopPullDownRefresh());
+    this.refreshNotes({ scrollToBottom: true }).finally(() => wx.stopPullDownRefresh());
   },
 
-  async loadNotes() {
+  scrollToBottom() {
+    this.setData({ scrollIntoView: "" });
+    wx.nextTick(() => {
+      this.setData({ scrollIntoView: "notes-bottom-anchor" });
+      setTimeout(() => this.setData({ scrollIntoView: "" }), 120);
+    });
+  },
+
+  async refreshNotes({ scrollToBottom = false } = {}) {
     this.setData({ loading: true });
     try {
-      const res = await quickNote.list({ q: this.data.searchQ });
-      this.setData({ notes: res.notes || res.items || [] });
+      const filters = { q: this.data.searchQ };
+      const probe = await quickNote.list(filters, 1, 0);
+      const total = probe.total || 0;
+      const offset = Math.max(0, total - PAGE_SIZE);
+      const res = await quickNote.list(filters, PAGE_SIZE, offset);
+      this.setData({
+        notes: (res.notes || []).map(decorateQuickNote),
+        total,
+        listOffset: offset,
+        hasMoreOlder: offset > 0,
+        scrollIntoView: "",
+      });
+      if (scrollToBottom) {
+        wx.nextTick(() => this.scrollToBottom());
+      }
     } catch (error) {
       wx.showToast({ title: error.message || "加载失败", icon: "none" });
     } finally {
       this.setData({ loading: false });
+    }
+  },
+
+  async onScrollToUpper() {
+    if (this.data.loading || this.data.loadingMore || !this.data.hasMoreOlder) return;
+
+    const now = Date.now();
+    if (now - (this._lastUpperLoadAt || 0) < 800) return;
+
+    const anchorId = this.data.notes[0]?.id;
+    if (!anchorId) return;
+
+    this._lastUpperLoadAt = now;
+    this.setData({ loadingMore: true, scrollIntoView: "" });
+
+    try {
+      const newOffset = Math.max(0, this.data.listOffset - PAGE_SIZE);
+      const fetchCount = this.data.listOffset - newOffset;
+      const res = await quickNote.list({ q: this.data.searchQ }, fetchCount, newOffset);
+      const older = (res.notes || []).map(decorateQuickNote);
+
+      this.setData(
+        {
+          notes: [...older, ...this.data.notes],
+          listOffset: newOffset,
+          hasMoreOlder: newOffset > 0,
+          loadingMore: false,
+        },
+        () => {
+          wx.nextTick(() => {
+            this.setData({ scrollIntoView: `note-${anchorId}` });
+            setTimeout(() => this.setData({ scrollIntoView: "" }), 120);
+          });
+        }
+      );
+    } catch (error) {
+      this.setData({ loadingMore: false });
+      wx.showToast({ title: error.message || "加载失败", icon: "none" });
+    }
+  },
+
+  toggleSearch() {
+    if (this.data.showSearch) {
+      this.setData({ showSearch: false, searchFocus: false });
+      wx.hideKeyboard();
+      return;
+    }
+    this.setData({ showSearch: true, searchFocus: true });
+  },
+
+  onSearchTouchStart(e) {
+    this._searchTouchStartY = e.touches[0].clientY;
+  },
+
+  onSearchTouchEnd(e) {
+    if (this.data.showSearch) return;
+    const deltaY = e.changedTouches[0].clientY - (this._searchTouchStartY || 0);
+    if (deltaY > 40) {
+      this.setData({ showSearch: true, searchFocus: true });
     }
   },
 
@@ -36,7 +123,7 @@ Page({
   },
 
   onSearch() {
-    this.loadNotes();
+    this.refreshNotes({ scrollToBottom: true });
   },
 
   onContentInput(e) {
@@ -52,45 +139,11 @@ Page({
     try {
       await quickNote.create({ content });
       this.setData({ content: "" });
-      await this.loadNotes();
+      await this.refreshNotes({ scrollToBottom: true });
       wx.showToast({ title: "已保存", icon: "success" });
     } catch (error) {
       wx.showToast({ title: error.message || "保存失败", icon: "none" });
     }
-  },
-
-  async handleChooseImage() {
-    try {
-      const res = await wx.chooseMedia({
-        count: 1,
-        mediaType: ["image"],
-        sourceType: ["album", "camera"],
-      });
-      const filePath = res.tempFiles[0].tempFilePath;
-      const uploaded = await quickNote.uploadImage(filePath);
-      const imageMarkdown = `![image](${uploaded.url})`;
-      this.setData({ content: `${this.data.content}\n${imageMarkdown}`.trim() });
-    } catch (error) {
-      if (error.errMsg && error.errMsg.includes("cancel")) return;
-      wx.showToast({ title: error.message || "上传失败", icon: "none" });
-    }
-  },
-
-  onToggleSelect(e) {
-    const id = e.currentTarget.dataset.id;
-    const selected = new Set(this.data.selectedIds);
-    if (selected.has(id)) selected.delete(id);
-    else selected.add(id);
-    const selectedIds = Array.from(selected);
-    const selectedMap = {};
-    selectedIds.forEach((x) => {
-      selectedMap[x] = true;
-    });
-    this.setData({ selectedIds, selectedMap });
-  },
-
-  toggleSelectMode() {
-    this.setData({ selectMode: !this.data.selectMode, selectedIds: [], selectedMap: {} });
   },
 
   async handleDeleteOne(e) {
@@ -99,37 +152,9 @@ Page({
     if (!res.confirm) return;
     try {
       await quickNote.remove(id);
-      await this.loadNotes();
+      await this.refreshNotes({ scrollToBottom: false });
     } catch (error) {
       wx.showToast({ title: error.message || "删除失败", icon: "none" });
-    }
-  },
-
-  async handleBatchDelete() {
-    if (this.data.selectedIds.length === 0) return;
-    const res = await wx.showModal({ title: "批量删除", content: `删除 ${this.data.selectedIds.length} 条？` });
-    if (!res.confirm) return;
-    try {
-      await quickNote.batchDelete(this.data.selectedIds);
-      this.setData({ selectMode: false, selectedIds: [], selectedMap: {} });
-      await this.loadNotes();
-    } catch (error) {
-      wx.showToast({ title: error.message || "删除失败", icon: "none" });
-    }
-  },
-
-  async handleBatchMerge() {
-    if (this.data.selectedIds.length < 2) {
-      wx.showToast({ title: "请至少选择 2 条", icon: "none" });
-      return;
-    }
-    try {
-      await quickNote.batchMerge(this.data.selectedIds);
-      this.setData({ selectMode: false, selectedIds: [], selectedMap: {} });
-      await this.loadNotes();
-      wx.showToast({ title: "已合并", icon: "success" });
-    } catch (error) {
-      wx.showToast({ title: error.message || "合并失败", icon: "none" });
     }
   },
 
@@ -139,5 +164,12 @@ Page({
       data: content,
       success: () => wx.showToast({ title: "已复制", icon: "success" }),
     });
+  },
+
+  previewImage(e) {
+    const { src, id } = e.currentTarget.dataset;
+    const note = this.data.notes.find((n) => n.id === id);
+    const urls = note && note.imageUrls && note.imageUrls.length ? note.imageUrls : [src];
+    wx.previewImage({ current: src, urls });
   },
 });

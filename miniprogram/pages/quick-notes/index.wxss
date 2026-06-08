@@ -1,37 +1,118 @@
 @import "../../styles/common.wxss";
 
+page {
+  height: 100%;
+  overflow: hidden;
+}
+
+.quick-notes-page {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  min-height: 0;
+  box-sizing: border-box;
+  background: var(--color-bg);
+}
+
+.card {
+  margin-top: 0;
+  margin-bottom: 16rpx;
+}
+
+.search-header {
+  flex-shrink: 0;
+}
+
+.search-toggle {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 12rpx;
+  min-height: 56rpx;
+  padding: 8rpx 0 12rpx;
+}
+
+.search-chevron {
+  font-size: 22rpx;
+  color: var(--color-text-muted);
+  line-height: 1;
+  transition: transform 0.2s ease;
+}
+
+.search-chevron.open {
+  transform: rotate(180deg);
+}
+
+.search-filter-tag {
+  font-size: 20rpx;
+  color: var(--color-primary);
+  background: var(--color-primary-light);
+  padding: 2rpx 12rpx;
+  border-radius: var(--radius-full);
+}
+
+.search-panel {
+  margin: 0 var(--space-page) 12rpx;
+}
+
 .search-row {
   display: flex;
   gap: 16rpx;
   align-items: stretch;
 }
 
-.search-row .input {
+.search-input {
   flex: 1;
   width: 0;
 }
 
-.search-row .inline-btn {
+.search-btn {
   flex-shrink: 0;
   min-width: 96rpx;
 }
 
-.field {
-  margin-top: 16rpx;
+.notes-scroll-wrap {
+  flex: 1;
+  min-height: 0;
 }
 
-.action-row {
-  display: flex;
-  gap: 12rpx;
-  margin-top: 16rpx;
-  flex-wrap: wrap;
+.notes-scroll {
+  height: 100%;
 }
 
-.note-content {
-  display: block;
+.notes-list-inner {
+  padding-bottom: 16rpx;
+}
+
+.load-more-hint {
+  text-align: center;
+  min-height: 64rpx;
+  line-height: 64rpx;
+  padding: 0;
+  font-size: var(--font-small);
+}
+
+.list-bottom-spacer {
+  height: 8rpx;
+}
+
+.note-body {
   margin-top: 12rpx;
-  white-space: pre-wrap;
-  word-break: break-all;
+}
+
+.note-rich {
+  display: block;
+  width: 100%;
+  word-break: break-word;
+}
+
+.note-image {
+  display: block;
+  width: 100%;
+  margin: 16rpx 0;
+  border-radius: var(--radius-md);
+  border: 1rpx solid var(--color-border);
+  background: #f9fafb;
 }
 
 .note-actions {
@@ -42,4 +123,32 @@
 .delete-link {
   color: #dc2626;
   font-size: 24rpx;
+}
+
+.composer-bar {
+  flex-shrink: 0;
+  display: flex;
+  align-items: center;
+  gap: 12rpx;
+  padding: 10rpx var(--space-page) 12rpx;
+  background: var(--color-surface);
+  border-top: 1rpx solid var(--color-border);
+  box-sizing: border-box;
+}
+
+.composer-input {
+  flex: 1;
+  width: 0;
+  height: 72rpx;
+  min-height: 72rpx;
+  line-height: 72rpx;
+}
+
+.composer-save {
+  flex-shrink: 0;
+  min-width: 112rpx;
+  height: 72rpx;
+  min-height: 72rpx;
+  line-height: 72rpx;
+  padding: 0 24rpx !important;
 }

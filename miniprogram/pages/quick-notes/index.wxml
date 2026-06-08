@@ -1,36 +1,91 @@
-<view class="card toolbar">
-  <view class="search-row">
-    <input class="input" placeholder="搜索随手记" value="{{searchQ}}" bindinput="onSearchInput" bindconfirm="onSearch" />
-    <button class="primary-btn inline-btn search-btn" bindtap="onSearch">搜</button>
-  </view>
-  <textarea class="textarea field" placeholder="记录灵感..." value="{{content}}" bindinput="onContentInput" maxlength="-1" />
-  <view class="action-row">
-    <button class="secondary-btn" size="mini" bindtap="handleChooseImage">图片</button>
-    <button class="primary-btn" size="mini" bindtap="handleCreate">保存</button>
-    <button class="secondary-btn" size="mini" bindtap="toggleSelectMode">{{selectMode ? '取消' : '多选'}}</button>
-  </view>
-  <view class="action-row" wx:if="{{selectMode}}">
-    <button class="secondary-btn" size="mini" bindtap="handleBatchMerge">合并</button>
-    <button class="danger-btn" size="mini" bindtap="handleBatchDelete">删除</button>
-  </view>
-</view>
-
-<view class="card" wx:if="{{loading}}">
-  <text class="muted">加载中...</text>
-</view>
-
-<view class="card empty" wx:elif="{{notes.length === 0}}">
-  <text class="muted">暂无随手记</text>
-</view>
-
-<view class="card note" wx:for="{{notes}}" wx:key="id">
-  <view class="row-between">
-    <checkbox wx:if="{{selectMode}}" checked="{{selectedMap[item.id]}}" data-id="{{item.id}}" bindtap="onToggleSelect" />
-    <text class="note-time muted">{{item.created_at}}</text>
-    <view class="note-actions">
-      <text class="link-btn" data-content="{{item.content}}" bindtap="handleCopy">复制</text>
-      <text class="delete-link" data-id="{{item.id}}" bindtap="handleDeleteOne">删</text>
+<view class="quick-notes-page">
+  <view class="search-header">
+    <view
+      class="search-toggle"
+      bindtap="toggleSearch"
+      bindtouchstart="onSearchTouchStart"
+      bindtouchend="onSearchTouchEnd"
+    >
+      <text class="search-chevron {{showSearch ? 'open' : ''}}">▼</text>
+      <text class="search-filter-tag" wx:if="{{searchQ && !showSearch}}">已筛选</text>
+    </view>
+    <view class="card search-panel" wx:if="{{showSearch}}">
+      <view class="search-row">
+        <input class="input search-input" placeholder="搜索随手记" value="{{searchQ}}" bindinput="onSearchInput" bindconfirm="onSearch" focus="{{searchFocus}}" />
+        <button class="primary-btn inline-btn search-btn" bindtap="onSearch">搜</button>
+      </view>
     </view>
   </view>
-  <text class="note-content">{{item.content}}</text>
+
+  <view class="notes-scroll-wrap">
+    <scroll-view
+      class="notes-scroll"
+      scroll-y
+      enhanced
+      show-scrollbar="{{false}}"
+      scroll-into-view="{{scrollIntoView}}"
+      scroll-with-animation="{{false}}"
+      upper-threshold="120"
+      bindscrolltoupper="onScrollToUpper"
+    >
+      <view id="notes-list-inner" class="notes-list-inner">
+        <view class="load-more-hint" wx:if="{{loadingMore}}">
+          <text class="muted">加载中...</text>
+        </view>
+        <view class="load-more-hint" wx:elif="{{hasMoreOlder && !loading}}">
+          <text class="muted">上滑加载更早记录</text>
+        </view>
+
+        <view class="card" wx:if="{{loading && notes.length === 0}}">
+          <text class="muted">加载中...</text>
+        </view>
+
+        <view class="card empty" wx:elif="{{!loading && notes.length === 0}}">
+          <text class="muted">暂无随手记</text>
+        </view>
+
+        <block wx:else>
+          <view class="card note" wx:for="{{notes}}" wx:key="id" id="note-{{item.id}}">
+            <view class="row-between">
+              <text class="note-time muted">{{item.created_at}}</text>
+              <view class="note-actions">
+                <text class="link-btn" data-content="{{item.content}}" bindtap="handleCopy">复制</text>
+                <text class="delete-link" data-id="{{item.id}}" bindtap="handleDeleteOne">删</text>
+              </view>
+            </view>
+            <view class="note-body">
+              <block wx:for="{{item.segments}}" wx:for-item="seg" wx:for-index="segIndex" wx:key="segIndex">
+                <rich-text wx:if="{{seg.type === 'markdown'}}" class="note-rich" nodes="{{seg.html}}" />
+                <image
+                  wx:elif="{{seg.type === 'image'}}"
+                  class="note-image"
+                  src="{{seg.src}}"
+                  mode="widthFix"
+                  show-menu-by-longpress
+                  lazy-load
+                  data-id="{{item.id}}"
+                  data-src="{{seg.src}}"
+                  bindtap="previewImage"
+                />
+              </block>
+            </view>
+          </view>
+        </block>
+
+        <view id="notes-bottom-anchor" class="list-bottom-spacer"></view>
+      </view>
+    </scroll-view>
+  </view>
+
+  <view class="composer-bar">
+    <input
+      class="input composer-input"
+      placeholder="记录灵感..."
+      value="{{content}}"
+      bindinput="onContentInput"
+      bindconfirm="handleCreate"
+      confirm-type="done"
+    />
+    <button class="primary-btn inline-btn composer-save" bindtap="handleCreate">保存</button>
+  </view>
 </view>
