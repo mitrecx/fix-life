@@ -1,7 +1,7 @@
 <view class="page-shell login-page">
-  <view class="hero card hero-gradient">
-    <text class="brand">修生活</text>
-    <text class="tagline">待办 · 每日进度 · 目标管理</text>
+  <view class="login-header">
+    <text class="brand">FixLife</text>
+    <text class="tagline">待办 · 每日进度 · 随手记录</text>
   </view>
 
   <view class="card login-card">

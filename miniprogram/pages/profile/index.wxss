@@ -20,31 +20,31 @@
   height: 128rpx;
   border-radius: 50%;
   flex-shrink: 0;
-  border: 4rpx solid rgba(255, 255, 255, 0.35);
+  border: 2rpx solid var(--color-border-light);
 }
 
 .avatar.placeholder {
   display: flex;
   align-items: center;
   justify-content: center;
-  background: rgba(255, 255, 255, 0.2);
-  color: #ffffff;
+  background: #f3f4f6;
+  color: var(--color-primary);
   font-size: 48rpx;
-  font-weight: 700;
+  font-weight: 600;
 }
 
 .name {
   font-size: 40rpx;
-  font-weight: 700;
+  font-weight: 600;
   display: block;
-  color: #ffffff;
+  color: var(--color-text);
 }
 
 .meta {
   display: block;
   font-size: var(--font-caption);
   margin-top: 6rpx;
-  color: rgba(255, 255, 255, 0.85);
+  color: var(--color-text-secondary);
 }
 
 .bio {
@@ -52,7 +52,7 @@
   margin-top: 24rpx;
   font-size: var(--font-caption);
   line-height: 1.6;
-  color: rgba(255, 255, 255, 0.9);
+  color: var(--color-text-secondary);
 }
 
 .field {
