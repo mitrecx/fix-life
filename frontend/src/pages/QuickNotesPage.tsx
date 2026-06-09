@@ -523,7 +523,7 @@ export default function QuickNotesPage() {
                     </label>
                   )}
                   <div
-                    className={`w-full min-w-0 rounded-xl border bg-white p-4 transition-colors ${
+                    className={`w-full min-w-0 rounded-xl border bg-gray-100 p-4 transition-colors ${
                       selected
                         ? "border-indigo-300 ring-1 ring-indigo-200 bg-indigo-50/40"
                         : "border-gray-200"
