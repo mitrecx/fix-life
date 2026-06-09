@@ -44,6 +44,7 @@
               <text class="badge" style="background:{{item.priorityColor}}">{{item.priorityLabel}}</text>
               <text class="muted schedule" wx:if="{{item.scheduled_date}}">{{item.scheduled_date}}</text>
             </view>
+            <text class="task-desc" wx:if="{{item.description}}">{{item.description}}</text>
             <view class="action-row" catchtap="noop">
               <button wx:if="{{tab === 'pending'}}" class="secondary-btn action-btn" size="mini" data-id="{{item.id}}" catchtap="handleStart">开始</button>
               <button wx:if="{{tab !== 'done'}}" class="secondary-btn action-btn" size="mini" data-id="{{item.id}}" data-scheduled="{{item.scheduled_date || scheduleDefaultDate}}" catchtap="openScheduleSheet">安排</button>

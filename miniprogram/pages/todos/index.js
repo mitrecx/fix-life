@@ -1,8 +1,8 @@
 const backlog = require("../../utils/services/backlog");
 const { BACKLOG_TABS, TASK_CONTEXT, TASK_PRIORITY } = require("../../utils/constants");
 const { decorateTask } = require("../../utils/format");
-const { todayString, monthLabel, buildMonthCalendar } = require("../../utils/date");
 const { updateTabBarSelected } = require("../../utils/tabBar");
+const scheduleSheet = require("../../utils/scheduleSheet");
 
 Page({
   data: {
@@ -22,15 +22,8 @@ Page({
     searchPanelActive: false,
     searchClosing: false,
     filterActive: false,
-    showScheduleSheet: false,
-    scheduleSheetActive: false,
     scheduleTaskId: "",
-    scheduleSelectedDate: "",
-    scheduleViewYear: 0,
-    scheduleViewMonth: 0,
-    scheduleMonthLabel: "",
-    scheduleCalendarDays: [],
-    scheduleDefaultDate: todayString(),
+    ...scheduleSheet.initialData(),
   },
 
   onShow() {
@@ -218,80 +211,27 @@ Page({
     }
   },
 
-  refreshScheduleCalendar() {
-    const { scheduleViewYear, scheduleViewMonth, scheduleSelectedDate } = this.data;
-    this.setData({
-      scheduleMonthLabel: monthLabel(scheduleViewYear, scheduleViewMonth),
-      scheduleCalendarDays: buildMonthCalendar(
-        scheduleViewYear,
-        scheduleViewMonth,
-        scheduleSelectedDate
-      ),
-    });
-  },
-
   openScheduleSheet(e) {
     const id = e.currentTarget.dataset.id;
     const scheduled = e.currentTarget.dataset.scheduled || this.data.scheduleDefaultDate;
-    const [y, m] = scheduled.split("-").map(Number);
-    this.setData({
-      showScheduleSheet: true,
-      scheduleSheetActive: false,
-      scheduleTaskId: id,
-      scheduleSelectedDate: scheduled,
-      scheduleViewYear: y,
-      scheduleViewMonth: m,
-    });
-    this.refreshScheduleCalendar();
-    wx.nextTick(() => {
-      setTimeout(() => this.setData({ scheduleSheetActive: true }), 30);
-    });
+    this.setData({ scheduleTaskId: id });
+    scheduleSheet.open(this, scheduled);
   },
 
   closeScheduleSheet() {
-    this.setData({ scheduleSheetActive: false });
-    setTimeout(() => {
-      this.setData({
-        showScheduleSheet: false,
-        scheduleTaskId: "",
-      });
-    }, 280);
+    scheduleSheet.close(this, { scheduleTaskId: "" });
   },
 
   onSchedulePrevMonth() {
-    let { scheduleViewYear, scheduleViewMonth } = this.data;
-    if (scheduleViewMonth === 1) {
-      scheduleViewYear -= 1;
-      scheduleViewMonth = 12;
-    } else {
-      scheduleViewMonth -= 1;
-    }
-    this.setData({ scheduleViewYear, scheduleViewMonth }, () => this.refreshScheduleCalendar());
+    scheduleSheet.prevMonth(this);
   },
 
   onScheduleNextMonth() {
-    let { scheduleViewYear, scheduleViewMonth } = this.data;
-    if (scheduleViewMonth === 12) {
-      scheduleViewYear += 1;
-      scheduleViewMonth = 1;
-    } else {
-      scheduleViewMonth += 1;
-    }
-    this.setData({ scheduleViewYear, scheduleViewMonth }, () => this.refreshScheduleCalendar());
+    scheduleSheet.nextMonth(this);
   },
 
   onScheduleDayTap(e) {
-    const date = e.currentTarget.dataset.date;
-    if (!date) return;
-    const [y, m] = date.split("-").map(Number);
-    this.setData(
-      {
-        scheduleSelectedDate: date,
-        scheduleViewYear: y,
-        scheduleViewMonth: m,
-      },
-      () => this.refreshScheduleCalendar()
-    );
+    scheduleSheet.selectDay(this, e.currentTarget.dataset.date);
   },
 
   async confirmSchedule() {

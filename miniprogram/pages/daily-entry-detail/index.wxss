@@ -1,16 +1,131 @@
 @import "../../styles/common.wxss";
 
-.field {
+.entry-title {
+  display: block;
+  font-size: 34rpx;
+  font-weight: 600;
+  color: var(--color-text);
+  line-height: 1.45;
+}
+
+.entry-desc {
+  display: block;
+  margin-top: 12rpx;
+  font-size: var(--font-caption);
+  line-height: 1.6;
+}
+
+.meta-row {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 10rpx;
   margin-top: 16rpx;
 }
 
+.readonly-meta {
+  display: block;
+  margin-top: 12rpx;
+  font-size: var(--font-caption);
+}
+
 .label {
-  margin-top: 20rpx;
+  margin-top: 24rpx;
   font-size: 24rpx;
   color: #6b7280;
 }
 
-.delete-btn {
+.progress-label {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.progress-badge {
+  font-size: 24rpx;
+  font-weight: 600;
+  color: var(--color-primary);
+  background: var(--color-primary-light);
+  padding: 4rpx 16rpx;
+  border-radius: var(--radius-full);
+}
+
+.progress-slider-wrap {
   margin-top: 16rpx;
-  width: 100%;
+  padding: 18rpx 11rpx;
+}
+
+.progress-track {
+  position: relative;
+  height: 16rpx;
+  border-radius: var(--radius-full);
+  background: #e0e7ff;
+  overflow: visible;
+}
+
+.progress-track-past {
+  position: absolute;
+  left: 0;
+  top: 0;
+  height: 100%;
+  border-radius: var(--radius-full);
+  background: #c7d2fe;
+  pointer-events: none;
+}
+
+.progress-track-fill {
+  position: absolute;
+  left: 0;
+  top: 0;
+  height: 100%;
+  border-radius: var(--radius-full);
+  background: linear-gradient(90deg, #a5b4fc 0%, #6366f1 100%);
+  box-shadow: 0 2rpx 10rpx rgba(99, 102, 241, 0.28);
+  pointer-events: none;
+}
+
+.progress-thumb {
+  position: absolute;
+  top: 50%;
+  width: 22rpx;
+  height: 22rpx;
+  margin-left: -11rpx;
+  transform: translateY(-50%);
+  border-radius: 50%;
+  background: #6366f1;
+  border: 2rpx solid #ffffff;
+  box-shadow: 0 2rpx 8rpx rgba(99, 102, 241, 0.4);
+  pointer-events: none;
+}
+
+.progress-hint,
+.progress-readonly {
+  display: block;
+  margin-top: 8rpx;
+  font-size: var(--font-small);
+}
+
+.entry-actions {
+  display: flex;
+  gap: 12rpx;
+  margin-top: 24rpx;
+  align-items: stretch;
+}
+
+.entry-actions .action-btn {
+  margin: 0;
+  min-width: 0;
+  padding: 22rpx 16rpx;
+  font-size: var(--font-small);
+}
+
+.entry-actions .task-link-btn,
+.entry-actions .save-btn {
+  flex: 1;
+}
+
+.entry-actions .delete-btn {
+  flex-shrink: 0;
+  min-width: 112rpx;
+  padding: 22rpx 20rpx;
 }

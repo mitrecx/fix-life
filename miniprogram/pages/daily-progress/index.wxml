@@ -57,7 +57,7 @@
                   <view class="meta-row">
                     <text class="badge" style="background:{{item.contextColor}}">{{item.contextLabel}}</text>
                     <text class="badge" style="background:{{item.priorityColor}}">{{item.priorityLabel}}</text>
-                    <text class="muted status-label">{{item.statusLabel}}</text>
+                    <text class="muted progress-label">{{item.progressText}}</text>
                   </view>
                 </view>
               </view>

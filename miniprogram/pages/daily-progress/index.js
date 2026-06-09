@@ -332,7 +332,7 @@ Page({
       this.setData({ openSwipeId: null });
     }
     wx.navigateTo({
-      url: `/pages/daily-entry-detail/index?id=${id}&dayId=${this.data.dayId}`,
+      url: `/pages/daily-entry-detail/index?id=${id}&dayId=${this.data.dayId}&date=${this.data.progressDate}`,
     });
   },
 });

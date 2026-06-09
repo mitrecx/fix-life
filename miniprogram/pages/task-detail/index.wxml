@@ -1,75 +1,127 @@
-<view class="card" wx:if="{{loading}}">
-  <text class="muted">加载中...</text>
+<view class="task-detail-shell" style="padding-top: {{navTopInset}}px;">
+  <view class="custom-nav" style="padding-top: {{statusBarHeight}}px;">
+    <view class="custom-nav-bar" style="height: {{navBarHeight}}px;">
+      <view class="nav-back-hit" bindtap="goBack" hover-class="nav-back-hit-active">
+        <text class="nav-back-icon">‹</text>
+      </view>
+      <text class="nav-title">待办详情</text>
+    </view>
+  </view>
+
+  <view class="card" wx:if="{{loading}}">
+    <text class="muted">加载中...</text>
+  </view>
+
+  <block wx:elif="{{task}}">
+    <view class="task-detail-page">
+      <view class="task-detail-body">
+        <view class="card">
+          <text class="section-title">编辑待办</text>
+          <input class="input field" placeholder="标题" value="{{editTitle}}" bindinput="onTitleInput" />
+          <textarea
+            class="textarea field"
+            placeholder="描述（可选）"
+            value="{{editDescription}}"
+            bindinput="onDescInput"
+            maxlength="-1"
+          />
+          <view class="label">场景</view>
+          <view class="filter-bar">
+            <text
+              wx:for="{{contexts}}"
+              wx:key="value"
+              class="chip {{editContext === item.value ? 'active' : 'inactive'}}"
+              data-value="{{item.value}}"
+              bindtap="onContextChange"
+            >{{item.label}}</text>
+          </view>
+          <view class="label">优先级</view>
+          <view class="filter-bar">
+            <text
+              wx:for="{{priorities}}"
+              wx:key="value"
+              class="chip {{editPriority === item.value ? 'active' : 'inactive'}}"
+              data-value="{{item.value}}"
+              bindtap="onPriorityChange"
+            >{{item.label}}</text>
+          </view>
+          <view class="label progress-label">
+            <text>进度</text>
+            <text class="progress-badge">{{editProgress}}%</text>
+          </view>
+          <view
+            class="progress-slider-wrap"
+            bindtouchstart="onProgressTouchStart"
+            bindtouchmove="onProgressTouchMove"
+            bindtouchend="onProgressTouchEnd"
+            bindtouchcancel="onProgressTouchEnd"
+            catchtouchmove="onProgressTouchMove"
+          >
+            <view class="progress-track">
+              <view class="progress-track-fill" style="width: {{editProgress}}%;"></view>
+              <view class="progress-thumb" style="left: {{editProgress}}%;"></view>
+            </view>
+          </view>
+          <view class="schedule-section">
+            <view class="schedule-header">
+              <text class="label schedule-title">排期</text>
+              <button class="secondary-btn schedule-open-btn" size="mini" bindtap="openScheduleSheet">排期</button>
+            </view>
+            <view class="schedule-dates" wx:if="{{scheduleDates.length > 0}}">
+              <text wx:for="{{scheduleDates}}" wx:key="id" class="schedule-date-line">{{item.label}}</text>
+            </view>
+            <text class="schedule-empty muted" wx:else>暂未排期</text>
+          </view>
+        </view>
+      </view>
+
+      <view class="task-detail-footer">
+        <view class="form-actions">
+          <button class="primary-btn save-btn" loading="{{saving}}" bindtap="handleSave">保存</button>
+          <button class="danger-btn delete-btn" bindtap="handleDelete">删除</button>
+        </view>
+      </view>
+    </view>
+  </block>
 </view>
 
-<block wx:elif="{{task}}">
-  <view class="card">
-    <text class="section-title">编辑待办</text>
-    <input class="input field" placeholder="标题" value="{{editTitle}}" bindinput="onTitleInput" />
-    <textarea
-      class="textarea field"
-      placeholder="描述（可选）"
-      value="{{editDescription}}"
-      bindinput="onDescInput"
-      maxlength="-1"
-    />
-    <view class="label">场景</view>
-    <view class="filter-bar">
-      <text
-        wx:for="{{contexts}}"
-        wx:key="value"
-        class="chip {{editContext === item.value ? 'active' : 'inactive'}}"
-        data-value="{{item.value}}"
-        bindtap="onContextChange"
-      >{{item.label}}</text>
-    </view>
-    <view class="label">优先级</view>
-    <view class="filter-bar">
-      <text
-        wx:for="{{priorities}}"
-        wx:key="value"
-        class="chip {{editPriority === item.value ? 'active' : 'inactive'}}"
-        data-value="{{item.value}}"
-        bindtap="onPriorityChange"
-      >{{item.label}}</text>
-    </view>
-    <view class="label">进度</view>
-    <view class="filter-bar">
-      <text
-        wx:for="{{progressPresets}}"
-        wx:key="*this"
-        class="chip {{editProgress === item ? 'active' : 'inactive'}}"
-        data-value="{{item}}"
-        bindtap="onProgressChange"
-      >{{item}}%</text>
-    </view>
-    <button class="primary-btn save-btn" loading="{{saving}}" bindtap="handleSave">保存</button>
-  </view>
+<view
+  wx:if="{{showScheduleSheet}}"
+  class="schedule-sheet-mask {{scheduleSheetActive ? 'active' : ''}}"
+  catchtap="closeScheduleSheet"
+  catchtouchmove="preventTouchMove"
+/>
 
-  <view class="card">
-    <text class="section-title">快捷操作</text>
-    <view class="action-grid">
-      <button wx:if="{{task.status !== 'in_progress' && task.status !== 'done'}}" class="secondary-btn" bindtap="handleStart">开始</button>
-      <button wx:if="{{task.status !== 'done'}}" class="soft-success-btn" bindtap="handleComplete">标记完成</button>
-      <button wx:if="{{task.is_scheduled}}" class="secondary-btn" bindtap="handleRevert">退回收件箱</button>
+<view
+  wx:if="{{showScheduleSheet}}"
+  class="schedule-sheet {{scheduleSheetActive ? 'active' : ''}}"
+  catchtap="noop"
+  catchtouchmove="preventTouchMove"
+>
+  <view class="schedule-sheet-panel">
+    <text class="schedule-sheet-title">选择排期日期</text>
+    <view class="schedule-sheet-nav">
+      <text class="schedule-nav-btn" catchtap="onSchedulePrevMonth">‹</text>
+      <text class="schedule-month-label">{{scheduleMonthLabel}}</text>
+      <text class="schedule-nav-btn" catchtap="onScheduleNextMonth">›</text>
     </view>
-    <view class="schedule-row">
-      <picker mode="date" value="{{scheduleDate}}" bindchange="onScheduleDateChange">
-        <view class="picker-value">排期日期：{{scheduleDate}}</view>
-      </picker>
-      <button class="secondary-btn schedule-btn" size="mini" bindtap="handleSchedule">排入每日</button>
+    <view class="schedule-weekdays">
+      <text wx:for="{{['日','一','二','三','四','五','六']}}" wx:key="*this" class="schedule-weekday">{{item}}</text>
+    </view>
+    <view class="schedule-grid">
+      <view
+        wx:for="{{scheduleCalendarDays}}"
+        wx:key="date"
+        class="schedule-day {{item.otherMonth ? 'other-month' : ''}} {{item.today ? 'today' : ''}} {{item.selected ? 'selected' : ''}}"
+        data-date="{{item.date}}"
+        catchtap="onScheduleDayTap"
+      >
+        {{item.day}}
+      </view>
+    </view>
+    <view class="schedule-sheet-actions">
+      <button class="secondary-btn schedule-action-btn" catchtap="closeScheduleSheet">取消</button>
+      <button class="primary-btn schedule-action-btn" catchtap="confirmSchedule">确定</button>
     </view>
   </view>
-
-  <view class="card" wx:if="{{occurrences.length > 0}}">
-    <text class="section-title">每日关联记录</text>
-    <view class="occurrence" wx:for="{{occurrences}}" wx:key="daily_task_id">
-      <text>{{item.plan_date}} · {{item.daily_title || '每日任务'}}</text>
-      <text class="muted" wx:if="{{item.progress_after != null}}">进度 {{item.progress_after}}%</text>
-    </view>
-  </view>
-
-  <view class="card danger-zone">
-    <button class="danger-btn delete-btn" bindtap="handleDelete">删除待办</button>
-  </view>
-</block>
+</view>

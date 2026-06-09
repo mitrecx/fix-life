@@ -17,8 +17,10 @@ function findColor(list, value) {
 }
 
 function decorateTask(task) {
+  const description = String(task.description || "").trim();
   return {
     ...task,
+    description: description || undefined,
     contextLabel: findLabel(TASK_CONTEXT, task.context),
     contextColor: findColor(TASK_CONTEXT, task.context),
     priorityLabel: findLabel(TASK_PRIORITY, task.priority),
@@ -27,12 +29,15 @@ function decorateTask(task) {
 }
 
 function decorateEntry(entry) {
+  const progress = entry.progress_after ?? 0;
   return {
     ...entry,
     contextLabel: findLabel(TASK_CONTEXT, entry.context),
     contextColor: findColor(TASK_CONTEXT, entry.context),
     priorityLabel: findLabel(TASK_PRIORITY, entry.priority),
+    priorityColor: findColor(TASK_PRIORITY, entry.priority),
     statusLabel: findLabel(ENTRY_STATUS, entry.status),
+    progressText: `${progress}%`,
   };
 }
 

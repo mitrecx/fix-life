@@ -4,23 +4,55 @@
 
 <block wx:elif="{{entry}}">
   <view class="card">
-    <input class="input field" value="{{editTitle}}" bindinput="onTitleInput" />
-    <textarea class="textarea field" placeholder="描述" value="{{editDescription}}" bindinput="onDescInput" maxlength="-1" />
-    <view class="label">场景</view>
-    <view class="filter-bar">
-      <text wx:for="{{contexts}}" wx:key="value" class="chip {{editContext === item.value ? 'active' : 'inactive'}}" data-value="{{item.value}}" bindtap="onContextChange">{{item.label}}</text>
+    <text class="entry-title">{{entry.title}}</text>
+    <text class="entry-desc muted" wx:if="{{entry.description}}">{{entry.description}}</text>
+
+    <view class="meta-row">
+      <text class="badge" style="background:{{entry.contextColor}}">{{entry.contextLabel}}</text>
+      <text class="badge" style="background:{{entry.priorityColor}}">{{entry.priorityLabel}}</text>
+      <text class="muted">{{entry.statusLabel}}</text>
     </view>
-    <view class="label">优先级</view>
-    <view class="filter-bar">
-      <text wx:for="{{priorities}}" wx:key="value" class="chip {{editPriority === item.value ? 'active' : 'inactive'}}" data-value="{{item.value}}" bindtap="onPriorityChange">{{item.label}}</text>
+
+    <text class="readonly-meta muted" wx:if="{{entry.estimated_minutes}}">预计 {{entry.estimated_minutes}} 分钟</text>
+
+    <view class="label progress-label">
+      <text>进度</text>
+      <text class="progress-badge">{{editProgress}}%</text>
     </view>
-    <view class="label">状态</view>
-    <view class="filter-bar">
-      <text wx:for="{{statuses}}" wx:key="value" class="chip {{editStatus === item.value ? 'active' : 'inactive'}}" data-value="{{item.value}}" bindtap="onStatusChange">{{item.label}}</text>
+
+    <view wx:if="{{canEditProgress}}">
+      <view
+        class="progress-slider-wrap"
+        bindtouchstart="onProgressTouchStart"
+        bindtouchmove="onProgressTouchMove"
+        bindtouchend="onProgressTouchEnd"
+        bindtouchcancel="onProgressTouchEnd"
+        catchtouchmove="onProgressTouchMove"
+      >
+        <view class="progress-track">
+          <view class="progress-track-past" style="width: {{progressMin}}%;"></view>
+          <view class="progress-track-fill" style="width: {{editProgress}}%;"></view>
+          <view class="progress-thumb" style="left: {{editProgress}}%;"></view>
+        </view>
+      </view>
+      <text class="progress-hint muted" wx:if="{{progressMin > 0}}">不可低于历史进度 {{progressMin}}%</text>
     </view>
-    <input class="input field" type="number" placeholder="预计分钟" value="{{editEstimated}}" bindinput="onEstimatedInput" />
-    <input class="input field" type="number" placeholder="实际分钟" value="{{editActual}}" bindinput="onActualInput" />
-    <button class="primary-btn" loading="{{saving}}" bindtap="handleSave">保存</button>
-    <button class="danger-btn delete-btn" bindtap="handleDelete">删除</button>
+
+    <text class="progress-readonly muted" wx:else>此条目未关联待办，无法修改进度</text>
+
+    <view class="entry-actions">
+      <button
+        wx:if="{{backlogTaskId}}"
+        class="secondary-btn action-btn task-link-btn"
+        bindtap="openTask"
+      >跳转任务</button>
+      <button
+        class="primary-btn action-btn save-btn"
+        loading="{{saving}}"
+        disabled="{{!canEditProgress}}"
+        bindtap="handleSave"
+      >保存</button>
+      <button class="danger-btn action-btn delete-btn" bindtap="handleDelete">删除</button>
+    </view>
   </view>
 </block>
