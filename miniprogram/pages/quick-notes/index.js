@@ -2,6 +2,7 @@ const quickNote = require("../../utils/services/quickNote");
 const { decorateQuickNote } = require("../../utils/quickNoteContent");
 
 const PAGE_SIZE = 10;
+const SEARCH_LIMIT = 200;
 
 Page({
   data: {
@@ -19,6 +20,10 @@ Page({
   },
 
   onShow() {
+    if (this._skipNextOnShowRefresh) {
+      this._skipNextOnShowRefresh = false;
+      return;
+    }
     this.refreshNotes({ scrollToBottom: true });
   },
 
@@ -34,21 +39,54 @@ Page({
     });
   },
 
+  currentSearchQ() {
+    return (this._searchQ ?? this.data.searchQ ?? "").trim();
+  },
+
+  readSearchInputValue() {
+    return new Promise((resolve) => {
+      wx.createSelectorQuery()
+        .in(this)
+        .select(".search-input")
+        .fields({ properties: ["value"] })
+        .exec((res) => {
+          const value = res && res[0] ? res[0].value : this.data.searchQ;
+          resolve((value ?? "").trim());
+        });
+    });
+  },
+
   async refreshNotes({ scrollToBottom = false } = {}) {
-    this.setData({ loading: true });
+    const q = this.currentSearchQ();
+    const filters = q ? { q } : {};
+    const searching = !!q;
+
+    this.setData({ loading: true, searchQ: q });
     try {
-      const filters = { q: this.data.searchQ };
-      const probe = await quickNote.list(filters, 1, 0);
-      const total = probe.total || 0;
-      const offset = Math.max(0, total - PAGE_SIZE);
-      const res = await quickNote.list(filters, PAGE_SIZE, offset);
-      this.setData({
-        notes: (res.notes || []).map(decorateQuickNote),
-        total,
-        listOffset: offset,
-        hasMoreOlder: offset > 0,
-        scrollIntoView: "",
-      });
+      if (searching) {
+        const res = await quickNote.list(filters, SEARCH_LIMIT, 0);
+        const total = res.total || 0;
+        const notes = (res.notes || []).map(decorateQuickNote);
+        this.setData({
+          notes,
+          total,
+          listOffset: 0,
+          hasMoreOlder: total > notes.length,
+          scrollIntoView: "",
+        });
+      } else {
+        const probe = await quickNote.list(filters, 1, 0);
+        const total = probe.total || 0;
+        const offset = Math.max(0, total - PAGE_SIZE);
+        const res = await quickNote.list(filters, PAGE_SIZE, offset);
+        this.setData({
+          notes: (res.notes || []).map(decorateQuickNote),
+          total,
+          listOffset: offset,
+          hasMoreOlder: offset > 0,
+          scrollIntoView: "",
+        });
+      }
       if (scrollToBottom) {
         wx.nextTick(() => this.scrollToBottom());
       }
@@ -71,10 +109,34 @@ Page({
     this._lastUpperLoadAt = now;
     this.setData({ loadingMore: true, scrollIntoView: "" });
 
+    const q = this.currentSearchQ();
+    const filters = q ? { q } : {};
+
     try {
+      if (q) {
+        const newOffset = this.data.notes.length;
+        const res = await quickNote.list(filters, SEARCH_LIMIT, newOffset);
+        const older = (res.notes || []).map(decorateQuickNote);
+        this.setData(
+          {
+            notes: [...this.data.notes, ...older],
+            listOffset: newOffset,
+            hasMoreOlder: newOffset + older.length < (res.total || 0),
+            loadingMore: false,
+          },
+          () => {
+            wx.nextTick(() => {
+              this.setData({ scrollIntoView: `note-${anchorId}` });
+              setTimeout(() => this.setData({ scrollIntoView: "" }), 120);
+            });
+          }
+        );
+        return;
+      }
+
       const newOffset = Math.max(0, this.data.listOffset - PAGE_SIZE);
       const fetchCount = this.data.listOffset - newOffset;
-      const res = await quickNote.list({ q: this.data.searchQ }, fetchCount, newOffset);
+      const res = await quickNote.list(filters, fetchCount, newOffset);
       const older = (res.notes || []).map(decorateQuickNote);
 
       this.setData(
@@ -119,11 +181,17 @@ Page({
   },
 
   onSearchInput(e) {
+    this._searchQ = e.detail.value;
     this.setData({ searchQ: e.detail.value });
   },
 
-  onSearch() {
-    this.refreshNotes({ scrollToBottom: true });
+  async onSearch(e) {
+    const fromEvent = e && e.detail && e.detail.value != null ? e.detail.value : null;
+    const q = (fromEvent != null ? fromEvent : await this.readSearchInputValue()).trim();
+    this._searchQ = q;
+    this.setData({ searchQ: q }, () => {
+      this.refreshNotes({ scrollToBottom: true });
+    });
   },
 
   onContentInput(e) {
@@ -170,6 +238,14 @@ Page({
     const { src, id } = e.currentTarget.dataset;
     const note = this.data.notes.find((n) => n.id === id);
     const urls = note && note.imageUrls && note.imageUrls.length ? note.imageUrls : [src];
-    wx.previewImage({ current: src, urls });
+    // Closing the native preview fires onShow; skip reload so scroll position is preserved.
+    this._skipNextOnShowRefresh = true;
+    wx.previewImage({
+      current: src,
+      urls,
+      fail: () => {
+        this._skipNextOnShowRefresh = false;
+      },
+    });
   },
 });

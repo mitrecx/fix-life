@@ -146,11 +146,13 @@ export default function QuickNotesPage() {
   }, [loading, notes.length, appliedFilters, scrollToBottom]);
 
   const handleSearch = () => {
-    setAppliedFilters({
+    const next: QuickNoteListFilters = {
       q: queryInput.trim() || undefined,
       dateFrom: dateRange[0]?.format("YYYY-MM-DD"),
       dateTo: dateRange[1]?.format("YYYY-MM-DD"),
-    });
+    };
+    setAppliedFilters(next);
+    void loadNotes(next);
   };
 
   const handleReset = () => {

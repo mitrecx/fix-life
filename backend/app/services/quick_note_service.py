@@ -11,6 +11,11 @@ from app.services.quick_note_media import cleanup_orphaned_quick_note_images
 MERGE_BLOCK_SEPARATOR = "\n\n"
 
 
+def _escape_ilike(value: str) -> str:
+    """Escape SQL LIKE wildcards so user input is matched literally."""
+    return value.replace("\\", "\\\\").replace("%", "\\%").replace("_", "\\_")
+
+
 class QuickNoteService:
     def __init__(self, db: Session):
         self.db = db
@@ -28,7 +33,10 @@ class QuickNoteService:
         query = self.db.query(QuickNote).filter(QuickNote.user_id == user_id)
 
         if q:
-            query = query.filter(QuickNote.content.ilike(f"%{q.strip()}%"))
+            term = q.strip()
+            if term:
+                escaped = _escape_ilike(term)
+                query = query.filter(QuickNote.content.ilike(f"%{escaped}%", escape="\\"))
         if date_from is not None:
             query = query.filter(cast(QuickNote.created_at, Date) >= date_from)
         if date_to is not None:

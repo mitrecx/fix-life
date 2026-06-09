@@ -10,7 +10,7 @@ import type {
 } from "@/types/quickNote";
 
 class QuickNoteService {
-  private baseUrl = "/quick-notes";
+  private baseUrl = "/quick-notes/";
 
   async listNotes(
     filters: QuickNoteListFilters = {},

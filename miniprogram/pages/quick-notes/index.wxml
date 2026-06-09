@@ -41,7 +41,7 @@
         </view>
 
         <view class="card empty" wx:elif="{{!loading && notes.length === 0}}">
-          <text class="muted">暂无随手记</text>
+          <text class="muted">{{searchQ ? '没有匹配的记录' : '暂无随手记'}}</text>
         </view>
 
         <block wx:else>

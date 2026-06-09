@@ -6,11 +6,11 @@ function list(filters = {}, limit = 200, offset = 0) {
   if (filters.q) params.q = filters.q.trim();
   if (filters.dateFrom) params.date_from = filters.dateFrom;
   if (filters.dateTo) params.date_to = filters.dateTo;
-  return request({ url: `/quick-notes${buildQuery(params)}` });
+  return request({ url: `/quick-notes/${buildQuery(params)}` });
 }
 
 function create(data) {
-  return request({ url: "/quick-notes", method: "POST", data });
+  return request({ url: "/quick-notes/", method: "POST", data });
 }
 
 function remove(id) {
