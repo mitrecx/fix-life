@@ -1,36 +1,47 @@
 const dailyProgress = require("../../utils/services/dailyProgress");
 const dailySummary = require("../../utils/services/dailySummary");
 const settingsService = require("../../utils/services/settings");
-const backlog = require("../../utils/services/backlog");
 const { TASK_CONTEXT, ENTRY_STATUS } = require("../../utils/constants");
 const { decorateEntry } = require("../../utils/format");
 const {
   todayString,
   addDays,
-  weekDates,
   formatDisplayDate,
 } = require("../../utils/date");
+const { updateTabBarSelected } = require("../../utils/tabBar");
 
 Page({
   data: {
     loading: false,
     progressDate: todayString(),
     displayDate: "",
-    weekDays: [],
+    isToday: true,
     dayId: "",
     entries: [],
     contextFilter: "all",
     contexts: TASK_CONTEXT,
     entryStatuses: ENTRY_STATUS,
-    showBacklogPicker: false,
-    backlogTasks: [],
-    backlogLoading: false,
     showDailySummary: false,
     summaryPreview: "",
+    deleteRevealPx: 72,
+    swipingId: null,
+    swipeOffset: 0,
+    openSwipeId: null,
+    refreshing: false,
+    showFilter: false,
+    filterPanelVisible: false,
+    filterPanelActive: false,
+    filterClosing: false,
+    filterActive: false,
+  },
+
+  onLoad() {
+    this.setData({ deleteRevealPx: this.getDeleteRevealPx() });
   },
 
   onShow() {
-    this.refreshWeek();
+    updateTabBarSelected(this);
+    this.refreshDate();
     this.loadSettings();
     this.loadDay();
   },
@@ -45,21 +56,30 @@ Page({
   },
 
   onPullDownRefresh() {
-    this.loadDay().finally(() => wx.stopPullDownRefresh());
+    this.onScrollRefresh();
   },
 
-  refreshWeek() {
+  onScrollRefresh() {
+    this.setData({ refreshing: true });
+    this.loadDay().finally(() => {
+      this.setData({ refreshing: false });
+      wx.stopPullDownRefresh();
+    });
+  },
+
+  syncFilterActive() {
+    const filterActive = this.data.contextFilter !== "all";
+    if (filterActive !== this.data.filterActive) {
+      this.setData({ filterActive });
+    }
+  },
+
+  refreshDate() {
     const progressDate = this.data.progressDate;
-    const dates = weekDates(progressDate);
     const today = todayString();
     this.setData({
       displayDate: formatDisplayDate(progressDate),
-      weekDays: dates.map((d) => ({
-        date: d,
-        label: d.slice(5),
-        isToday: d === today,
-        isSelected: d === progressDate,
-      })),
+      isToday: progressDate === today,
     });
   },
 
@@ -94,7 +114,9 @@ Page({
         dayId,
         entries: list.map(decorateEntry),
         summaryPreview,
+        openSwipeId: null,
       });
+      this.syncFilterActive();
     } catch (error) {
       wx.showToast({ title: error.message || "加载失败", icon: "none" });
     } finally {
@@ -102,18 +124,10 @@ Page({
     }
   },
 
-  onSelectDay(e) {
-    const date = e.currentTarget.dataset.date;
-    this.setData({ progressDate: date }, () => {
-      this.refreshWeek();
-      this.loadDay();
-    });
-  },
-
   onPrevDay() {
     const date = addDays(this.data.progressDate, -1);
     this.setData({ progressDate: date }, () => {
-      this.refreshWeek();
+      this.refreshDate();
       this.loadDay();
     });
   },
@@ -121,48 +135,96 @@ Page({
   onNextDay() {
     const date = addDays(this.data.progressDate, 1);
     this.setData({ progressDate: date }, () => {
-      this.refreshWeek();
+      this.refreshDate();
       this.loadDay();
     });
   },
 
   onGoToday() {
+    if (this.data.isToday) return;
     const date = todayString();
     this.setData({ progressDate: date }, () => {
-      this.refreshWeek();
+      this.refreshDate();
       this.loadDay();
     });
   },
 
   onContextFilter(e) {
-    this.setData({ contextFilter: e.currentTarget.dataset.value }, () => this.loadDay());
+    this.setData({ contextFilter: e.currentTarget.dataset.value }, () => {
+      this.syncFilterActive();
+      this.loadDay();
+    });
   },
 
-  async openBacklogPicker() {
-    this.setData({ showBacklogPicker: true, backlogLoading: true });
-    try {
-      const data = await backlog.list("pending", {}, { limit: 50, offset: 0 });
-      this.setData({ backlogTasks: data.tasks || [] });
-    } catch (error) {
-      wx.showToast({ title: error.message || "加载待办失败", icon: "none" });
-    } finally {
-      this.setData({ backlogLoading: false });
+  toggleFilterPanel() {
+    if (this.data.showFilter) {
+      this.closeFilterPanel();
+      return;
     }
+    this.openFilterPanel();
   },
 
-  closeBacklogPicker() {
-    this.setData({ showBacklogPicker: false });
+  openFilterPanel() {
+    clearTimeout(this._filterCloseTimer);
+    this.setData({
+      showFilter: true,
+      filterPanelVisible: true,
+      filterClosing: false,
+      filterPanelActive: false,
+    });
+    this._filterScrollTop = null;
+    wx.nextTick(() => {
+      setTimeout(() => this.setData({ filterPanelActive: true }), 30);
+    });
   },
 
-  async handlePickBacklog(e) {
-    const taskId = e.currentTarget.dataset.id;
-    try {
-      await backlog.schedule(taskId, this.data.progressDate);
-      this.setData({ showBacklogPicker: false });
-      await this.loadDay();
-      wx.showToast({ title: "已从待办排入", icon: "success" });
-    } catch (error) {
-      wx.showToast({ title: error.message || "排入失败", icon: "none" });
+  closeFilterPanel() {
+    if (!this.data.showFilter || this.data.filterClosing) return;
+    this.setData({
+      filterPanelActive: false,
+      filterClosing: true,
+    });
+    clearTimeout(this._filterCloseTimer);
+    this._filterCloseTimer = setTimeout(() => {
+      this.setData({
+        showFilter: false,
+        filterPanelVisible: false,
+        filterClosing: false,
+      });
+    }, 380);
+  },
+
+  noop() {},
+
+  preventTouchMove() {},
+
+  dismissFilterAndQuery() {
+    if (!this.data.showFilter || this.data.filterClosing) return;
+    this.closeFilterPanel();
+    this.loadDay();
+  },
+
+  onDailyScroll(e) {
+    if (!this.data.showFilter || this.data.filterClosing) return;
+    const scrollTop = e.detail.scrollTop ?? 0;
+    if (this._filterScrollTop == null) {
+      this._filterScrollTop = scrollTop;
+      return;
+    }
+    if (Math.abs(scrollTop - this._filterScrollTop) < 6) return;
+    this._filterScrollTop = scrollTop;
+    this.closeFilterPanel();
+  },
+
+  onFilterTouchStart(e) {
+    this._filterTouchStartY = e.touches[0].clientY;
+  },
+
+  onFilterTouchEnd(e) {
+    if (this.data.showFilter) return;
+    const deltaY = e.changedTouches[0].clientY - (this._filterTouchStartY || 0);
+    if (deltaY > 40) {
+      this.openFilterPanel();
     }
   },
 
@@ -186,10 +248,72 @@ Page({
     if (!res.confirm) return;
     try {
       await dailyProgress.removeEntry(entryId);
+      this.setData({ openSwipeId: null });
       await this.loadDay();
     } catch (error) {
       wx.showToast({ title: error.message || "删除失败", icon: "none" });
     }
+  },
+
+  getDeleteRevealPx() {
+    const sys = wx.getWindowInfo ? wx.getWindowInfo() : wx.getSystemInfoSync();
+    return (160 / 750) * sys.windowWidth;
+  },
+
+  onEntrySwipeStart(e) {
+    const id = e.currentTarget.dataset.id;
+    const reveal = this.data.deleteRevealPx || this.getDeleteRevealPx();
+    let startOffset = 0;
+    if (this.data.openSwipeId === id) {
+      startOffset = -reveal;
+    } else if (this.data.openSwipeId) {
+      this.setData({ openSwipeId: null });
+    }
+    this._swipe = {
+      id,
+      startX: e.touches[0].clientX,
+      startY: e.touches[0].clientY,
+      startOffset,
+      reveal,
+      horizontal: null,
+    };
+  },
+
+  onEntrySwipeMove(e) {
+    if (!this._swipe) return;
+    const deltaX = e.touches[0].clientX - this._swipe.startX;
+    const deltaY = e.touches[0].clientY - this._swipe.startY;
+    if (this._swipe.horizontal == null) {
+      if (Math.abs(deltaX) < 8 && Math.abs(deltaY) < 8) return;
+      this._swipe.horizontal = Math.abs(deltaX) > Math.abs(deltaY);
+    }
+    if (!this._swipe.horizontal) return;
+
+    let x = this._swipe.startOffset + deltaX;
+    x = Math.min(0, Math.max(-this._swipe.reveal, x));
+    this.setData({
+      swipingId: this._swipe.id,
+      swipeOffset: x,
+    });
+  },
+
+  onEntrySwipeEnd() {
+    if (!this._swipe) return;
+    const { id, reveal, horizontal } = this._swipe;
+    if (!horizontal) {
+      this._swipe = null;
+      return;
+    }
+
+    const currentX = this.data.swipingId === id ? this.data.swipeOffset : 0;
+    const shouldOpen = currentX < -reveal / 3;
+
+    this.setData({
+      swipingId: null,
+      swipeOffset: 0,
+      openSwipeId: shouldOpen ? id : this.data.openSwipeId === id ? null : this.data.openSwipeId,
+    });
+    this._swipe = null;
   },
 
   openSummary() {
@@ -200,6 +324,13 @@ Page({
 
   openEntryDetail(e) {
     const id = e.currentTarget.dataset.id;
+    if (this.data.openSwipeId === id) {
+      this.setData({ openSwipeId: null });
+      return;
+    }
+    if (this.data.openSwipeId) {
+      this.setData({ openSwipeId: null });
+    }
     wx.navigateTo({
       url: `/pages/daily-entry-detail/index?id=${id}&dayId=${this.data.dayId}`,
     });

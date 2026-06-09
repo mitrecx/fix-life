@@ -11,48 +11,13 @@ page {
   height: 100%;
   min-height: 0;
   box-sizing: border-box;
+  padding-bottom: var(--tab-bar-inset);
   background: var(--color-bg);
 }
 
 .card {
   margin-top: 0;
   margin-bottom: 16rpx;
-}
-
-.search-header {
-  flex-shrink: 0;
-}
-
-.search-toggle {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  gap: 12rpx;
-  min-height: 56rpx;
-  padding: 8rpx 0 12rpx;
-}
-
-.search-chevron {
-  font-size: 22rpx;
-  color: var(--color-text-muted);
-  line-height: 1;
-  transition: transform 0.2s ease;
-}
-
-.search-chevron.open {
-  transform: rotate(180deg);
-}
-
-.search-filter-tag {
-  font-size: 20rpx;
-  color: var(--color-primary);
-  background: var(--color-primary-light);
-  padding: 2rpx 12rpx;
-  border-radius: var(--radius-full);
-}
-
-.search-panel {
-  margin: 0 var(--space-page) 12rpx;
 }
 
 .search-row {
@@ -74,6 +39,7 @@ page {
 .notes-scroll-wrap {
   flex: 1;
   min-height: 0;
+  position: relative;
 }
 
 .notes-scroll {
@@ -119,6 +85,10 @@ page {
 .time-divider-text.date {
   font-size: 30rpx;
   color: #6366f1;
+}
+
+.card.note {
+  background: #f3f4f6;
 }
 
 .note-body {
@@ -176,6 +146,16 @@ page {
   background: var(--color-surface);
   border-top: 1rpx solid var(--color-border);
   box-sizing: border-box;
+}
+
+.composer-close {
+  flex-shrink: 0;
+  width: 56rpx;
+  height: 56rpx;
+  line-height: 52rpx;
+  text-align: center;
+  font-size: 40rpx;
+  color: var(--color-text-muted);
 }
 
 .composer-input {

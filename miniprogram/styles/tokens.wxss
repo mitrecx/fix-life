@@ -37,4 +37,6 @@ page {
   --font-body: 28rpx;
   --font-caption: 24rpx;
   --font-small: 22rpx;
+  --tab-bar-height: 96rpx;
+  --tab-bar-inset: calc(var(--tab-bar-height) + env(safe-area-inset-bottom));
 }

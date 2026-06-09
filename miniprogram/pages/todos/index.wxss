@@ -1,5 +1,45 @@
 @import "../../styles/common.wxss";
 
+page {
+  height: 100%;
+  overflow: hidden;
+}
+
+.todos-page {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  min-height: 0;
+  box-sizing: border-box;
+  padding-bottom: var(--tab-bar-inset);
+  background: var(--color-bg);
+}
+
+.tabs-header {
+  flex-shrink: 0;
+  background: var(--color-bg);
+}
+
+.todos-page .tabs {
+  margin: 0 var(--space-page) 12rpx;
+  border-top: none;
+  border-radius: 0 0 var(--radius-md) var(--radius-md);
+}
+
+.todos-scroll-wrap {
+  flex: 1;
+  min-height: 0;
+  position: relative;
+}
+
+.todos-scroll {
+  height: 100%;
+}
+
+.todos-list-inner {
+  padding-bottom: 16rpx;
+}
+
 .card {
   margin-top: 0;
   margin-bottom: 16rpx;
@@ -9,12 +49,9 @@
   margin-top: 0;
 }
 
-.create-bar {
-  margin: 0 var(--space-page) 16rpx;
-}
-
-.create-btn {
-  margin: 0;
+.toolbar .filter-chip {
+  font-size: var(--font-caption);
+  padding: 12rpx 22rpx;
 }
 
 .search-row {

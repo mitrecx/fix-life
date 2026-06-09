@@ -1,22 +1,4 @@
 <view class="quick-notes-page">
-  <view class="search-header">
-    <view
-      class="search-toggle"
-      bindtap="toggleSearch"
-      bindtouchstart="onSearchTouchStart"
-      bindtouchend="onSearchTouchEnd"
-    >
-      <text class="search-chevron {{showSearch ? 'open' : ''}}">▼</text>
-      <text class="search-filter-tag" wx:if="{{searchQ && !showSearch}}">已筛选</text>
-    </view>
-    <view class="card search-panel" wx:if="{{showSearch}}">
-      <view class="search-row">
-        <input class="input search-input" placeholder="搜索随手记" value="{{searchQ}}" bindinput="onSearchInput" bindconfirm="onSearch" focus="{{searchFocus}}" />
-        <button class="primary-btn inline-btn search-btn" bindtap="onSearch">搜</button>
-      </view>
-    </view>
-  </view>
-
   <view class="notes-scroll-wrap">
     <scroll-view
       class="notes-scroll"
@@ -27,6 +9,7 @@
       scroll-with-animation="{{false}}"
       upper-threshold="120"
       bindscrolltoupper="onScrollToUpper"
+      bindscroll="onNotesScroll"
     >
       <view id="notes-list-inner" class="notes-list-inner">
         <view class="load-more-hint" wx:if="{{loadingMore}}">
@@ -83,9 +66,39 @@
         <view id="notes-bottom-anchor" class="list-bottom-spacer"></view>
       </view>
     </scroll-view>
+
+    <view
+      wx:if="{{showSearch && searchPanelVisible && !searchClosing}}"
+      class="search-dismiss-mask"
+      catchtap="dismissSearchAndQuery"
+      catchtouchmove="preventTouchMove"
+    />
+
+    <view class="search-header">
+      <view
+        class="search-toggle"
+        bindtap="toggleSearch"
+        bindtouchstart="onSearchTouchStart"
+        bindtouchend="onSearchTouchEnd"
+      >
+        <text class="search-chevron {{showSearch ? 'open' : ''}}">▼</text>
+        <text class="search-filter-tag" wx:if="{{searchQ && !showSearch && !searchClosing}}">已筛选</text>
+      </view>
+      <view
+        class="search-panel-wrap {{searchPanelActive ? 'active' : ''}} {{searchClosing ? 'closing' : ''}}"
+        wx:if="{{searchPanelVisible}}"
+      >
+        <view class="search-panel" catchtap="noop">
+          <view class="search-row">
+            <input class="input search-input" placeholder="搜索随手记" value="{{searchQ}}" bindinput="onSearchInput" bindconfirm="onSearch" focus="{{searchFocus}}" />
+            <button class="primary-btn inline-btn search-btn" bindtap="onSearch">搜</button>
+          </view>
+        </view>
+      </view>
+    </view>
   </view>
 
-  <view class="composer-bar">
+  <view class="composer-bar" wx:if="{{showComposer}}">
     <input
       class="input composer-input"
       placeholder="记录灵感..."
@@ -93,7 +106,12 @@
       bindinput="onContentInput"
       bindconfirm="handleCreate"
       confirm-type="done"
+      focus="{{composerFocus}}"
     />
     <button class="primary-btn inline-btn composer-save" bindtap="handleCreate">保存</button>
+    <view class="composer-close" bindtap="closeComposer">×</view>
+  </view>
+  <view class="compose-fab" wx:else bindtap="openComposer">
+    <text class="compose-fab-icon">+</text>
   </view>
 </view>

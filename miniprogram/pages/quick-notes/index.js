@@ -5,6 +5,7 @@ const {
   formatQuickNoteDateDivider,
   isSameCalendarDay,
 } = require("../../utils/date");
+const { updateTabBarSelected } = require("../../utils/tabBar");
 
 const PAGE_SIZE = 10;
 const SEARCH_LIMIT = 200;
@@ -35,9 +36,15 @@ Page({
     scrollIntoView: "",
     showSearch: false,
     searchFocus: false,
+    searchPanelVisible: false,
+    searchPanelActive: false,
+    searchClosing: false,
+    showComposer: false,
+    composerFocus: false,
   },
 
   onShow() {
+    updateTabBarSelected(this);
     if (this._skipNextOnShowRefresh) {
       this._skipNextOnShowRefresh = false;
       return;
@@ -183,11 +190,64 @@ Page({
 
   toggleSearch() {
     if (this.data.showSearch) {
-      this.setData({ showSearch: false, searchFocus: false });
-      wx.hideKeyboard();
+      this.closeSearchPanel();
       return;
     }
-    this.setData({ showSearch: true, searchFocus: true });
+    this.openSearchPanel();
+  },
+
+  openSearchPanel() {
+    clearTimeout(this._searchCloseTimer);
+    this.setData({
+      showSearch: true,
+      searchPanelVisible: true,
+      searchClosing: false,
+      searchPanelActive: false,
+      searchFocus: true,
+    });
+    this._searchScrollTop = null;
+    wx.nextTick(() => {
+      setTimeout(() => this.setData({ searchPanelActive: true }), 30);
+    });
+  },
+
+  closeSearchPanel() {
+    if (!this.data.showSearch || this.data.searchClosing) return;
+    this.setData({
+      searchPanelActive: false,
+      searchClosing: true,
+      searchFocus: false,
+    });
+    wx.hideKeyboard();
+    clearTimeout(this._searchCloseTimer);
+    this._searchCloseTimer = setTimeout(() => {
+      this.setData({
+        showSearch: false,
+        searchPanelVisible: false,
+        searchClosing: false,
+      });
+    }, 380);
+  },
+
+  noop() {},
+
+  preventTouchMove() {},
+
+  async dismissSearchAndQuery() {
+    if (!this.data.showSearch || this.data.searchClosing) return;
+    await this.onSearch();
+  },
+
+  onNotesScroll(e) {
+    if (!this.data.showSearch || this.data.searchClosing) return;
+    const scrollTop = e.detail.scrollTop ?? 0;
+    if (this._searchScrollTop == null) {
+      this._searchScrollTop = scrollTop;
+      return;
+    }
+    if (Math.abs(scrollTop - this._searchScrollTop) < 6) return;
+    this._searchScrollTop = scrollTop;
+    this.closeSearchPanel();
   },
 
   onSearchTouchStart(e) {
@@ -198,7 +258,7 @@ Page({
     if (this.data.showSearch) return;
     const deltaY = e.changedTouches[0].clientY - (this._searchTouchStartY || 0);
     if (deltaY > 40) {
-      this.setData({ showSearch: true, searchFocus: true });
+      this.openSearchPanel();
     }
   },
 
@@ -212,12 +272,22 @@ Page({
     const q = (fromEvent != null ? fromEvent : await this.readSearchInputValue()).trim();
     this._searchQ = q;
     this.setData({ searchQ: q }, () => {
+      this.closeSearchPanel();
       this.refreshNotes({ scrollToBottom: true });
     });
   },
 
   onContentInput(e) {
     this.setData({ content: e.detail.value });
+  },
+
+  openComposer() {
+    this.setData({ showComposer: true, composerFocus: true });
+  },
+
+  closeComposer() {
+    this.setData({ showComposer: false, composerFocus: false });
+    wx.hideKeyboard();
   },
 
   async handleCreate() {
@@ -229,6 +299,7 @@ Page({
     try {
       await quickNote.create({ content });
       this.setData({ content: "" });
+      this.closeComposer();
       await this.refreshNotes({ scrollToBottom: true });
       wx.showToast({ title: "已保存", icon: "success" });
     } catch (error) {

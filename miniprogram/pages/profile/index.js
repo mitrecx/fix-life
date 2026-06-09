@@ -4,6 +4,7 @@ const { clearToken } = require("../../utils/request");
 const { hasPermission } = require("../../utils/format");
 const { PERM_USERS_MANAGE } = require("../../utils/constants");
 const { apiBaseUrl } = require("../../config");
+const { updateTabBarSelected } = require("../../utils/tabBar");
 
 function resolveAvatarUrl(url) {
   if (!url) return "";
@@ -24,6 +25,7 @@ Page({
   },
 
   onShow() {
+    updateTabBarSelected(this);
     this.loadProfile();
   },
 

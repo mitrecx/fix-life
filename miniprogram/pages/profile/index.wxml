@@ -1,4 +1,4 @@
-<view class="page-shell profile-page">
+<view class="page-shell profile-page tab-page">
   <view class="profile-hero card hero-gradient">
     <view class="avatar-row" bindtap="handleChooseAvatar">
       <image wx:if="{{user.avatar_url}}" class="avatar" src="{{user.avatar_url}}" mode="aspectFill" />

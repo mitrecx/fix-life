@@ -2,10 +2,12 @@ const backlog = require("../../utils/services/backlog");
 const { BACKLOG_TABS, TASK_CONTEXT, TASK_PRIORITY } = require("../../utils/constants");
 const { decorateTask } = require("../../utils/format");
 const { todayString } = require("../../utils/date");
+const { updateTabBarSelected } = require("../../utils/tabBar");
 
 Page({
   data: {
     loading: false,
+    refreshing: false,
     tab: "pending",
     tabs: BACKLOG_TABS,
     contextFilter: "all",
@@ -14,14 +16,40 @@ Page({
     contexts: TASK_CONTEXT,
     priorities: TASK_PRIORITY,
     tasks: [],
+    showSearch: false,
+    searchFocus: false,
+    searchPanelVisible: false,
+    searchPanelActive: false,
+    searchClosing: false,
+    filterActive: false,
   },
 
   onShow() {
+    updateTabBarSelected(this);
     this.loadTasks();
   },
 
   onPullDownRefresh() {
-    this.loadTasks().finally(() => wx.stopPullDownRefresh());
+    this.onScrollRefresh();
+  },
+
+  onScrollRefresh() {
+    this.setData({ refreshing: true });
+    this.loadTasks().finally(() => {
+      this.setData({ refreshing: false });
+      wx.stopPullDownRefresh();
+    });
+  },
+
+  syncFilterActive() {
+    const filterActive = !!(
+      String(this.data.searchQ || "").trim() ||
+      this.data.contextFilter !== "all" ||
+      this.data.priorityFilter !== "all"
+    );
+    if (filterActive !== this.data.filterActive) {
+      this.setData({ filterActive });
+    }
   },
 
   async loadTasks() {
@@ -39,6 +67,7 @@ Page({
       this.setData({
         tasks: (data.tasks || []).map(decorateTask),
       });
+      this.syncFilterActive();
     } catch (error) {
       wx.showToast({ title: error.message || "加载失败", icon: "none" });
     } finally {
@@ -53,24 +82,108 @@ Page({
   },
 
   onContextFilter(e) {
-    this.setData({ contextFilter: e.currentTarget.dataset.value }, () => this.loadTasks());
+    this.setData({ contextFilter: e.currentTarget.dataset.value }, () => {
+      this.syncFilterActive();
+      this.loadTasks();
+    });
   },
 
   onPriorityFilter(e) {
-    this.setData({ priorityFilter: e.currentTarget.dataset.value }, () => this.loadTasks());
+    this.setData({ priorityFilter: e.currentTarget.dataset.value }, () => {
+      this.syncFilterActive();
+      this.loadTasks();
+    });
   },
 
   onSearchInput(e) {
-    this.setData({ searchQ: e.detail.value });
+    this.setData({ searchQ: e.detail.value }, () => this.syncFilterActive());
   },
 
   onSearchConfirm() {
+    this.syncFilterActive();
+    this.closeSearchPanel();
     this.loadTasks();
+  },
+
+  toggleSearch() {
+    if (this.data.showSearch) {
+      this.closeSearchPanel();
+      return;
+    }
+    this.openSearchPanel();
+  },
+
+  openSearchPanel() {
+    clearTimeout(this._searchCloseTimer);
+    this.setData({
+      showSearch: true,
+      searchPanelVisible: true,
+      searchClosing: false,
+      searchPanelActive: false,
+      searchFocus: true,
+    });
+    this._searchScrollTop = null;
+    wx.nextTick(() => {
+      setTimeout(() => this.setData({ searchPanelActive: true }), 30);
+    });
+  },
+
+  closeSearchPanel() {
+    if (!this.data.showSearch || this.data.searchClosing) return;
+    this.setData({
+      searchPanelActive: false,
+      searchClosing: true,
+      searchFocus: false,
+    });
+    wx.hideKeyboard();
+    clearTimeout(this._searchCloseTimer);
+    this._searchCloseTimer = setTimeout(() => {
+      this.setData({
+        showSearch: false,
+        searchPanelVisible: false,
+        searchClosing: false,
+      });
+    }, 380);
+  },
+
+  noop() {},
+
+  preventTouchMove() {},
+
+  dismissSearchAndQuery() {
+    if (!this.data.showSearch || this.data.searchClosing) return;
+    this.onSearchConfirm();
+  },
+
+  onTodosScroll(e) {
+    if (!this.data.showSearch || this.data.searchClosing) return;
+    const scrollTop = e.detail.scrollTop ?? 0;
+    if (this._searchScrollTop == null) {
+      this._searchScrollTop = scrollTop;
+      return;
+    }
+    if (Math.abs(scrollTop - this._searchScrollTop) < 6) return;
+    this._searchScrollTop = scrollTop;
+    this.closeSearchPanel();
+  },
+
+  onSearchTouchStart(e) {
+    this._searchTouchStartY = e.touches[0].clientY;
+  },
+
+  onSearchTouchEnd(e) {
+    if (this.data.showSearch) return;
+    const deltaY = e.changedTouches[0].clientY - (this._searchTouchStartY || 0);
+    if (deltaY > 40) {
+      this.openSearchPanel();
+    }
   },
 
   openCreate() {
     wx.navigateTo({ url: "/pages/task-create/index" });
   },
+
+  noop() {},
 
   openDetail(e) {
     const id = e.currentTarget.dataset.id;

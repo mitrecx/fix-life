@@ -1,65 +1,106 @@
-<view class="page-shell">
-  <view class="tabs">
-    <view
-      wx:for="{{tabs}}"
-      wx:key="value"
-      class="tab-item {{tab === item.value ? 'active' : ''}}"
-      data-tab="{{item.value}}"
-      bindtap="onTabChange"
+<view class="todos-page tab-page">
+  <view class="tabs-header">
+    <view class="tabs">
+      <view
+        wx:for="{{tabs}}"
+        wx:key="value"
+        class="tab-item {{tab === item.value ? 'active' : ''}}"
+        data-tab="{{item.value}}"
+        bindtap="onTabChange"
+      >
+        {{item.label}}
+      </view>
+    </view>
+  </view>
+
+  <view class="todos-scroll-wrap">
+    <scroll-view
+      class="todos-scroll"
+      scroll-y
+      enhanced
+      show-scrollbar="{{false}}"
+      refresher-enabled
+      refresher-triggered="{{refreshing}}"
+      bindrefresherrefresh="onScrollRefresh"
+      bindscroll="onTodosScroll"
     >
-      {{item.label}}
-    </view>
-  </view>
+      <view class="todos-list-inner">
+        <view class="card" wx:if="{{loading}}">
+          <text class="muted">加载中...</text>
+        </view>
 
-  <view class="card card-flat toolbar">
-    <view class="search-row">
-      <input
-        class="input search-input"
-        placeholder="搜索待办"
-        value="{{searchQ}}"
-        bindinput="onSearchInput"
-        bindconfirm="onSearchConfirm"
-      />
-      <button class="primary-btn inline-btn search-btn" bindtap="onSearchConfirm">搜索</button>
-    </view>
-    <view class="filter-bar">
-      <text class="chip {{contextFilter === 'all' ? 'active' : 'inactive'}}" data-value="all" bindtap="onContextFilter">全部</text>
-      <text wx:for="{{contexts}}" wx:key="value" class="chip {{contextFilter === item.value ? 'active' : 'inactive'}}" data-value="{{item.value}}" bindtap="onContextFilter">{{item.label}}</text>
-    </view>
-    <view class="filter-bar">
-      <text class="chip {{priorityFilter === 'all' ? 'active' : 'inactive'}}" data-value="all" bindtap="onPriorityFilter">全部优先级</text>
-      <text wx:for="{{priorities}}" wx:key="value" class="chip {{priorityFilter === item.value ? 'active' : 'inactive'}}" data-value="{{item.value}}" bindtap="onPriorityFilter">{{item.label}}</text>
-    </view>
-  </view>
+        <view class="empty card" wx:elif="{{tasks.length === 0}}">
+          <text>暂无待办，添加一条开始吧</text>
+        </view>
 
-  <view class="create-bar">
-    <button class="primary-btn create-btn" bindtap="openCreate">新建待办</button>
-  </view>
-
-  <view class="card" wx:if="{{loading}}">
-    <text class="muted">加载中...</text>
-  </view>
-
-  <view class="empty card" wx:elif="{{tasks.length === 0}}">
-    <text>暂无待办，添加一条开始吧</text>
-  </view>
-
-  <block wx:else>
-    <view class="card task {{tab === 'pending' ? 'card-accent-pending' : tab === 'in_progress' ? 'card-accent-progress' : 'card-accent-done'}}" wx:for="{{tasks}}" wx:key="id" data-id="{{item.id}}" bindtap="openDetail">
-      <view class="task-row">
-        <text class="task-title">{{item.title}}</text>
-        <text class="progress-tag" wx:if="{{item.progress > 0}}">{{item.progress}}%</text>
+        <block wx:else>
+          <view class="card task {{tab === 'pending' ? 'card-accent-pending' : tab === 'in_progress' ? 'card-accent-progress' : 'card-accent-done'}}" wx:for="{{tasks}}" wx:key="id" data-id="{{item.id}}" bindtap="openDetail">
+            <view class="task-row">
+              <text class="task-title">{{item.title}}</text>
+              <text class="progress-tag" wx:if="{{item.progress > 0}}">{{item.progress}}%</text>
+            </view>
+            <view class="meta-row">
+              <text class="badge" style="background:{{item.contextColor}}">{{item.contextLabel}}</text>
+              <text class="badge" style="background:{{item.priorityColor}}">{{item.priorityLabel}}</text>
+              <text class="muted schedule" wx:if="{{item.scheduled_date}}">{{item.scheduled_date}}</text>
+            </view>
+            <view class="action-row" catchtap="noop">
+              <button wx:if="{{tab === 'pending'}}" class="secondary-btn action-btn" size="mini" data-id="{{item.id}}" catchtap="handleStart">开始</button>
+              <button wx:if="{{tab !== 'done'}}" class="secondary-btn action-btn" size="mini" data-id="{{item.id}}" catchtap="handleScheduleToday">排入今日</button>
+              <button wx:if="{{tab !== 'done'}}" class="soft-success-btn action-btn" size="mini" data-id="{{item.id}}" catchtap="handleComplete">完成</button>
+            </view>
+          </view>
+        </block>
       </view>
-      <view class="meta-row">
-        <text class="badge" style="background:{{item.contextColor}}">{{item.contextLabel}}</text>
-        <text class="badge" style="background:{{item.priorityColor}}">{{item.priorityLabel}}</text>
-        <text class="muted schedule" wx:if="{{item.scheduled_date}}">{{item.scheduled_date}}</text>
+    </scroll-view>
+
+    <view
+      wx:if="{{showSearch && searchPanelVisible && !searchClosing}}"
+      class="search-dismiss-mask"
+      catchtap="dismissSearchAndQuery"
+      catchtouchmove="preventTouchMove"
+    />
+
+    <view class="search-header">
+      <view
+        class="search-toggle"
+        bindtap="toggleSearch"
+        bindtouchstart="onSearchTouchStart"
+        bindtouchend="onSearchTouchEnd"
+      >
+        <text class="search-chevron {{showSearch ? 'open' : ''}}">▼</text>
+        <text class="search-filter-tag" wx:if="{{filterActive && !showSearch && !searchClosing}}">已筛选</text>
       </view>
-      <view class="action-row" catchtap="noop">
-        <button wx:if="{{tab === 'pending'}}" class="secondary-btn action-btn" size="mini" data-id="{{item.id}}" catchtap="handleStart">开始</button>
-        <button wx:if="{{tab !== 'done'}}" class="secondary-btn action-btn" size="mini" data-id="{{item.id}}" catchtap="handleScheduleToday">排入今日</button>
-        <button wx:if="{{tab !== 'done'}}" class="soft-success-btn action-btn" size="mini" data-id="{{item.id}}" catchtap="handleComplete">完成</button>
+      <view
+        class="search-panel-wrap todos-search {{searchPanelActive ? 'active' : ''}} {{searchClosing ? 'closing' : ''}}"
+        wx:if="{{searchPanelVisible}}"
+      >
+        <view class="search-panel toolbar" catchtap="noop">
+          <view class="search-row">
+            <input
+              class="input search-input"
+              placeholder="搜索待办"
+              value="{{searchQ}}"
+              bindinput="onSearchInput"
+              bindconfirm="onSearchConfirm"
+              focus="{{searchFocus}}"
+            />
+            <button class="primary-btn inline-btn search-btn" bindtap="onSearchConfirm">搜索</button>
+          </view>
+          <view class="filter-bar">
+            <text class="chip filter-chip {{contextFilter === 'all' ? 'active' : 'inactive'}}" data-value="all" bindtap="onContextFilter">全部</text>
+            <text wx:for="{{contexts}}" wx:key="value" class="chip filter-chip {{contextFilter === item.value ? 'active' : 'inactive'}}" data-value="{{item.value}}" bindtap="onContextFilter">{{item.label}}</text>
+          </view>
+          <view class="filter-bar">
+            <text class="chip filter-chip {{priorityFilter === 'all' ? 'active' : 'inactive'}}" data-value="all" bindtap="onPriorityFilter">全部优先级</text>
+            <text wx:for="{{priorities}}" wx:key="value" class="chip filter-chip {{priorityFilter === item.value ? 'active' : 'inactive'}}" data-value="{{item.value}}" bindtap="onPriorityFilter">{{item.label}}</text>
+          </view>
+        </view>
       </view>
     </view>
-  </block>
+  </view>
+
+  <view class="compose-fab" bindtap="openCreate">
+    <text class="compose-fab-icon">+</text>
+  </view>
 </view>
