@@ -104,6 +104,8 @@ page {
   display: block;
   width: 100%;
   word-break: break-word;
+  font-size: 36rpx;
+  line-height: 1.65;
 }
 
 .note-image {

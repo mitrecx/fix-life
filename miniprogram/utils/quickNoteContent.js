@@ -2,21 +2,29 @@ const { apiBaseUrl } = require("../config");
 
 const IMAGE_RE = /!\[([^\]]*)\]\(([^)]+)\)/g;
 
+/** Quick note reading sizes — two steps above default body (28rpx → 36rpx). */
+const FONT = {
+  body: "18px",
+  h1: "22px",
+  h2: "20px",
+  h3: "18px",
+  code: "16px",
+};
+
 const STYLES = {
-  p: "margin:0 0 8px;line-height:1.6;font-size:14px;color:#374151;",
-  h1: "margin:12px 0 8px;font-size:16px;font-weight:600;color:#1f2937;",
-  h2: "margin:12px 0 8px;font-size:15px;font-weight:600;color:#1f2937;",
-  h3: "margin:10px 0 6px;font-size:14px;font-weight:600;color:#1f2937;",
+  p: `margin:0 0 8px;line-height:1.65;font-size:${FONT.body};color:#374151;`,
+  h1: `margin:12px 0 8px;font-size:${FONT.h1};font-weight:600;color:#1f2937;`,
+  h2: `margin:12px 0 8px;font-size:${FONT.h2};font-weight:600;color:#1f2937;`,
+  h3: `margin:10px 0 6px;font-size:${FONT.h3};font-weight:600;color:#1f2937;`,
   hr: "margin:12px 0;border:none;border-top:1px solid #e5e7eb;height:0;",
   ul: "margin:0 0 8px;padding-left:20px;",
   ol: "margin:0 0 8px;padding-left:20px;",
-  li: "margin:4px 0;line-height:1.6;font-size:14px;color:#374151;",
-  code: "background:#f3f4f6;padding:2px 6px;border-radius:4px;font-size:12px;color:#1f2937;",
-  pre: "background:#f9fafb;border:1px solid #e5e7eb;padding:12px;border-radius:8px;overflow-x:auto;font-size:12px;line-height:1.5;margin:8px 0;white-space:pre-wrap;word-break:break-word;",
+  li: `margin:4px 0;line-height:1.65;font-size:${FONT.body};color:#374151;`,
+  code: `background:#f3f4f6;padding:2px 6px;border-radius:4px;font-size:${FONT.code};color:#1f2937;`,
+  pre: `background:#f9fafb;border:1px solid #e5e7eb;padding:12px;border-radius:8px;overflow-x:auto;font-size:${FONT.code};line-height:1.55;margin:8px 0;white-space:pre-wrap;word-break:break-word;`,
   strong: "font-weight:600;color:#1f2937;",
   em: "font-style:italic;",
-  blockquote:
-    "border-left:3px solid #e5e7eb;padding-left:12px;margin:8px 0;color:#6b7280;font-style:italic;",
+  blockquote: `border-left:3px solid #e5e7eb;padding-left:12px;margin:8px 0;color:#6b7280;font-style:italic;font-size:${FONT.body};`,
 };
 
 function resolveMediaUrl(url) {
