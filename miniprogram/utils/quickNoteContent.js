@@ -25,7 +25,29 @@ const STYLES = {
   strong: "font-weight:600;color:#1f2937;",
   em: "font-style:italic;",
   blockquote: `border-left:3px solid #e5e7eb;padding-left:12px;margin:8px 0;color:#6b7280;font-style:italic;font-size:${FONT.body};`,
+  highlight: "background-color:#fef08a;color:inherit;border-radius:2px;padding:0 2px;",
 };
+
+function escapeRegExp(value) {
+  return String(value).replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+}
+
+function highlightHtmlTextNodes(html, query) {
+  const q = (query || "").trim();
+  if (!q || !html) return html;
+
+  const needle = escapeHtml(q);
+  if (!needle) return html;
+
+  const re = new RegExp(escapeRegExp(needle), "gi");
+  return html
+    .split(/(<[^>]+>)/g)
+    .map((part) => {
+      if (!part || part.startsWith("<")) return part;
+      return part.replace(re, (match) => `<span style="${STYLES.highlight}">${match}</span>`);
+    })
+    .join("");
+}
 
 function resolveMediaUrl(url) {
   const trimmed = (url || "").trim();
@@ -56,7 +78,97 @@ function inlineMarkdown(text) {
   return s;
 }
 
-function markdownToHtml(md) {
+function inlineMarkdownPlain(text) {
+  let s = String(text || "");
+  s = s.replace(/\*\*(.+?)\*\*/g, "$1");
+  s = s.replace(/__(.+?)__/g, "$1");
+  s = s.replace(/\*([^*\n]+)\*/g, "$1");
+  s = s.replace(/`([^`\n]+)`/g, "$1");
+  s = s.replace(/\[([^\]]+)\]\(([^)]+)\)/g, "$1");
+  return s;
+}
+
+function markdownToPlainText(md) {
+  const lines = (md || "").split("\n");
+  const out = [];
+  let inCode = false;
+  let codeLines = [];
+
+  for (const rawLine of lines) {
+    const line = rawLine.replace(/\r$/, "");
+
+    if (line.trim().startsWith("```")) {
+      if (inCode) {
+        out.push(codeLines.join("\n"));
+        codeLines = [];
+        inCode = false;
+      } else {
+        inCode = true;
+      }
+      continue;
+    }
+
+    if (inCode) {
+      codeLines.push(line);
+      continue;
+    }
+
+    if (/^-{3,}$|^\*{3,}$|^_{3,}$/.test(line.trim())) {
+      out.push("");
+      continue;
+    }
+
+    const heading = line.match(/^#{1,3}\s+(.+)$/);
+    if (heading) {
+      out.push(inlineMarkdownPlain(heading[1]));
+      continue;
+    }
+
+    const quote = line.match(/^>\s?(.*)$/);
+    if (quote) {
+      out.push(inlineMarkdownPlain(quote[1]));
+      continue;
+    }
+
+    const ul = line.match(/^[-*+]\s+(.+)$/);
+    if (ul) {
+      out.push(`• ${inlineMarkdownPlain(ul[1])}`);
+      continue;
+    }
+
+    const ol = line.match(/^\d+\.\s+(.+)$/);
+    if (ol) {
+      out.push(inlineMarkdownPlain(ol[1]));
+      continue;
+    }
+
+    if (!line.trim()) {
+      out.push("");
+      continue;
+    }
+
+    out.push(inlineMarkdownPlain(line));
+  }
+
+  if (inCode && codeLines.length) {
+    out.push(codeLines.join("\n"));
+  }
+
+  return out.join("\n").replace(/\n{3,}/g, "\n\n").trim();
+}
+
+function pushMarkdownSegment(segments, md, highlightQuery) {
+  const plain = markdownToPlainText(md);
+  const html = markdownToHtml(md, highlightQuery);
+  if (!plain && !html) return;
+  segments.push({
+    type: "markdown",
+    html,
+    plain: plain || md.trim(),
+  });
+}
+
+function markdownToHtml(md, highlightQuery) {
   const lines = (md || "").split("\n");
   const html = [];
   let inUl = false;
@@ -172,10 +284,10 @@ function markdownToHtml(md) {
     html.push(`<pre style="${STYLES.pre}"><code>${escapeHtml(codeLines.join("\n"))}</code></pre>`);
   }
 
-  return html.join("");
+  return highlightHtmlTextNodes(html.join(""), highlightQuery);
 }
 
-function parseQuickNoteContent(content) {
+function parseQuickNoteContent(content, highlightQuery) {
   const text = content || "";
   const segments = [];
   let lastIndex = 0;
@@ -184,8 +296,7 @@ function parseQuickNoteContent(content) {
   IMAGE_RE.lastIndex = 0;
   while ((match = IMAGE_RE.exec(text)) !== null) {
     if (match.index > lastIndex) {
-      const html = markdownToHtml(text.slice(lastIndex, match.index));
-      if (html) segments.push({ type: "markdown", html });
+      pushMarkdownSegment(segments, text.slice(lastIndex, match.index), highlightQuery);
     }
     segments.push({
       type: "image",
@@ -196,20 +307,18 @@ function parseQuickNoteContent(content) {
   }
 
   if (lastIndex < text.length) {
-    const html = markdownToHtml(text.slice(lastIndex));
-    if (html) segments.push({ type: "markdown", html });
+    pushMarkdownSegment(segments, text.slice(lastIndex), highlightQuery);
   }
 
   if (!segments.length && text.trim()) {
-    const html = markdownToHtml(text);
-    if (html) segments.push({ type: "markdown", html });
+    pushMarkdownSegment(segments, text, highlightQuery);
   }
 
   return segments;
 }
 
-function decorateQuickNote(note) {
-  const segments = parseQuickNoteContent(note.content);
+function decorateQuickNote(note, highlightQuery) {
+  const segments = parseQuickNoteContent(note.content, highlightQuery);
   const imageUrls = segments.filter((s) => s.type === "image").map((s) => s.src);
   return {
     ...note,

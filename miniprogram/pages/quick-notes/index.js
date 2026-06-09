@@ -1,8 +1,26 @@
 const quickNote = require("../../utils/services/quickNote");
 const { decorateQuickNote } = require("../../utils/quickNoteContent");
+const {
+  formatQuickNoteMessageTime,
+  formatQuickNoteDateDivider,
+  isSameCalendarDay,
+} = require("../../utils/date");
 
 const PAGE_SIZE = 10;
 const SEARCH_LIMIT = 200;
+
+function enrichNotesForDisplay(notes, highlightQuery) {
+  return notes.map((note, index) => {
+    const prev = index > 0 ? notes[index - 1] : null;
+    const showDateDivider =
+      index === 0 || (prev !== null && !isSameCalendarDay(prev.created_at, note.created_at));
+    return {
+      ...decorateQuickNote(note, highlightQuery),
+      messageTime: formatQuickNoteMessageTime(note.created_at),
+      dateDivider: showDateDivider ? formatQuickNoteDateDivider(note.created_at) : "",
+    };
+  });
+}
 
 Page({
   data: {
@@ -60,13 +78,14 @@ Page({
     const q = this.currentSearchQ();
     const filters = q ? { q } : {};
     const searching = !!q;
+    const displayNotes = (list) => enrichNotesForDisplay(list, q);
 
     this.setData({ loading: true, searchQ: q });
     try {
       if (searching) {
         const res = await quickNote.list(filters, SEARCH_LIMIT, 0);
         const total = res.total || 0;
-        const notes = (res.notes || []).map(decorateQuickNote);
+        const notes = displayNotes(res.notes || []);
         this.setData({
           notes,
           total,
@@ -80,7 +99,7 @@ Page({
         const offset = Math.max(0, total - PAGE_SIZE);
         const res = await quickNote.list(filters, PAGE_SIZE, offset);
         this.setData({
-          notes: (res.notes || []).map(decorateQuickNote),
+          notes: displayNotes(res.notes || []),
           total,
           listOffset: offset,
           hasMoreOlder: offset > 0,
@@ -111,17 +130,19 @@ Page({
 
     const q = this.currentSearchQ();
     const filters = q ? { q } : {};
+    const displayNotes = (list) => enrichNotesForDisplay(list, q);
 
     try {
       if (q) {
         const newOffset = this.data.notes.length;
         const res = await quickNote.list(filters, SEARCH_LIMIT, newOffset);
-        const older = (res.notes || []).map(decorateQuickNote);
+        const merged = [...this.data.notes, ...(res.notes || [])];
+        const notes = displayNotes(merged);
         this.setData(
           {
-            notes: [...this.data.notes, ...older],
+            notes,
             listOffset: newOffset,
-            hasMoreOlder: newOffset + older.length < (res.total || 0),
+            hasMoreOlder: newOffset + (res.notes || []).length < (res.total || 0),
             loadingMore: false,
           },
           () => {
@@ -137,11 +158,12 @@ Page({
       const newOffset = Math.max(0, this.data.listOffset - PAGE_SIZE);
       const fetchCount = this.data.listOffset - newOffset;
       const res = await quickNote.list(filters, fetchCount, newOffset);
-      const older = (res.notes || []).map(decorateQuickNote);
+      const merged = [...(res.notes || []), ...this.data.notes];
+      const notes = displayNotes(merged);
 
       this.setData(
         {
-          notes: [...older, ...this.data.notes],
+          notes,
           listOffset: newOffset,
           hasMoreOlder: newOffset > 0,
           loadingMore: false,
@@ -212,26 +234,6 @@ Page({
     } catch (error) {
       wx.showToast({ title: error.message || "保存失败", icon: "none" });
     }
-  },
-
-  async handleDeleteOne(e) {
-    const id = e.currentTarget.dataset.id;
-    const res = await wx.showModal({ title: "删除", content: "确定删除此条随手记？" });
-    if (!res.confirm) return;
-    try {
-      await quickNote.remove(id);
-      await this.refreshNotes({ scrollToBottom: false });
-    } catch (error) {
-      wx.showToast({ title: error.message || "删除失败", icon: "none" });
-    }
-  },
-
-  handleCopy(e) {
-    const content = e.currentTarget.dataset.content;
-    wx.setClipboardData({
-      data: content,
-      success: () => wx.showToast({ title: "已复制", icon: "success" }),
-    });
   },
 
   previewImage(e) {

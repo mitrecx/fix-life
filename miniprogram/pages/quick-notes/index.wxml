@@ -45,17 +45,24 @@
         </view>
 
         <block wx:else>
-          <view class="card note" wx:for="{{notes}}" wx:key="id" id="note-{{item.id}}">
-            <view class="row-between">
-              <text class="note-time muted">{{item.created_at}}</text>
-              <view class="note-actions">
-                <text class="link-btn" data-content="{{item.content}}" bindtap="handleCopy">复制</text>
-                <text class="delete-link" data-id="{{item.id}}" bindtap="handleDeleteOne">删</text>
-              </view>
+          <block wx:for="{{notes}}" wx:key="id">
+            <view class="time-divider" wx:if="{{item.dateDivider}}">
+              <view class="time-divider-line" />
+              <text class="time-divider-text date">{{item.dateDivider}}</text>
+              <view class="time-divider-line" />
             </view>
-            <view class="note-body">
+            <view class="card note" id="note-{{item.id}}">
+              <view class="time-divider">
+                <view class="time-divider-line" />
+                <text class="time-divider-text">{{item.messageTime}}</text>
+                <view class="time-divider-line" />
+              </view>
+              <view class="note-body">
               <block wx:for="{{item.segments}}" wx:for-item="seg" wx:for-index="segIndex" wx:key="segIndex">
-                <rich-text wx:if="{{seg.type === 'markdown'}}" class="note-rich" nodes="{{seg.html}}" />
+                <view wx:if="{{seg.type === 'markdown'}}" class="note-rich-wrap">
+                  <rich-text class="note-rich note-rich-visual" nodes="{{seg.html}}" />
+                  <text class="note-rich-select" selectable>{{seg.plain}}</text>
+                </view>
                 <image
                   wx:elif="{{seg.type === 'image'}}"
                   class="note-image"
@@ -69,7 +76,8 @@
                 />
               </block>
             </view>
-          </view>
+            </view>
+          </block>
         </block>
 
         <view id="notes-bottom-anchor" class="list-bottom-spacer"></view>

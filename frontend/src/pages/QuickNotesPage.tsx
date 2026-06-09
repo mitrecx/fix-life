@@ -1,6 +1,6 @@
 import { Fragment, useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { DatePicker, Input, Modal, message } from "antd";
-import { CheckSquare, Copy, GitMerge, ImagePlus, RotateCcw, Search, Send, Trash2, X } from "lucide-react";
+import { CheckSquare, GitMerge, ImagePlus, RotateCcw, Search, Send, Trash2, X } from "lucide-react";
 import { type Dayjs } from "dayjs";
 import dayjs from "dayjs";
 import { LoadingSpinner } from "@/components/LoadingSpinner";
@@ -10,6 +10,7 @@ import { quickNoteService } from "@/services/quickNoteService";
 import type { QuickNote, QuickNoteListFilters } from "@/types/quickNote";
 import { copyQuickNoteContent } from "@/utils/copyQuickNoteContent";
 import { readQuickNoteFilters, writeQuickNoteFilters } from "@/utils/listFiltersStorage";
+import { parseServerDateTime } from "@/utils/parseServerDateTime";
 
 function readInitialQuickNoteFilters() {
   const stored = readQuickNoteFilters({});
@@ -28,7 +29,7 @@ function readInitialQuickNoteFilters() {
 }
 
 function formatMessageTime(iso: string) {
-  return new Date(iso).toLocaleString("zh-CN", {
+  return parseServerDateTime(iso).toLocaleString("zh-CN", {
     month: "2-digit",
     day: "2-digit",
     hour: "2-digit",
@@ -37,7 +38,7 @@ function formatMessageTime(iso: string) {
 }
 
 function formatDateDivider(iso: string) {
-  return new Date(iso).toLocaleDateString("zh-CN", {
+  return parseServerDateTime(iso).toLocaleDateString("zh-CN", {
     year: "numeric",
     month: "long",
     day: "numeric",
@@ -46,17 +47,34 @@ function formatDateDivider(iso: string) {
 }
 
 function isSameCalendarDay(a: string, b: string) {
-  return dayjs(a).format("YYYY-MM-DD") === dayjs(b).format("YYYY-MM-DD");
+  const day = (iso: string) => {
+    const d = parseServerDateTime(iso);
+    return `${d.getFullYear()}-${d.getMonth() + 1}-${d.getDate()}`;
+  };
+  return day(a) === day(b);
+}
+
+function CenteredTimeDivider({
+  label,
+  variant = "message",
+}: {
+  label: string;
+  variant?: "date" | "message";
+}) {
+  const labelClass =
+    variant === "date" ? "text-sm text-indigo-500" : "text-xs text-indigo-400";
+
+  return (
+    <div className="flex items-center gap-3 py-1">
+      <div className="h-px flex-1 bg-indigo-100" />
+      <span className={`${labelClass} shrink-0`}>{label}</span>
+      <div className="h-px flex-1 bg-indigo-100" />
+    </div>
+  );
 }
 
 function DateDivider({ iso }: { iso: string }) {
-  return (
-    <div className="flex items-center gap-3 py-1">
-      <div className="h-px flex-1 bg-gray-200" />
-      <span className="text-xs text-gray-400 shrink-0">{formatDateDivider(iso)}</span>
-      <div className="h-px flex-1 bg-gray-200" />
-    </div>
-  );
+  return <CenteredTimeDivider label={formatDateDivider(iso)} variant="date" />;
 }
 
 function hasActiveFilters(filters: QuickNoteListFilters) {
@@ -316,7 +334,7 @@ export default function QuickNotesPage() {
             const remaining = prev.filter((note) => !idSet.has(note.id));
             return [...remaining, result.note].sort(
               (a, b) =>
-                new Date(a.created_at).getTime() - new Date(b.created_at).getTime() ||
+                parseServerDateTime(a.created_at).getTime() - parseServerDateTime(b.created_at).getTime() ||
                 a.id.localeCompare(b.id),
             );
           });
@@ -472,7 +490,7 @@ export default function QuickNotesPage() {
           )}
         </div>
 
-        <div className="flex-1 min-w-0 overflow-y-auto overflow-x-hidden overscroll-x-none p-4 bg-white">
+        <div className="flex-1 min-w-0 overflow-y-auto overflow-x-hidden overscroll-x-none p-3 sm:p-4 bg-gray-50">
           {loading ? (
             <div className="py-16">
               <LoadingSpinner size="large" block />
@@ -482,7 +500,7 @@ export default function QuickNotesPage() {
               {filtering ? "没有匹配的记录" : "还没有记录，在下方输入第一条吧"}
             </div>
           ) : (
-            <div className="space-y-6">
+            <div className="space-y-3">
             {notes.map((note, index) => {
               const selected = selectedIds.has(note.id);
               const prevNote = index > 0 ? notes[index - 1] : null;
@@ -495,7 +513,7 @@ export default function QuickNotesPage() {
                   {showDateDivider && <DateDivider iso={note.created_at} />}
                   <div className="flex justify-start items-start gap-2">
                   {selectionMode && (
-                    <label className="mt-5 inline-flex items-center">
+                    <label className="mt-5 inline-flex items-center shrink-0">
                       <input
                         type="checkbox"
                         checked={selected}
@@ -505,43 +523,37 @@ export default function QuickNotesPage() {
                     </label>
                   )}
                   <div
-                    className={`w-full min-w-0 ${selectionMode ? "cursor-pointer" : ""}`}
+                    className={`w-full min-w-0 rounded-xl border bg-white p-4 transition-colors ${
+                      selected
+                        ? "border-indigo-300 ring-1 ring-indigo-200 bg-indigo-50/40"
+                        : "border-gray-200"
+                    } ${selectionMode ? "cursor-pointer" : ""}`}
                     onClick={selectionMode ? () => toggleNoteSelection(note.id) : undefined}
                   >
-                    <div className="flex items-center gap-2 mb-2">
-                      <span className="text-[11px] text-gray-400 shrink-0">
-                        {formatMessageTime(note.created_at)}
-                      </span>
-                      <div className="h-px flex-1 bg-gray-200" />
-                    </div>
-                    <div
-                      className={`relative text-gray-800 ${
-                        selected ? "rounded-md bg-indigo-50/40 ring-1 ring-indigo-200 px-1 -mx-1" : ""
-                      } ${selectionMode ? "" : "group"}`}
-                    >
-                      {!selectionMode && (
-                        <div className="absolute -top-1 right-0 flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-all">
-                          <button
-                            type="button"
-                            onClick={() => void handleCopyNote(note)}
-                            className="h-7 w-7 inline-flex items-center justify-center rounded-full border border-gray-200 bg-white text-gray-400 hover:text-indigo-600 hover:border-indigo-200 shadow-sm"
-                            title="复制"
-                          >
-                            <Copy size={14} />
-                          </button>
-                          <button
-                            type="button"
-                            onClick={() => handleDeleteNote(note)}
-                            className="h-7 w-7 inline-flex items-center justify-center rounded-full border border-gray-200 bg-white text-gray-400 hover:text-red-500 hover:border-red-200 shadow-sm"
-                            title="删除"
-                          >
-                            <Trash2 size={14} />
-                          </button>
-                        </div>
-                      )}
-                      <div className="text-sm break-words overflow-x-hidden max-w-full pr-16">
-                        <QuickNoteMarkdown content={note.content} />
+                    <CenteredTimeDivider label={formatMessageTime(note.created_at)} />
+                    {!selectionMode && (
+                      <div className="flex justify-end gap-3 mb-2">
+                        <button
+                          type="button"
+                          onClick={() => void handleCopyNote(note)}
+                          className="text-sm text-indigo-600 hover:text-indigo-800 transition-colors"
+                        >
+                          复制
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => handleDeleteNote(note)}
+                          className="text-sm text-red-600 hover:text-red-800 transition-colors"
+                        >
+                          删
+                        </button>
                       </div>
+                    )}
+                    <div className="text-sm text-gray-800 break-words overflow-x-hidden max-w-full">
+                      <QuickNoteMarkdown
+                        content={note.content}
+                        highlightQuery={appliedFilters.q}
+                      />
                     </div>
                   </div>
                 </div>

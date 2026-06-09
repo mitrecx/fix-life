@@ -96,8 +96,58 @@ page {
   height: 8rpx;
 }
 
+.time-divider {
+  display: flex;
+  align-items: center;
+  gap: 24rpx;
+  padding: 8rpx 0 12rpx;
+}
+
+.time-divider-line {
+  flex: 1;
+  height: 1rpx;
+  background: #e0e7ff;
+}
+
+.time-divider-text {
+  flex-shrink: 0;
+  font-size: 28rpx;
+  color: #818cf8;
+  line-height: 1.2;
+}
+
+.time-divider-text.date {
+  font-size: 30rpx;
+  color: #6366f1;
+}
+
 .note-body {
   margin-top: 12rpx;
+}
+
+.note-rich-wrap {
+  position: relative;
+  width: 100%;
+}
+
+.note-rich-visual {
+  display: block;
+  width: 100%;
+  word-break: break-word;
+}
+
+.note-rich-select {
+  position: absolute;
+  left: 0;
+  top: 0;
+  right: 0;
+  color: rgba(0, 0, 0, 0);
+  font-size: 36rpx;
+  line-height: 1.65;
+  white-space: pre-wrap;
+  word-break: break-word;
+  user-select: text;
+  -webkit-user-select: text;
 }
 
 .note-rich {
@@ -115,16 +165,6 @@ page {
   border-radius: var(--radius-md);
   border: 1rpx solid var(--color-border);
   background: #f9fafb;
-}
-
-.note-actions {
-  display: flex;
-  gap: 16rpx;
-}
-
-.delete-link {
-  color: #dc2626;
-  font-size: 24rpx;
 }
 
 .composer-bar {

@@ -1,7 +1,9 @@
+import { useMemo, type ReactNode } from "react";
 import ReactMarkdown from "react-markdown";
 import type { Components } from "react-markdown";
 import { Image } from "antd";
 import { remarkGfmNoAutolink } from "@/utils/remarkGfmNoAutolink";
+import { highlightChildren } from "@/utils/highlightSearchText";
 
 const markdownComponents: Components = {
   p: ({ children }) => <p className="text-sm mb-2 last:mb-0 leading-relaxed">{children}</p>,
@@ -74,11 +76,79 @@ const markdownComponents: Components = {
   ),
 };
 
-export default function QuickNoteMarkdown({ content }: { content: string }) {
+function withSearchHighlight(components: Components, query: string): Components {
+  const hl = (children: ReactNode) => highlightChildren(children, query);
+
+  return {
+    ...components,
+    p: ({ children }) => <p className="text-sm mb-2 last:mb-0 leading-relaxed">{hl(children)}</p>,
+    h1: ({ children }) => (
+      <h1 className="text-base font-semibold mb-2 mt-1 first:mt-0">{hl(children)}</h1>
+    ),
+    h2: ({ children }) => (
+      <h2 className="text-sm font-semibold mb-2 mt-2 first:mt-0">{hl(children)}</h2>
+    ),
+    h3: ({ children }) => (
+      <h3 className="text-sm font-medium mb-1.5 mt-2 first:mt-0">{hl(children)}</h3>
+    ),
+    li: ({ children }) => <li className="leading-relaxed">{hl(children)}</li>,
+    blockquote: ({ children }) => (
+      <blockquote className="border-l-2 border-gray-200 pl-3 my-2 text-gray-600 italic">
+        {hl(children)}
+      </blockquote>
+    ),
+    a: ({ href, children }) => (
+      <a
+        href={href}
+        target="_blank"
+        rel="noopener noreferrer"
+        className="text-gray-700 underline underline-offset-2 hover:text-gray-900"
+      >
+        {hl(children)}
+      </a>
+    ),
+    strong: ({ children }) => <strong className="font-semibold">{hl(children)}</strong>,
+    td: ({ children }) => (
+      <td className="border border-slate-200 px-2 py-1 align-top break-words">{hl(children)}</td>
+    ),
+    th: ({ children }) => (
+      <th className="border border-slate-200 bg-white/60 px-2 py-1 text-left font-medium break-words">
+        {hl(children)}
+      </th>
+    ),
+    code: ({ className, children }) => {
+      const isBlock = Boolean(className);
+      if (isBlock) {
+        return (
+          <code className={`${className ?? ""} break-words whitespace-pre-wrap`}>{hl(children)}</code>
+        );
+      }
+      return (
+        <code className="rounded bg-gray-100 border border-gray-200/80 px-1 py-0.5 text-xs font-mono text-gray-800 break-all">
+          {hl(children)}
+        </code>
+      );
+    },
+  };
+}
+
+export default function QuickNoteMarkdown({
+  content,
+  highlightQuery,
+}: {
+  content: string;
+  highlightQuery?: string;
+}) {
+  const query = highlightQuery?.trim() ?? "";
+  const components = useMemo(
+    () => (query ? withSearchHighlight(markdownComponents, query) : markdownComponents),
+    [query],
+  );
+
   return (
     <Image.PreviewGroup>
       <div className="max-w-full overflow-x-hidden break-words [&>*+*]:mt-4">
-        <ReactMarkdown remarkPlugins={[remarkGfmNoAutolink]} components={markdownComponents}>
+        <ReactMarkdown remarkPlugins={[remarkGfmNoAutolink]} components={components}>
           {content}
         </ReactMarkdown>
       </div>
