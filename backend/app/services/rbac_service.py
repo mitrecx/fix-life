@@ -10,7 +10,7 @@ from app.models.user_role import UserRole
 
 SYSTEM_STATUS_READ = "system_status:read"
 USERS_MANAGE = "users:manage"
-QUICK_NOTES_USE = "quick_notes:use"
+QUICK_NOTES_UPLOAD_IMAGE = "quick_notes:upload_image"
 COMMUNITY_ROLE_NAME = "community"
 PREMIUM_ROLE_NAME = "premium"
 

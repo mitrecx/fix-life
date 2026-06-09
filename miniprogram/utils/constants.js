@@ -41,7 +41,7 @@ const GOAL_STATUS = [
 
 const PROGRESS_PRESETS = [0, 25, 50, 75, 100];
 
-const PERM_QUICK_NOTES = "quick_notes:use";
+const PERM_QUICK_NOTES_UPLOAD_IMAGE = "quick_notes:upload_image";
 const PERM_USERS_MANAGE = "users:manage";
 const PERM_SYSTEM_STATUS = "system_status:read";
 
@@ -61,7 +61,7 @@ module.exports = {
   GOAL_CATEGORIES,
   GOAL_STATUS,
   PROGRESS_PRESETS,
-  PERM_QUICK_NOTES,
+  PERM_QUICK_NOTES_UPLOAD_IMAGE,
   PERM_USERS_MANAGE,
   PERM_SYSTEM_STATUS,
   CHECK_LABELS,

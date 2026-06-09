@@ -7,6 +7,7 @@ import { LoadingSpinner } from "@/components/LoadingSpinner";
 import QuickNoteEditor, { type QuickNoteEditorHandle } from "@/components/QuickNoteEditor";
 import QuickNoteMarkdown from "@/components/QuickNoteMarkdown";
 import { quickNoteService } from "@/services/quickNoteService";
+import { useAuthStore } from "@/store/authStore";
 import type { QuickNote, QuickNoteListFilters } from "@/types/quickNote";
 import { copyQuickNoteContent } from "@/utils/copyQuickNoteContent";
 import { readQuickNoteFilters, writeQuickNoteFilters } from "@/utils/listFiltersStorage";
@@ -90,6 +91,7 @@ const ALLOWED_IMAGE_TYPES = new Set([
 ]);
 
 const MAX_IMAGE_SIZE = 5 * 1024 * 1024;
+const QUICK_NOTES_UPLOAD_IMAGE = "quick_notes:upload_image";
 
 function normalizePastedImageFile(file: File): File | null {
   let type = file.type;
@@ -107,6 +109,8 @@ function normalizePastedImageFile(file: File): File | null {
 }
 
 export default function QuickNotesPage() {
+  const { user } = useAuthStore();
+  const canUploadImage = user?.permissions?.includes(QUICK_NOTES_UPLOAD_IMAGE) ?? false;
   const [notes, setNotes] = useState<QuickNote[]>([]);
   const [loading, setLoading] = useState(true);
   const [sending, setSending] = useState(false);
@@ -206,6 +210,10 @@ export default function QuickNotesPage() {
   };
 
   const uploadImageFile = async (file: File) => {
+    if (!canUploadImage) {
+      message.warning("暂无随手记图片上传权限");
+      return;
+    }
     if (uploadingImage || sending) {
       return;
     }
@@ -566,31 +574,37 @@ export default function QuickNotesPage() {
         </div>
 
         <div className="flex-shrink-0 border-t border-gray-200 px-3 pt-2 pb-3 bg-gray-50">
-          <input
-            ref={imageInputRef}
-            type="file"
-            accept="image/jpeg,image/png,image/gif,image/webp"
-            className="hidden"
-            onChange={(event) => void handleImageSelect(event)}
-          />
+          {canUploadImage ? (
+            <input
+              ref={imageInputRef}
+              type="file"
+              accept="image/jpeg,image/png,image/gif,image/webp"
+              className="hidden"
+              onChange={(event) => void handleImageSelect(event)}
+            />
+          ) : null}
           <div className="relative rounded-xl border border-gray-300 bg-white transition-colors focus-within:border-indigo-400 focus-within:ring-2 focus-within:ring-indigo-100">
             <QuickNoteEditor
               ref={editorRef}
               disabled={sending || uploadingImage}
               onEmptyChange={setDraftEmpty}
               onSubmit={() => void handleSend()}
-              onUploadImage={(file) => void uploadImageFile(file)}
+              onUploadImage={canUploadImage ? (file) => void uploadImageFile(file) : undefined}
             />
             <div className="absolute bottom-2 left-2 right-2 flex items-center justify-between pointer-events-none">
-              <button
-                type="button"
-                onClick={() => imageInputRef.current?.click()}
-                disabled={uploadingImage || sending}
-                className="pointer-events-auto h-8 w-8 flex items-center justify-center rounded-lg text-gray-500 hover:bg-gray-100 hover:text-gray-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
-                title="上传图片"
-              >
-                {uploadingImage ? <LoadingSpinner size="small" inline /> : <ImagePlus size={18} />}
-              </button>
+              {canUploadImage ? (
+                <button
+                  type="button"
+                  onClick={() => imageInputRef.current?.click()}
+                  disabled={uploadingImage || sending}
+                  className="pointer-events-auto h-8 w-8 flex items-center justify-center rounded-lg text-gray-500 hover:bg-gray-100 hover:text-gray-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                  title="上传图片"
+                >
+                  {uploadingImage ? <LoadingSpinner size="small" inline /> : <ImagePlus size={18} />}
+                </button>
+              ) : (
+                <span />
+              )}
               <button
                 type="button"
                 onClick={() => void handleSend()}

@@ -5,7 +5,8 @@ from fastapi import APIRouter, Depends, File, HTTPException, Query, UploadFile, 
 from fastapi.responses import Response
 from sqlalchemy.orm import Session
 
-from app.api.v1.deps import get_db, require_quick_notes_use
+from app.core.deps import get_current_user
+from app.api.v1.deps import get_db, require_quick_notes_upload_image
 from app.core.config import settings
 from app.models.user import User
 from app.schemas.quick_note import (
@@ -38,7 +39,7 @@ def list_quick_notes(
     limit: int = Query(100, ge=1, le=200),
     offset: int = Query(0, ge=0),
     db: Session = Depends(get_db),
-    current_user: User = Depends(require_quick_notes_use),
+    current_user: User = Depends(get_current_user),
 ):
     if date_from is not None and date_to is not None and date_from > date_to:
         raise HTTPException(status_code=422, detail="date_from must be on or before date_to")
@@ -62,7 +63,7 @@ def list_quick_notes(
 def create_quick_note(
     data: QuickNoteCreate,
     db: Session = Depends(get_db),
-    current_user: User = Depends(require_quick_notes_use),
+    current_user: User = Depends(get_current_user),
 ):
     service = QuickNoteService(db)
     note = service.create_note(current_user.id, data)
@@ -72,7 +73,7 @@ def create_quick_note(
 @router.post("/upload-image", response_model=QuickNoteImageUploadResponse)
 async def upload_quick_note_image(
     file: UploadFile = File(...),
-    current_user: User = Depends(require_quick_notes_use),
+    current_user: User = Depends(require_quick_notes_upload_image),
 ):
     if not settings.OSS_ENABLED:
         raise HTTPException(status_code=503, detail="图片上传服务未配置")
@@ -131,7 +132,7 @@ def get_quick_note_media(token: str):
 def batch_delete_quick_notes(
     data: QuickNoteBatchDelete,
     db: Session = Depends(get_db),
-    current_user: User = Depends(require_quick_notes_use),
+    current_user: User = Depends(get_current_user),
 ):
     service = QuickNoteService(db)
     deleted = service.delete_notes(current_user.id, data.ids)
@@ -142,7 +143,7 @@ def batch_delete_quick_notes(
 def batch_merge_quick_notes(
     data: QuickNoteBatchMerge,
     db: Session = Depends(get_db),
-    current_user: User = Depends(require_quick_notes_use),
+    current_user: User = Depends(get_current_user),
 ):
     service = QuickNoteService(db)
     try:
@@ -156,7 +157,7 @@ def batch_merge_quick_notes(
 def delete_quick_note(
     note_id: UUID,
     db: Session = Depends(get_db),
-    current_user: User = Depends(require_quick_notes_use),
+    current_user: User = Depends(get_current_user),
 ):
     service = QuickNoteService(db)
     note = service.get_note(note_id)

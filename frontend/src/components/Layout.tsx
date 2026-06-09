@@ -21,7 +21,6 @@ import { MobileBottomNav, type MobileBottomNavItem } from "@/components/MobileBo
 import { useIsMobile } from "@/hooks/useMediaQuery";
 
 const USERS_MANAGE = "users:manage";
-const QUICK_NOTES_USE = "quick_notes:use";
 const SIDEBAR_COLLAPSED_KEY = "fix-life-sidebar-collapsed";
 
 type NavItem = {
@@ -91,10 +90,9 @@ export default function Layout() {
   }, [mobileNavOpen]);
 
   const navItems = useMemo(() => {
-    const items: NavItem[] = [];
-    if (user?.permissions?.includes(QUICK_NOTES_USE)) {
-      items.push({ path: "/quick-notes", label: "随手记", icon: NotebookPen });
-    }
+    const items: NavItem[] = [
+      { path: "/quick-notes", label: "随手记", icon: NotebookPen },
+    ];
     items.push(
       { path: "/todos", label: "待办", icon: ListTodo },
       { path: "/daily-progress", label: "每日进度", icon: CalendarDays },
@@ -114,13 +112,7 @@ export default function Layout() {
     [location.pathname, navItems],
   );
 
-  const mobileTabPaths = useMemo(() => {
-    const paths = ["/todos", "/daily-progress"];
-    if (user?.permissions?.includes(QUICK_NOTES_USE)) {
-      paths.unshift("/quick-notes");
-    }
-    return paths;
-  }, [user]);
+  const mobileTabPaths = useMemo(() => ["/quick-notes", "/todos", "/daily-progress"], []);
 
   const isMoreTabActive = useMemo(() => {
     if (mobileNavOpen) {
@@ -132,15 +124,14 @@ export default function Layout() {
   }, [location.pathname, mobileNavOpen, mobileTabPaths]);
 
   const mobileBottomNavItems = useMemo((): MobileBottomNavItem[] => {
-    const items: MobileBottomNavItem[] = [];
-    if (user?.permissions?.includes(QUICK_NOTES_USE)) {
-      items.push({
+    const items: MobileBottomNavItem[] = [
+      {
         type: "link",
         path: "/quick-notes",
         label: "随手记",
         icon: NotebookPen,
-      });
-    }
+      },
+    ];
     items.push(
       { type: "link", path: "/todos", label: "待办", icon: ListTodo },
       { type: "link", path: "/daily-progress", label: "每日", icon: CalendarDays },

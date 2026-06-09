@@ -2,7 +2,6 @@ import { lazy, Suspense } from "react";
 import { createBrowserRouter, Navigate } from "react-router-dom";
 import ProtectedRoute from "@/components/ProtectedRoute";
 import RequireNoPasswordReset from "@/components/RequireNoPasswordReset";
-import RequireQuickNotesUse from "@/components/RequireQuickNotesUse";
 import RequireUsersManage from "@/components/RequireUsersManage";
 import Layout from "@/components/Layout";
 import SettingsLayout from "@/components/SettingsLayout";
@@ -78,11 +77,9 @@ export const router = createBrowserRouter([
       {
         path: "quick-notes",
         element: (
-          <RequireQuickNotesUse>
-            <Suspense fallback={<PageLoader />}>
-              <QuickNotesPage />
-            </Suspense>
-          </RequireQuickNotesUse>
+          <Suspense fallback={<PageLoader />}>
+            <QuickNotesPage />
+          </Suspense>
         ),
       },
       {
