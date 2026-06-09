@@ -34,7 +34,7 @@
         </view>
 
         <block wx:else>
-          <view class="card task {{tab === 'pending' ? 'card-accent-pending' : tab === 'in_progress' ? 'card-accent-progress' : 'card-accent-done'}}" wx:for="{{tasks}}" wx:key="id" data-id="{{item.id}}" bindtap="openDetail">
+          <view class="card task" wx:for="{{tasks}}" wx:key="id" data-id="{{item.id}}" bindtap="openDetail">
             <view class="task-row">
               <text class="task-title">{{item.title}}</text>
               <text class="progress-tag" wx:if="{{item.progress > 0}}">{{item.progress}}%</text>
@@ -46,7 +46,7 @@
             </view>
             <view class="action-row" catchtap="noop">
               <button wx:if="{{tab === 'pending'}}" class="secondary-btn action-btn" size="mini" data-id="{{item.id}}" catchtap="handleStart">开始</button>
-              <button wx:if="{{tab !== 'done'}}" class="secondary-btn action-btn" size="mini" data-id="{{item.id}}" catchtap="handleScheduleToday">排入今日</button>
+              <button wx:if="{{tab !== 'done'}}" class="secondary-btn action-btn" size="mini" data-id="{{item.id}}" data-scheduled="{{item.scheduled_date || scheduleDefaultDate}}" catchtap="openScheduleSheet">安排</button>
               <button wx:if="{{tab !== 'done'}}" class="soft-success-btn action-btn" size="mini" data-id="{{item.id}}" catchtap="handleComplete">完成</button>
             </view>
           </view>
@@ -102,5 +102,46 @@
 
   <view class="compose-fab" bindtap="openCreate">
     <text class="compose-fab-icon">+</text>
+  </view>
+
+  <view
+    wx:if="{{showScheduleSheet}}"
+    class="schedule-sheet-mask {{scheduleSheetActive ? 'active' : ''}}"
+    catchtap="closeScheduleSheet"
+    catchtouchmove="preventTouchMove"
+  />
+
+  <view
+    wx:if="{{showScheduleSheet}}"
+    class="schedule-sheet {{scheduleSheetActive ? 'active' : ''}}"
+    catchtap="noop"
+    catchtouchmove="preventTouchMove"
+  >
+    <view class="schedule-sheet-panel">
+      <text class="schedule-sheet-title">选择安排日期</text>
+      <view class="schedule-sheet-nav">
+        <text class="schedule-nav-btn" catchtap="onSchedulePrevMonth">‹</text>
+        <text class="schedule-month-label">{{scheduleMonthLabel}}</text>
+        <text class="schedule-nav-btn" catchtap="onScheduleNextMonth">›</text>
+      </view>
+      <view class="schedule-weekdays">
+        <text wx:for="{{['日','一','二','三','四','五','六']}}" wx:key="*this" class="schedule-weekday">{{item}}</text>
+      </view>
+      <view class="schedule-grid">
+        <view
+          wx:for="{{scheduleCalendarDays}}"
+          wx:key="date"
+          class="schedule-day {{item.otherMonth ? 'other-month' : ''}} {{item.today ? 'today' : ''}} {{item.selected ? 'selected' : ''}}"
+          data-date="{{item.date}}"
+          catchtap="onScheduleDayTap"
+        >
+          {{item.day}}
+        </view>
+      </view>
+      <view class="schedule-sheet-actions">
+        <button class="secondary-btn schedule-action-btn" catchtap="closeScheduleSheet">取消</button>
+        <button class="primary-btn schedule-action-btn" catchtap="confirmSchedule">确定</button>
+      </view>
+    </view>
   </view>
 </view>

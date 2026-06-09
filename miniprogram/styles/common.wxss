@@ -48,18 +48,6 @@
   margin: var(--space-page);
 }
 
-.card-accent-pending {
-  border-top: 6rpx solid #3b82f6;
-}
-
-.card-accent-progress {
-  border-top: 6rpx solid #f59e0b;
-}
-
-.card-accent-done {
-  border-top: 6rpx solid #10b981;
-}
-
 .muted {
   color: var(--color-text-secondary);
   font-size: var(--font-caption);

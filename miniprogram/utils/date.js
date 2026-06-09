@@ -73,6 +73,56 @@ function monthLabel(year, month) {
   return `${year}年${month}月`;
 }
 
+function buildMonthCalendar(year, month, selectedDate) {
+  const today = todayString();
+  const firstWeekday = new Date(year, month - 1, 1).getDay();
+  const daysInMonth = new Date(year, month, 0).getDate();
+  const prevMonthDays = new Date(year, month - 1, 0).getDate();
+  const cells = [];
+
+  for (let i = firstWeekday - 1; i >= 0; i -= 1) {
+    const day = prevMonthDays - i;
+    const prevMonth = month === 1 ? 12 : month - 1;
+    const prevYear = month === 1 ? year - 1 : year;
+    const date = formatDate(new Date(prevYear, prevMonth - 1, day));
+    cells.push({
+      day,
+      date,
+      otherMonth: true,
+      selected: date === selectedDate,
+      today: date === today,
+    });
+  }
+
+  for (let day = 1; day <= daysInMonth; day += 1) {
+    const date = formatDate(new Date(year, month - 1, day));
+    cells.push({
+      day,
+      date,
+      otherMonth: false,
+      selected: date === selectedDate,
+      today: date === today,
+    });
+  }
+
+  let nextDay = 1;
+  while (cells.length % 7 !== 0) {
+    const nextMonth = month === 12 ? 1 : month + 1;
+    const nextYear = month === 12 ? year + 1 : year;
+    const date = formatDate(new Date(nextYear, nextMonth - 1, nextDay));
+    cells.push({
+      day: nextDay,
+      date,
+      otherMonth: true,
+      selected: date === selectedDate,
+      today: date === today,
+    });
+    nextDay += 1;
+  }
+
+  return cells;
+}
+
 module.exports = {
   parseServerDateTime,
   formatDate,
@@ -85,4 +135,5 @@ module.exports = {
   formatQuickNoteDateDivider,
   isSameCalendarDay,
   monthLabel,
+  buildMonthCalendar,
 };
