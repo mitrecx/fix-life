@@ -16,6 +16,7 @@ from app.schemas.admin_user import (
     TempPasswordResponse,
 )
 from app.services.admin_user_service import AdminUserService
+from app.services.user_seed_service import try_seed_new_user
 
 router = APIRouter(dependencies=[Depends(require_users_manage)])
 
@@ -36,6 +37,7 @@ def admin_create_user(
     svc = AdminUserService(db)
     user = svc.create_user(body)
     db.commit()
+    try_seed_new_user(db, str(user.id))
     user = svc.get_user(user.id)
     if not user:
         raise HTTPException(

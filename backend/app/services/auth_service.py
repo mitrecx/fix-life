@@ -7,6 +7,7 @@ from app.core.security import get_password_hash
 from app.models.user import User
 from app.schemas.user import UserRegister
 from app.services.rbac_service import assign_community_role
+from app.services.user_seed_service import try_seed_new_user
 from app.services.wechat_service import (
     build_wechat_placeholder_email,
     build_wechat_username,
@@ -67,6 +68,7 @@ class AuthService:
         assign_community_role(self.db, user.id)
         self.db.commit()
         self.db.refresh(user)
+        try_seed_new_user(self.db, str(user.id))
         return user
 
     def get_or_create_wechat_user(self, openid: str, unionid: str | None = None) -> User:
@@ -98,4 +100,5 @@ class AuthService:
         assign_community_role(self.db, user.id)
         self.db.commit()
         self.db.refresh(user)
+        try_seed_new_user(self.db, str(user.id))
         return user
